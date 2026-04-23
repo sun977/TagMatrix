@@ -1,3 +1,7 @@
+build/bin
+node_modules
+frontend/dist
+
 # System files
 .DS_Store
 Thumbs.db
@@ -34,7 +38,6 @@ go.work
 
 # Release builds
 release/
-
 
 # # Config files with sensitive info
 # .env

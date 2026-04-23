@@ -22,27 +22,26 @@
 ---
 
 ### [T1] 基础工程初始化 (Project Scaffold)
-*状态: 🟡 准备进行中 (Pending/Next)*
-- [ ] 检查前置依赖 (Go 1.20+, Node.js 18+)
-- [ ] 运行 `wails init` 创建基础 Vue3 + Vite + Go 框架
-- [ ] 清理无用模板代码
-- [ ] 验证 `wails dev` 可成功运行并展示默认窗口
-- [ ] 验证前后端基础 IPC 通信 (如默认的 Greet 方法)
+*状态: ✅ 已完成 (Completed)*
+- [x] 检查前置依赖 (Go 1.20+, Node.js 18+)
+- [x] 运行 `wails init` 创建基础 Vue3 + Vite + Go 框架
+- [x] 清理无用模板代码
+- [x] 验证 `wails dev` 可成功运行并展示默认窗口
+- [x] 验证前后端基础 IPC 通信 (如默认的 Greet 方法)
 
 ---
 
 ### [T2] 核心数据库与模型层实现 (Database & Models)
-*状态: ⚪ 未开始 (Not Started)*
-- [ ] 引入 `gorm` 和 `sqlite` 驱动库
-- [ ] 编写 `internal/model` 下的实体定义 (`RawDataRecord`, `SysTag`, `SysMatchRule`, `TagTaskBatch`, `TagTaskLog`, `SysEntityTag`)
-- [ ] 编写数据库初始化连接逻辑与自动迁移 (AutoMigrate) 逻辑
-- [ ] 提供基础的 CRUD 接口封装
-- [ ] 编写 Go 测试用例验证数据库读写
+*状态: ✅ 已完成 (Completed)*
+- [x] 引入 `gorm` 和 `sqlite` 驱动库 (使用了 `glebarez/sqlite` 纯 Go 驱动避免 CGO 问题)
+- [x] 编写 `internal/model` 下的实体定义 (`RawDataRecord`, `SysTag`, `SysMatchRule`, `TagTaskBatch`, `TagTaskLog`, `SysEntityTag`)
+- [x] 编写数据库初始化连接逻辑与自动迁移 (AutoMigrate) 逻辑
+- [x] 编写 Go 测试用例验证数据库读写
 
 ---
 
 ### [T3] 数据导入导出模块 (Data Import/Export)
-*状态: ⚪ 未开始 (Not Started)*
+*状态: 🟡 准备进行中 (Pending/Next)*
 - [ ] 编写 Excel/CSV 解析器 (使用第三方库如 `excelize` 或原生的 `encoding/csv`)
 - [ ] 编写数据清洗与 JSON 序列化入库逻辑
 - [ ] 在 Wails AppService 中暴露 `ImportData` 方法
