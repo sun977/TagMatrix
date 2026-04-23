@@ -41,17 +41,17 @@
 ---
 
 ### [T3] 数据导入导出模块 (Data Import/Export)
-*状态: 🟡 准备进行中 (Pending/Next)*
-- [ ] 编写 Excel/CSV 解析器 (使用第三方库如 `excelize` 或原生的 `encoding/csv`)
-- [ ] 编写数据清洗与 JSON 序列化入库逻辑
-- [ ] 在 Wails AppService 中暴露 `ImportData` 方法
-- [ ] 编写根据查询条件导出数据的功能
-- [ ] 在 Wails AppService 中暴露 `ExportData` 方法
+*状态: ✅ 已完成 (Completed)*
+- [x] 编写 Excel/CSV 解析器 (使用第三方库如 `excelize` 或原生的 `encoding/csv`)
+- [x] 编写数据清洗与 JSON 序列化入库逻辑
+- [x] 在 Wails AppService 中暴露 `ImportData` 方法
+- [x] 编写根据查询条件导出数据的功能
+- [x] 在 Wails AppService 中暴露 `ExportData` 方法
 
 ---
 
 ### [T4] 规则引擎适配与标签管理 (Matcher & Tag Management)
-*状态: ⚪ 未开始 (Not Started)*
+*状态: 🟡 准备进行中 (Pending/Next)*
 - [ ] 移植原 NeoScan 项目的 `matcher` 匹配引擎到 `internal/pkg/matcher`
 - [ ] 实现标签 CRUD (支持树状层级)
 - [ ] 实现规则 CRUD (支持序列化 `matcher` JSON)
