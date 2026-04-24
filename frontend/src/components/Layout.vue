@@ -64,7 +64,7 @@
 <script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Grid, Setting, House, Files, PriceTag, List, Service, Coin, Finished, Fold, Expand } from '@element-plus/icons-vue'
+import { Grid, Setting, House, Files, PriceTag, List, Service, Coin, Finished, Fold, Expand, DataBoard } from '@element-plus/icons-vue'
 import SettingsDialog from './SettingsDialog.vue'
 
 const router = useRouter()

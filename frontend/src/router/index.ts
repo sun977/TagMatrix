@@ -30,6 +30,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'TaskKanban',
         component: () => import('../views/TaskKanban.vue'),
         meta: { title: '打标任务看板', icon: 'Finished' }
+      },
+      {
+        path: 'tagged-data',
+        name: 'TaggedData',
+        component: () => import('../views/TaggedData.vue'),
+        meta: { title: '打标结果', icon: 'DataBoard' }
       }
     ]
   }
