@@ -284,7 +284,7 @@ func (s *DataImportService) parseExcel(filePath string, selectedSheets []string)
 			}
 
 			// 可以在记录中附加来源 sheet 名，方便追溯
-			record["_source_sheet"] = sheetName
+			record["来源表"] = sheetName
 
 			allRecords = append(allRecords, record)
 		}
