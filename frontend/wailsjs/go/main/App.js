@@ -18,12 +18,20 @@ export function DeleteRawData(arg1) {
   return window['go']['main']['App']['DeleteRawData'](arg1);
 }
 
+export function DeleteTag(arg1) {
+  return window['go']['main']['App']['DeleteTag'](arg1);
+}
+
 export function DryRunRule(arg1, arg2) {
   return window['go']['main']['App']['DryRunRule'](arg1, arg2);
 }
 
 export function ExportData(arg1, arg2) {
   return window['go']['main']['App']['ExportData'](arg1, arg2);
+}
+
+export function ExportTags(arg1) {
+  return window['go']['main']['App']['ExportTags'](arg1);
 }
 
 export function GetAllRules() {
@@ -50,6 +58,10 @@ export function GetRuleByTag(arg1) {
   return window['go']['main']['App']['GetRuleByTag'](arg1);
 }
 
+export function GetTagTree() {
+  return window['go']['main']['App']['GetTagTree']();
+}
+
 export function GetTaggedDataList(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetTaggedDataList'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -60,6 +72,10 @@ export function GetTaskBatches() {
 
 export function ImportData(arg1, arg2) {
   return window['go']['main']['App']['ImportData'](arg1, arg2);
+}
+
+export function ImportTags(arg1) {
+  return window['go']['main']['App']['ImportTags'](arg1);
 }
 
 export function RollbackTask(arg1) {

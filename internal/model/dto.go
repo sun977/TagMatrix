@@ -36,3 +36,9 @@ type FileAnalysisResult struct {
 	FileType   string   `json:"fileType"`   // csv 或 excel
 	SheetNames []string `json:"sheetNames"` // 只有 excel 有
 }
+
+// TagTreeNode 用于前端标签树组件展示
+type TagTreeNode struct {
+	SysTag
+	Children []TagTreeNode `json:"children"`
+}

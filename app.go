@@ -276,8 +276,55 @@ func (a *App) CreateTag(tag model.SysTag) error {
 	return a.tagLogic.CreateTag(&tag)
 }
 
+func (a *App) DeleteTag(id uint64) error {
+	return a.tagLogic.DeleteTag(id)
+}
+
 func (a *App) GetAllTags() ([]model.SysTag, error) {
 	return a.tagLogic.GetAllTags()
+}
+
+func (a *App) GetTagTree() ([]model.TagTreeNode, error) {
+	return a.tagLogic.GetTagTree()
+}
+
+func (a *App) ExportTags(exportPath string) error {
+	if exportPath == "" {
+		file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+			Title:           "导出标签结构",
+			DefaultFilename: "tags_export.json",
+			Filters: []runtime.FileFilter{
+				{DisplayName: "JSON 文件", Pattern: "*.json"},
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if file == "" {
+			return fmt.Errorf("cancelled")
+		}
+		exportPath = file
+	}
+	return a.tagLogic.ExportTags(exportPath)
+}
+
+func (a *App) ImportTags(filePath string) error {
+	if filePath == "" {
+		file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+			Title: "导入标签结构",
+			Filters: []runtime.FileFilter{
+				{DisplayName: "JSON 文件", Pattern: "*.json"},
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if file == "" {
+			return fmt.Errorf("cancelled")
+		}
+		filePath = file
+	}
+	return a.tagLogic.ImportTags(filePath)
 }
 
 func (a *App) SaveRule(rule model.SysMatchRule) error {

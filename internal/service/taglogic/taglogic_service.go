@@ -3,6 +3,7 @@ package taglogic
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"TagMatrix/internal/model"
 	"TagMatrix/internal/pkg/matcher"
@@ -46,17 +47,168 @@ func (s *TagLogicService) CreateTag(tag *model.SysTag) error {
 	return s.db.Create(tag).Error
 }
 
-// GetTagTree 获取所有标签 (前端可以自行组装为树，或者后端组装)
+// GetTagTree 获取所有标签并组装为树形结构
+func (s *TagLogicService) GetTagTree() ([]model.TagTreeNode, error) {
+	var tags []model.SysTag
+	err := s.db.Find(&tags).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return buildTagTree(tags, 0), nil
+}
+
+// 递归构建标签树
+func buildTagTree(tags []model.SysTag, parentID uint64) []model.TagTreeNode {
+	var tree []model.TagTreeNode
+	for _, tag := range tags {
+		if tag.ParentID == parentID {
+			node := model.TagTreeNode{
+				SysTag: tag,
+			}
+			children := buildTagTree(tags, tag.ID)
+			if len(children) > 0 {
+				node.Children = children
+			}
+			tree = append(tree, node)
+		}
+	}
+	return tree
+}
+
+// GetAllTags 获取所有标签 (平铺列表)
 func (s *TagLogicService) GetAllTags() ([]model.SysTag, error) {
 	var tags []model.SysTag
 	err := s.db.Find(&tags).Error
 	return tags, err
 }
 
-// DeleteTag 删除标签
+// DeleteTag 删除标签及其子标签
 func (s *TagLogicService) DeleteTag(id uint64) error {
-	// 实际业务中可能需要级联删除子标签和相关的匹配规则
-	return s.db.Delete(&model.SysTag{}, id).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 1. 递归找到所有子孙节点 ID
+		var allTags []model.SysTag
+		if err := tx.Find(&allTags).Error; err != nil {
+			return err
+		}
+		idsToDelete := getSubTagIDs(allTags, id)
+		idsToDelete = append(idsToDelete, id) // 包含自己
+
+		// 2. 删除相关的规则
+		if err := tx.Where("tag_id IN ?", idsToDelete).Delete(&model.SysMatchRule{}).Error; err != nil {
+			return err
+		}
+
+		// 3. 删除相关的打标结果关联 (sys_entity_tags)
+		if err := tx.Where("tag_id IN ?", idsToDelete).Delete(&model.SysEntityTag{}).Error; err != nil {
+			return err
+		}
+
+		// 4. 删除标签本身
+		if err := tx.Where("id IN ?", idsToDelete).Delete(&model.SysTag{}).Error; err != nil {
+			return err
+		}
+
+		return nil
+	})
+}
+
+func getSubTagIDs(tags []model.SysTag, parentID uint64) []uint64 {
+	var ids []uint64
+	for _, tag := range tags {
+		if tag.ParentID == parentID {
+			ids = append(ids, tag.ID)
+			ids = append(ids, getSubTagIDs(tags, tag.ID)...)
+		}
+	}
+	return ids
+}
+
+// ----------------- 标签导入导出 (Import/Export) -----------------
+
+// ExportTags 导出标签树为 JSON 文件
+func (s *TagLogicService) ExportTags(exportPath string) error {
+	tree, err := s.GetTagTree()
+	if err != nil {
+		return fmt.Errorf("failed to get tag tree: %w", err)
+	}
+
+	data, err := json.MarshalIndent(tree, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal tag tree: %w", err)
+	}
+
+	return os.WriteFile(exportPath, data, 0644)
+}
+
+// ImportTags 导入标签树 JSON 文件
+func (s *TagLogicService) ImportTags(importPath string) error {
+	data, err := os.ReadFile(importPath)
+	if err != nil {
+		return fmt.Errorf("failed to read import file: %w", err)
+	}
+
+	var importedTree []model.TagTreeNode
+	if err := json.Unmarshal(data, &importedTree); err != nil {
+		return fmt.Errorf("invalid json format: %w", err)
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		return s.importTagNodes(tx, importedTree, 0)
+	})
+}
+
+func (s *TagLogicService) importTagNodes(tx *gorm.DB, nodes []model.TagTreeNode, parentID uint64) error {
+	for _, node := range nodes {
+		// 检查当前名称在父节点下是否已存在
+		var existingTag model.SysTag
+		err := tx.Where("name = ? AND parent_id = ?", node.Name, parentID).First(&existingTag).Error
+
+		var currentID uint64
+
+		if err == gorm.ErrRecordNotFound {
+			// 不存在则创建
+			newTag := model.SysTag{
+				Name:        node.Name,
+				ParentID:    parentID,
+				Color:       node.Color,
+				Description: node.Description,
+			}
+
+			if parentID == 0 {
+				newTag.Path = fmt.Sprintf("/%s/", newTag.Name)
+				newTag.Level = 1
+			} else {
+				var parent model.SysTag
+				tx.First(&parent, parentID)
+				newTag.Path = fmt.Sprintf("%s%s/", parent.Path, newTag.Name)
+				newTag.Level = parent.Level + 1
+			}
+
+			if err := tx.Create(&newTag).Error; err != nil {
+				return fmt.Errorf("failed to create tag %s: %w", node.Name, err)
+			}
+			currentID = newTag.ID
+		} else if err != nil {
+			return err
+		} else {
+			// 已存在则复用，同时可以选择更新颜色和描述等属性
+			existingTag.Color = node.Color
+			existingTag.Description = node.Description
+			if err := tx.Save(&existingTag).Error; err != nil {
+				return err
+			}
+			currentID = existingTag.ID
+		}
+
+		// 递归导入子节点
+		if len(node.Children) > 0 {
+			if err := s.importTagNodes(tx, node.Children, currentID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // ----------------- 规则管理 (Rule Management) -----------------

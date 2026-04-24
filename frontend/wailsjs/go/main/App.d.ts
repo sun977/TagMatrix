@@ -13,9 +13,13 @@ export function CreateTag(arg1:model.SysTag):Promise<void>;
 
 export function DeleteRawData(arg1:Array<number>):Promise<void>;
 
+export function DeleteTag(arg1:number):Promise<void>;
+
 export function DryRunRule(arg1:string,arg2:number):Promise<Array<taglogic.DryRunResult>>;
 
 export function ExportData(arg1:number,arg2:string):Promise<void>;
+
+export function ExportTags(arg1:string):Promise<void>;
 
 export function GetAllRules():Promise<Array<model.SysMatchRule>>;
 
@@ -29,11 +33,15 @@ export function GetRawDataList(arg1:number,arg2:number,arg3:string,arg4:string):
 
 export function GetRuleByTag(arg1:number):Promise<model.SysMatchRule>;
 
+export function GetTagTree():Promise<Array<model.TagTreeNode>>;
+
 export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<model.PagedTaggedData>;
 
 export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
 
 export function ImportData(arg1:string,arg2:Array<string>):Promise<number>;
+
+export function ImportTags(arg1:string):Promise<void>;
 
 export function RollbackTask(arg1:number):Promise<void>;
 

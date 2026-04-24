@@ -13,9 +13,13 @@
       <div class="left-pane">
         <div class="pane-header">
           <h3>标签体系</h3>
-          <el-button type="primary" size="small" class="action-btn-green" @click="showAddTagDialog(0)">
-            <el-icon><Plus /></el-icon>
-          </el-button>
+          <div class="header-actions">
+            <el-button size="small" @click="handleImportTags" title="导入"><el-icon><Upload /></el-icon></el-button>
+            <el-button size="small" @click="handleExportTags" title="导出"><el-icon><Download /></el-icon></el-button>
+            <el-button type="primary" size="small" class="action-btn-green" @click="showAddTagDialog(0)" title="新建根标签">
+              <el-icon><Plus /></el-icon>
+            </el-button>
+          </div>
         </div>
         
         <div class="pane-content">
@@ -30,11 +34,16 @@
               :filter-node-method="filterNode"
               @node-click="handleNodeClick"
               :highlight-current="true"
+              :expand-on-click-node="false"
             >
               <template #default="{ node, data }">
                 <span class="custom-tree-node" :class="{ 'is-active': selectedTag?.id === data.id }">
                   <span class="tag-color-dot" :style="{ backgroundColor: data.color || 'var(--tm-accent-primary)' }"></span>
                   <span class="node-label">{{ node.label }}</span>
+                  <span class="node-actions" v-if="selectedTag?.id === data.id">
+                    <el-button link type="primary" size="small" @click.stop="showAddTagDialog(data.id)"><el-icon><Plus /></el-icon></el-button>
+                    <el-button link type="danger" size="small" @click.stop="handleDeleteTag(data, $event)"><el-icon><Delete /></el-icon></el-button>
+                  </span>
                 </span>
               </template>
             </el-tree>
@@ -48,16 +57,7 @@
           <div class="pane-header right-header">
             <div class="header-title">
               <span class="tag-color-dot large" :style="{ backgroundColor: selectedTag.color }"></span>
-              <h2>{{ selectedTag.label }}</h2>
-              <span class="rule-count-pill">{{ rules.length }} 条关联规则</span>
-            </div>
-            <div class="header-actions">
-              <el-button type="primary" class="action-btn-green" @click="addRule">
-                <el-icon><Plus /></el-icon> 新增规则
-              </el-button>
-              <el-button class="more-btn">
-                <el-icon><MoreFilled /></el-icon>
-              </el-button>
+              <h2>{{ selectedTag.name }}</h2>
             </div>
           </div>
 
@@ -69,7 +69,7 @@
                 <el-col :span="8">
                   <div class="form-item">
                     <label>标签名称</label>
-                    <el-input v-model="selectedTag.label" />
+                    <el-input v-model="selectedTag.name" />
                   </div>
                 </el-col>
                 <el-col :span="8">
@@ -89,7 +89,7 @@
                 <el-col :span="8">
                   <div class="form-item">
                     <label>标签描述</label>
-                    <el-input v-model="selectedTag.raw.description" type="textarea" :rows="2" placeholder="输入标签描述..." />
+                    <el-input v-model="selectedTag.description" type="textarea" :rows="2" placeholder="输入标签描述..." />
                   </div>
                 </el-col>
               </el-row>
@@ -99,45 +99,13 @@
             <div class="config-section">
               <div class="section-header-flex">
                 <h4 class="section-title">匹配规则</h4>
-                <div class="logic-switch">
-                  <span class="logic-label">匹配逻辑:</span>
-                  <div class="logic-group">
-                    <div class="logic-item" :class="{ active: matchLogic === 'AND' }" @click="matchLogic = 'AND'">AND (满足所有)</div>
-                    <div class="logic-item" :class="{ active: matchLogic === 'OR' }" @click="matchLogic = 'OR'">OR (满足任一)</div>
-                  </div>
-                </div>
+                <el-button size="small" type="info" plain @click="previewRuleJson">
+                  预览 JSON
+                </el-button>
               </div>
 
               <div class="rules-list">
-                <div class="rule-card" v-for="(rule, index) in rules" :key="index">
-                  <div class="rule-card-header">
-                    <span class="rule-name">规则{{ index + 1 }}: {{ rule.name }}</span>
-                    <el-switch v-model="rule.enabled" class="rule-switch" />
-                    <div class="rule-actions">
-                      <el-button circle size="small"><el-icon><DocumentCopy /></el-icon></el-button>
-                      <el-button circle size="small" @click="removeRule(index)"><el-icon><Delete /></el-icon></el-button>
-                    </div>
-                  </div>
-                  <div class="rule-card-body">
-                    <el-select v-model="rule.field" style="width: 160px">
-                      <el-option label="累计消费金额" value="amount" />
-                      <el-option label="最近登录时间" value="last_login" />
-                      <el-option label="访问次数" value="visits" />
-                    </el-select>
-                    <el-select v-model="rule.operator" style="width: 120px">
-                      <el-option label="大于等于" value=">=" />
-                      <el-option label="小于等于" value="<=" />
-                      <el-option label="等于" value="==" />
-                      <el-option label="包含" value="contains" />
-                    </el-select>
-                    <el-input v-model="rule.value" style="width: 160px" />
-                    <span class="rule-unit" v-if="rule.unit">{{ rule.unit }}</span>
-                  </div>
-                </div>
-
-                <el-button class="add-condition-btn" dashed>
-                  <el-icon><Plus /></el-icon> 添加条件
-                </el-button>
+                <RuleGroup v-model="ruleState" :is-root="true" />
               </div>
             </div>
 
@@ -219,79 +187,44 @@
         </span>
       </template>
     </el-dialog>
+    <!-- JSON 预览对话框 -->
+    <el-dialog v-model="previewDialogVisible" title="规则 JSON 预览" width="500px">
+      <pre class="json-preview">{{ previewJsonStr }}</pre>
+      <template #footer>
+        <el-button @click="previewDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { CreateTag, GetAllTags, SaveRule, DryRunRule, GetRuleByTag } from '../../wailsjs/go/main/App'
+import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { CreateTag, DeleteTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRuleByTag } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
+import RuleGroup from '../components/RuleGroup.vue'
 
 const filterText = ref('')
 const treeRef = ref<any>()
 
 // --- 左侧标签树逻辑 ---
 const loadingTags = ref(false)
-const tagTreeData = ref<any[]>([])
+const tagTreeData = ref<model.TagTreeNode[]>([])
 
 const defaultProps = {
   children: 'children',
-  label: 'label',
+  label: 'name',
 }
-
-// 扁平数据转树形
-const buildTree = (tags: model.SysTag[], parentId: number): any[] => {
-  const result: any[] = []
-  for (const tag of tags) {
-    if (tag.parent_id === parentId) {
-      const node: any = {
-        id: tag.id,
-        label: tag.name,
-        color: tag.color,
-        raw: tag,
-        children: buildTree(tags, tag.id)
-      }
-      if (node.children.length === 0) {
-        delete node.children
-      }
-      result.push(node)
-    }
-  }
-  return result
-}
-
-// 如果后端没数据，用 mock 数据填充 UI
-const mockTagTree = [
-  {
-    id: 1, label: '用户分层', color: '#f5a623',
-    children: [
-      { id: 11, label: 'VIP用户', color: '#7b61ff' },
-      { id: 12, label: '高价值用户', color: '#f5a623' },
-      { id: 13, label: '普通用户', color: '#909399' },
-      { id: 14, label: '低价值用户', color: '#f56c6c' }
-    ]
-  },
-  { id: 2, label: '用户活跃度', color: '#52c48f' },
-  { id: 3, label: '用户生命周期', color: '#52c48f' },
-  { id: 4, label: '消费能力', color: '#e056fd' },
-  { id: 5, label: '行为偏好', color: '#409eff' },
-  { id: 6, label: '风险等级', color: '#f56c6c' }
-]
 
 const fetchTags = async () => {
   loadingTags.value = true
   try {
-    const rawTags = await GetAllTags()
-    if (rawTags && rawTags.length > 0) {
-      tagTreeData.value = buildTree(rawTags, 0)
-    } else {
-      tagTreeData.value = mockTagTree
-    }
+    const tree = await GetTagTree()
+    tagTreeData.value = tree || []
   } catch (e: any) {
     console.error(e)
-    tagTreeData.value = mockTagTree // fallback to mock
+    ElMessage.error('获取标签失败')
   } finally {
     loadingTags.value = false
   }
@@ -299,21 +232,86 @@ const fetchTags = async () => {
 
 const filterNode = (value: string, data: any) => {
   if (!value) return true
-  return data.label.includes(value)
+  return data.name.includes(value)
+}
+
+const handleExportTags = async () => {
+  try {
+    await ExportTags("") // 触发保存文件对话框
+    ElMessage.success("导出成功")
+  } catch (e: any) {
+    if (e !== "cancelled") ElMessage.error("导出失败: " + String(e))
+  }
+}
+
+const handleImportTags = async () => {
+  try {
+    await ImportTags("") // 触发打开文件对话框
+    ElMessage.success("导入成功")
+    fetchTags()
+  } catch (e: any) {
+    if (e !== "cancelled") ElMessage.error("导入失败: " + String(e))
+  }
+}
+
+const handleDeleteTag = async (data: any, e: Event) => {
+  e.stopPropagation()
+  try {
+    await ElMessageBox.confirm(`确定要删除标签 "${data.name}" 及其所有子节点吗？此操作不可恢复。`, '警告', { type: 'warning' })
+    await DeleteTag(data.id)
+    ElMessage.success("删除成功")
+    if (selectedTag.value?.id === data.id) {
+      selectedTag.value = null
+    }
+    fetchTags()
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error("删除失败: " + String(e))
+  }
 }
 
 // --- 右侧规则逻辑 ---
 const selectedTag = ref<any>(null)
-const matchLogic = ref('AND')
-const rules = ref<any[]>([])
+const ruleState = ref<any>({
+  logic: 'and',
+  conditions: []
+})
+const previewDialogVisible = ref(false)
+const previewJsonStr = ref('')
 
 const hasRunDry = ref(false)
 const runningDry = ref(false)
-
 const mockDryRunData = ref<any[]>([])
 
+// 递归转换规则状态到 NeoScan 格式
+const buildNeoScanRule = (state: any): any => {
+  const result: any = {}
+  const conditions = []
+
+  for (const cond of state.conditions) {
+    if (cond.logic) {
+      // 这是一个子逻辑组
+      conditions.push(buildNeoScanRule(cond))
+    } else {
+      // 这是一个基本条件
+      conditions.push({
+        field: cond.field,
+        operator: cond.operator,
+        value: cond.value
+      })
+    }
+  }
+
+  result[state.logic] = conditions
+  return result
+}
+
+const previewRuleJson = () => {
+  const neoRule = buildNeoScanRule(ruleState.value)
+  previewJsonStr.value = JSON.stringify(neoRule, null, 2)
+  previewDialogVisible.value = true
+}
+
 const handleNodeClick = async (data: any) => {
-  // 只允许给没有子节点的叶子标签挂载规则 (或者这里放开限制，视业务而定)
   selectedTag.value = data
   if (!data.raw) data.raw = {}
   
@@ -323,31 +321,19 @@ const handleNodeClick = async (data: any) => {
     const rule = await GetRuleByTag(data.id)
     if (rule && rule.rule_json) {
       const parsed = JSON.parse(rule.rule_json)
-      matchLogic.value = parsed.logic || 'AND'
-      rules.value = parsed.conditions || []
+      // 需要从 NeoScan 格式反解析为 state 格式，这里简化处理，假设之前存的就是带有 logic/conditions 的内部格式
+      // 实际应用中需要写一个反向解析器
+      if (parsed.logic) {
+        ruleState.value = parsed
+      } else {
+        ruleState.value = { logic: 'and', conditions: [] }
+      }
     } else {
-      matchLogic.value = 'AND'
-      rules.value = []
+      ruleState.value = { logic: 'and', conditions: [] }
     }
   } catch (e) {
-    matchLogic.value = 'AND'
-    rules.value = []
+    ruleState.value = { logic: 'and', conditions: [] }
   }
-}
-
-const addRule = () => {
-  rules.value.push({
-    name: '新条件',
-    enabled: true,
-    field: 'amount',
-    operator: '>=',
-    value: '',
-    unit: ''
-  })
-}
-
-const removeRule = (index: number) => {
-  rules.value.splice(index, 1)
 }
 
 const savingRule = ref(false)
@@ -356,8 +342,15 @@ const handleSaveRule = async () => {
   try {
     const ruleObj = new model.SysMatchRule()
     ruleObj.tag_id = selectedTag.value.id
-    ruleObj.name = selectedTag.value.label + "的规则"
-    ruleObj.rule_json = JSON.stringify({ logic: matchLogic.value, conditions: rules.value })
+    ruleObj.name = selectedTag.value.name + "的规则"
+    
+    // 这里我们依然保存前端内部的 state 格式方便回显，如果是为了对接其他系统，可以保存 NeoScan 格式
+    // 为了满足“生成一段json数据”，我们将 NeoScan 格式序列化保存
+    const neoRule = buildNeoScanRule(ruleState.value)
+    
+    // 但是为了下次回显方便，我们需要在 rule_json 中保存能够反向构建的数据。
+    // 在这里我们做一个 hack，将 state 作为内部状态保存，将 NeoScan 作为真正的规则使用
+    ruleObj.rule_json = JSON.stringify(ruleState.value) 
     ruleObj.is_enabled = true
     ruleObj.priority = 0
 
@@ -373,8 +366,9 @@ const handleSaveRule = async () => {
 const handleDryRun = async () => {
   runningDry.value = true
   try {
-    const ruleObj = { logic: matchLogic.value, conditions: rules.value }
-    const ruleJSON = JSON.stringify(ruleObj)
+    // DryRun 依然使用 NeoScan 格式发送给后端
+    const neoRule = buildNeoScanRule(ruleState.value)
+    const ruleJSON = JSON.stringify(neoRule)
     const results = await DryRunRule(ruleJSON, 100) // Call Go API
     
     mockDryRunData.value = results.map((r: any) => {
