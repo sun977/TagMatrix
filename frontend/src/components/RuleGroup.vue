@@ -32,13 +32,56 @@
         <div v-else class="condition-row">
           <el-input v-model="item.field" placeholder="字段名 (例如: os, port)" size="small" style="width: 180px;" />
           <el-select v-model="item.operator" size="small" style="width: 120px;">
-            <el-option label="等于" value="equals" />
-            <el-option label="包含" value="contains" />
-            <el-option label="正则" value="regex" />
-            <el-option label="大于" value="greater_than" />
-            <el-option label="小于" value="less_than" />
+            <el-option-group label="基础比较">
+              <el-option label="等于 (equals)" value="equals" />
+              <el-option label="不等于 (not_equals)" value="not_equals" />
+              <el-option label="存在 (exists)" value="exists" />
+              <el-option label="为空 (is_null)" value="is_null" />
+              <el-option label="不为空 (is_not_null)" value="is_not_null" />
+            </el-option-group>
+            
+            <el-option-group label="文本匹配">
+              <el-option label="包含 (contains)" value="contains" />
+              <el-option label="不包含 (not_contains)" value="not_contains" />
+              <el-option label="开头是 (starts_with)" value="starts_with" />
+              <el-option label="结尾是 (ends_with)" value="ends_with" />
+              <el-option label="正则匹配 (regex)" value="regex" />
+              <el-option label="模糊匹配 (like)" value="like" />
+            </el-option-group>
+
+            <el-option-group label="数值/大小比较">
+              <el-option label="大于 (>)" value="greater_than" />
+              <el-option label="小于 (<)" value="less_than" />
+              <el-option label="大于等于 (>=)" value="greater_than_or_equal" />
+              <el-option label="小于等于 (<=)" value="less_than_or_equal" />
+            </el-option-group>
+
+            <el-option-group label="集合/特殊匹配">
+              <el-option label="在列表中 (in)" value="in" />
+              <el-option label="不在列表中 (not_in)" value="not_in" />
+              <el-option label="列表包含 (list_contains)" value="list_contains" />
+              <el-option label="IP网段 (cidr)" value="cidr" />
+            </el-option-group>
           </el-select>
-          <el-input v-model="item.value" placeholder="匹配值" size="small" style="width: 200px;" />
+
+          <!-- 目标值输入 -->
+          <el-input 
+            v-if="!['exists', 'is_null', 'is_not_null'].includes(item.operator)"
+            v-model="item.value" 
+            placeholder="匹配值 (in操作用逗号分隔)" 
+            size="small" 
+            style="width: 200px;" 
+          />
+
+          <!-- 忽略大小写开关 -->
+          <el-tooltip content="忽略大小写" placement="top" :enterable="false">
+            <el-switch 
+              v-model="item.ignore_case" 
+              inline-prompt 
+              style="--el-switch-on-color: #52c48f"
+              size="small"
+            />
+          </el-tooltip>
           <el-button type="danger" link size="small" @click="removeCondition(index)" class="remove-btn">
             <el-icon><Close /></el-icon>
           </el-button>

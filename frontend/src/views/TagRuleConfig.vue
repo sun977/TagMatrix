@@ -98,7 +98,12 @@
             <!-- 匹配规则 -->
             <div class="config-section">
               <div class="section-header-flex">
-                <h4 class="section-title">匹配规则</h4>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <h4 class="section-title" style="margin-bottom: 0;">匹配规则</h4>
+                  <el-tooltip content="点击查看匹配算子说明" placement="top">
+                    <el-icon class="help-icon" @click="operatorHelpVisible = true"><QuestionFilled /></el-icon>
+                  </el-tooltip>
+                </div>
                 <el-button size="small" type="info" plain @click="previewRuleJson">
                   预览 JSON
                 </el-button>
@@ -130,7 +135,14 @@
                 </div>
 
                 <el-table :data="mockDryRunData" style="width: 100%" class="custom-table" max-height="400">
-                  <el-table-column label="匹配结果" width="120" align="center" fixed="left">
+                  <el-table-column 
+                    label="匹配结果" 
+                    width="120" 
+                    align="center" 
+                    fixed="left"
+                    prop="_matched"
+                    sortable
+                  >
                     <template #default="scope">
                       <div class="match-pill" :class="scope.row._matched ? 'matched' : 'unmatched'">
                         <el-icon><Select v-if="scope.row._matched" /><CloseBold v-else /></el-icon>
@@ -194,12 +206,30 @@
         <el-button @click="previewDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 操作符帮助弹窗 -->
+    <el-dialog v-model="operatorHelpVisible" title="匹配算子 (操作符) 说明" width="800px">
+      <el-table :data="operatorHelpData" style="width: 100%" border size="small" height="500">
+        <el-table-column prop="category" label="分类" width="120" />
+        <el-table-column prop="operator" label="操作符" width="150">
+          <template #default="scope">
+            <code>{{ scope.row.operator }}</code>
+          </template>
+        </el-table-column>
+        <el-table-column prop="desc" label="说明" width="120" />
+        <el-table-column prop="example" label="示例">
+          <template #default="scope">
+            <span class="example-text">{{ scope.row.example }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CreateTag, DeleteTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRuleByTag } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
@@ -277,6 +307,32 @@ const ruleState = ref<any>({
 })
 const previewDialogVisible = ref(false)
 const previewJsonStr = ref('')
+const operatorHelpVisible = ref(false)
+
+const operatorHelpData = [
+  { category: '基础比较', operator: 'equals', desc: '等于', example: '字段的值完全等于目标值 (支持字符串/数字)' },
+  { category: '基础比较', operator: 'not_equals', desc: '不等于', example: '字段的值不等于目标值' },
+  { category: '基础比较', operator: 'exists', desc: '存在', example: '该字段在数据中存在 (无论值是否为空)，不需要输入目标值' },
+  { category: '基础比较', operator: 'is_null', desc: '为空', example: '该字段不存在或值为 null' },
+  { category: '基础比较', operator: 'is_not_null', desc: '不为空', example: '该字段存在且值不为 null' },
+  
+  { category: '文本匹配', operator: 'contains', desc: '包含', example: '"hello world" 包含 "world"' },
+  { category: '文本匹配', operator: 'not_contains', desc: '不包含', example: '"hello" 不包含 "x"' },
+  { category: '文本匹配', operator: 'starts_with', desc: '以...开头', example: '"server-01" 以 "server" 开头' },
+  { category: '文本匹配', operator: 'ends_with', desc: '以...结尾', example: '"image.png" 以 ".png" 结尾' },
+  { category: '文本匹配', operator: 'regex', desc: '正则匹配', example: '正则表达式匹配，如 ^192\\.168\\..*' },
+  { category: '文本匹配', operator: 'like', desc: '模糊匹配', example: '类似SQL，支持 % (任意字符) 和 _ (单个字符)' },
+
+  { category: '数值/大小', operator: 'greater_than', desc: '大于', example: 'count > 10 (也支持字符串字典序比较)' },
+  { category: '数值/大小', operator: 'less_than', desc: '小于', example: 'count < 10' },
+  { category: '数值/大小', operator: 'greater_than_or_equal', desc: '大于等于', example: 'count >= 10' },
+  { category: '数值/大小', operator: 'less_than_or_equal', desc: '小于等于', example: 'count <= 10' },
+
+  { category: '集合/特殊', operator: 'in', desc: '在列表中', example: '目标值用逗号分隔，如: admin, root' },
+  { category: '集合/特殊', operator: 'not_in', desc: '不在列表中', example: '目标值用逗号分隔，如: guest, user' },
+  { category: '集合/特殊', operator: 'list_contains', desc: '列表包含', example: '原始数据如果是数组 [1, 2]，列表包含 1' },
+  { category: '集合/特殊', operator: 'cidr', desc: 'IP网段', example: '判断 IP "192.168.1.5" 是否属于网段 "192.168.1.0/24"' },
+]
 
 const hasRunDry = ref(false)
 const runningDry = ref(false)
@@ -299,7 +355,11 @@ const buildNeoScanRule = (state: any): any => {
       conditions.push({
         field: cond.field,
         operator: cond.operator,
-        value: cond.value
+        // 对 in / not_in 等特殊操作符进行逗号切割转换为数组
+        value: ['in', 'not_in', 'list_contains'].includes(cond.operator) && typeof cond.value === 'string'
+          ? cond.value.split(',').map((s: string) => s.trim())
+          : cond.value,
+        ignore_case: cond.ignore_case ? true : undefined
       })
     }
   }
@@ -640,7 +700,18 @@ onMounted(() => {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 16px;
-
+    
+    .help-icon {
+      cursor: pointer;
+      color: #909399;
+      font-size: 16px;
+      transition: color 0.2s;
+      
+      &:hover {
+        color: var(--tm-accent-primary);
+      }
+    }
+    
     .section-title {
       margin: 0;
     }
@@ -825,5 +896,12 @@ onMounted(() => {
     background-color: var(--tm-accent-hover);
     border-color: var(--tm-accent-hover);
   }
+}
+.example-text {
+  font-family: monospace;
+  background-color: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--tm-text-regular);
 }
 </style>
