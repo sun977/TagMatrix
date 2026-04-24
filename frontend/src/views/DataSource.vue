@@ -132,7 +132,7 @@
 
         <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="scope">
-            <el-button type="primary" link size="small" class="detail-btn">查看详情</el-button>
+            <el-button type="primary" link size="small" class="detail-btn" @click="handleViewDetail(scope.row)">查看详情</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -152,6 +152,25 @@
         />
       </div>
     </div>
+
+    <!-- 查看详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="数据详情 (JSON)"
+      width="600px"
+    >
+      <div class="detail-content-wrapper">
+        <pre class="json-preview">{{ formattedDetailJson }}</pre>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="copyDetailJson" :icon="DocumentCopy">
+            复制 JSON
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
 
     <!-- Sheet 选择对话框 -->
     <el-dialog
@@ -185,7 +204,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Upload, Download, Delete, Search, Filter, UploadFilled, RefreshRight, Setting } from '@element-plus/icons-vue'
+import { Upload, Download, Delete, Search, Filter, UploadFilled, RefreshRight, Setting, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings
@@ -213,6 +232,10 @@ const availableSheets = ref<string[]>([])
 const selectedSheets = ref<string[]>([])
 const pendingImportFilePath = ref('')
 const pendingImportFileName = ref('')
+
+// 查看详情相关的状态
+const detailDialogVisible = ref(false)
+const formattedDetailJson = ref('')
 
 // 计算需要展示的列
 const visibleColumns = computed(() => {
@@ -372,6 +395,22 @@ const handleSizeChange = (val: number) => {
 const handleCurrentChange = (val: number) => {
   currentPage.value = val
   fetchTableData()
+}
+
+const handleViewDetail = (row: any) => {
+  // 排除掉不需要展示在 JSON 中的前端辅助字段
+  const { id, batch_id, ...rest } = row
+  formattedDetailJson.value = JSON.stringify(rest, null, 2)
+  detailDialogVisible.value = true
+}
+
+const copyDetailJson = async () => {
+  try {
+    await navigator.clipboard.writeText(formattedDetailJson.value)
+    ElMessage.success('JSON 数据已复制到剪贴板')
+  } catch (err) {
+    ElMessage.error('复制失败，您的浏览器可能不支持该功能')
+  }
 }
 
 onMounted(() => {
@@ -646,5 +685,23 @@ onMounted(() => {
   :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
     background-color: var(--tm-accent-primary);
   }
+}
+
+.detail-content-wrapper {
+  max-height: 50vh;
+  overflow-y: auto;
+  background-color: #f5f7fa;
+  border-radius: var(--tm-border-radius-sm);
+  padding: 16px;
+  border: 1px solid var(--tm-border-color);
+}
+
+.json-preview {
+  margin: 0;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  color: var(--tm-text-primary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 </style>
