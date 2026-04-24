@@ -52,7 +52,7 @@
             </div>
           </div>
           <div class="card-value">{{ stats.totalTags || 0 }}</div>
-          <div class="card-trend green-text">系统定义的标签数量</div>
+          <div class="card-trend green-text">系统标签数量</div>
         </div>
       </el-col>
       <el-col :span="6">

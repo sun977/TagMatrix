@@ -44,6 +44,10 @@
                     <el-button link type="primary" size="small" @click.stop="showAddTagDialog(data.id)"><el-icon><Plus /></el-icon></el-button>
                     <el-button link type="danger" size="small" @click.stop="handleDeleteTag(data, $event)"><el-icon><Delete /></el-icon></el-button>
                   </span>
+                  <div class="spacer"></div>
+                  <el-tooltip v-if="data.has_rule" content="该标签已配置匹配规则" placement="top" :enterable="false">
+                    <el-icon class="has-rule-icon"><Check /></el-icon>
+                  </el-tooltip>
                 </span>
               </template>
             </el-tree>
@@ -229,7 +233,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled, Filter, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CreateTag, DeleteTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRuleByTag, CheckTagHasRules } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
@@ -636,7 +640,8 @@ onMounted(() => {
   gap: 8px;
   font-size: 14px;
   color: var(--tm-text-regular);
-  width: 100%;
+  flex: 1;
+  padding-right: 8px;
 
   .tag-color-dot {
     width: 8px;
@@ -646,6 +651,22 @@ onMounted(() => {
 
   .node-label {
     font-weight: 500;
+  }
+
+  .node-actions {
+    display: flex;
+    align-items: center;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  .has-rule-icon {
+    color: var(--tm-accent-primary);
+    font-size: 16px;
+    font-weight: bold;
+    opacity: 0.8;
   }
 }
 

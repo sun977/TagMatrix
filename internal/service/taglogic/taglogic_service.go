@@ -55,18 +55,27 @@ func (s *TagLogicService) GetTagTree() ([]model.TagTreeNode, error) {
 		return nil, err
 	}
 
-	return buildTagTree(tags, 0), nil
+	// 提前查询出所有规则，构建映射字典
+	var rules []model.SysMatchRule
+	s.db.Find(&rules)
+	ruleMap := make(map[uint64]bool)
+	for _, r := range rules {
+		ruleMap[r.TagID] = true
+	}
+
+	return buildTagTree(tags, 0, ruleMap), nil
 }
 
 // 递归构建标签树
-func buildTagTree(tags []model.SysTag, parentID uint64) []model.TagTreeNode {
+func buildTagTree(tags []model.SysTag, parentID uint64, ruleMap map[uint64]bool) []model.TagTreeNode {
 	var tree []model.TagTreeNode
 	for _, tag := range tags {
 		if tag.ParentID == parentID {
 			node := model.TagTreeNode{
-				SysTag: tag,
+				SysTag:  tag,
+				HasRule: ruleMap[tag.ID],
 			}
-			children := buildTagTree(tags, tag.ID)
+			children := buildTagTree(tags, tag.ID, ruleMap)
 			if len(children) > 0 {
 				node.Children = children
 			}
@@ -160,7 +169,7 @@ func (s *TagLogicService) ExportTags(exportPath string) error {
 		return fmt.Errorf("failed to get tag tree: %w", err)
 	}
 
-	exportTree := convertToExportNodes(tree)
+	exportTree := s.convertToExportNodes(tree)
 
 	data, err := json.MarshalIndent(exportTree, "", "  ")
 	if err != nil {
@@ -170,7 +179,7 @@ func (s *TagLogicService) ExportTags(exportPath string) error {
 	return os.WriteFile(exportPath, data, 0644)
 }
 
-func convertToExportNodes(nodes []model.TagTreeNode) []model.ExportTagNode {
+func (s *TagLogicService) convertToExportNodes(nodes []model.TagTreeNode) []model.ExportTagNode {
 	var result []model.ExportTagNode
 	for _, node := range nodes {
 		exportNode := model.ExportTagNode{
@@ -181,8 +190,15 @@ func convertToExportNodes(nodes []model.TagTreeNode) []model.ExportTagNode {
 			Color:       node.Color,
 			Description: node.Description,
 		}
+
+		// 级联查询并挂载匹配规则
+		var rule model.SysMatchRule
+		if err := s.db.Where("tag_id = ?", node.ID).First(&rule).Error; err == nil {
+			exportNode.RuleJSON = rule.RuleJSON
+		}
+
 		if len(node.Children) > 0 {
-			exportNode.Children = convertToExportNodes(node.Children)
+			exportNode.Children = s.convertToExportNodes(node.Children)
 		}
 		result = append(result, exportNode)
 	}
@@ -247,6 +263,34 @@ func (s *TagLogicService) importTagNodes(tx *gorm.DB, nodes []model.ExportTagNod
 				return err
 			}
 			currentID = existingTag.ID
+		}
+
+		// 处理级联导入的匹配规则
+		if node.RuleJSON != "" {
+			var rule model.SysMatchRule
+			err := tx.Where("tag_id = ?", currentID).First(&rule).Error
+			switch err {
+			case gorm.ErrRecordNotFound:
+				// 不存在则创建
+				newRule := model.SysMatchRule{
+					TagID:     currentID,
+					RuleJSON:  node.RuleJSON,
+					Priority:  0,
+					IsEnabled: true, // 默认为启用状态
+				}
+				if err := tx.Create(&newRule).Error; err != nil {
+					return err
+				}
+			case nil:
+				// 存在则更新
+				rule.RuleJSON = node.RuleJSON
+				if err := tx.Save(&rule).Error; err != nil {
+					return err
+				}
+			default:
+				// 其他数据库错误
+				return err
+			}
 		}
 
 		// 递归导入子节点

@@ -40,6 +40,7 @@ type FileAnalysisResult struct {
 // TagTreeNode 用于前端标签树组件展示
 type TagTreeNode struct {
 	SysTag
+	HasRule  bool          `json:"has_rule"` // 是否配置了匹配规则
 	Children []TagTreeNode `json:"children"`
 }
 
@@ -51,5 +52,6 @@ type ExportTagNode struct {
 	Level       int             `json:"level"`
 	Color       string          `json:"color"`
 	Description string          `json:"description"`
+	RuleJSON    string          `json:"rule_json,omitempty"` // 级联导出的匹配规则
 	Children    []ExportTagNode `json:"children,omitempty"`
 }

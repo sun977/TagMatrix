@@ -482,6 +482,7 @@ export namespace model {
 	    level: number;
 	    color: string;
 	    description: string;
+	    has_rule: boolean;
 	    children: TagTreeNode[];
 	
 	    static createFrom(source: any = {}) {
@@ -499,6 +500,7 @@ export namespace model {
 	        this.level = source["level"];
 	        this.color = source["color"];
 	        this.description = source["description"];
+	        this.has_rule = source["has_rule"];
 	        this.children = this.convertValues(source["children"], TagTreeNode);
 	    }
 	
