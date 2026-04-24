@@ -132,15 +132,27 @@ type PagedData struct {
 	Records []model.RawDataRecord
 }
 
-func (a *App) GetRawDataList(page, pageSize int) (*PagedData, error) {
+func (a *App) GetRawDataList(page, pageSize int, searchCol, keyword string) (*PagedData, error) {
 	var records []model.RawDataRecord
 	var total int64
 
 	db := model.DB.Model(&model.RawDataRecord{})
+
+	if keyword != "" {
+		if searchCol != "" {
+			// 如果指定了具体列，使用 JSON_EXTRACT 进行模糊匹配
+			// SQLite 语法: json_extract(data, '$.colName') LIKE '%keyword%'
+			db = db.Where(fmt.Sprintf("json_extract(data, '$.%s') LIKE ?", searchCol), "%"+keyword+"%")
+		} else {
+			// 如果未指定列，全局搜索 JSON 字符串
+			db = db.Where("data LIKE ?", "%"+keyword+"%")
+		}
+	}
+
 	db.Count(&total)
 
 	offset := (page - 1) * pageSize
-	err := db.Offset(offset).Limit(pageSize).Find(&records).Error
+	err := db.Order("id desc").Offset(offset).Limit(pageSize).Find(&records).Error
 	if err != nil {
 		return nil, err
 	}
@@ -149,6 +161,14 @@ func (a *App) GetRawDataList(page, pageSize int) (*PagedData, error) {
 		Total:   total,
 		Records: records,
 	}, nil
+}
+
+func (a *App) DeleteRawData(ids []uint64) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	// GORM 软删除或硬删除，取决于 RawDataRecord 是否包含 gorm.DeletedAt
+	return model.DB.Delete(&model.RawDataRecord{}, ids).Error
 }
 
 func (a *App) GetTaggedDataList(keyword, tag, batch string, page, pageSize int) (*model.PagedTaggedData, error) {

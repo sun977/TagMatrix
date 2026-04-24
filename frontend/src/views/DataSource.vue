@@ -17,18 +17,24 @@
         <el-button @click="handleExportClick">
           <el-icon><Download /></el-icon> 导出当前结果
         </el-button>
-        <el-button>
+        <el-button @click="handleDeleteClick" type="danger" plain :disabled="selectedRows.length === 0">
           <el-icon><Delete /></el-icon> 删除选中
         </el-button>
       </div>
       <div class="toolbar-right">
+        <el-select v-model="searchCol" placeholder="全部字段" clearable style="width: 140px">
+          <el-option label="全部字段" value="" />
+          <el-option v-for="col in dynamicColumns" :key="col" :label="col" :value="col" />
+        </el-select>
         <el-input
           v-model="searchQuery"
           placeholder="搜索数据内容"
           class="search-input"
           :prefix-icon="Search"
+          clearable
+          @keyup.enter="fetchTableData"
         />
-        <el-button class="filter-btn">
+        <el-button class="filter-btn" @click="fetchTableData">
           <el-icon><Filter /></el-icon>
         </el-button>
       </div>
@@ -50,16 +56,36 @@
     <div class="table-section" v-loading="isLoading">
       <div class="table-header">
         <div class="table-title">
-          <h4>用户行为数据_202404.xlsx</h4>
+          <h4>{{ currentFileName }}</h4>
           <span class="count-pill">共 {{ totalRecords }} 条数据</span>
         </div>
         <div class="table-actions">
           <el-button circle @click="fetchTableData">
             <el-icon><RefreshRight /></el-icon>
           </el-button>
-          <el-button circle>
-            <el-icon><Setting /></el-icon>
-          </el-button>
+          
+          <el-popover
+            placement="bottom-end"
+            title="展示列设置"
+            :width="200"
+            trigger="click"
+          >
+            <template #reference>
+              <el-button circle>
+                <el-icon><Setting /></el-icon>
+              </el-button>
+            </template>
+            <div class="column-settings">
+              <el-checkbox 
+                v-for="col in dynamicColumns" 
+                :key="col" 
+                :model-value="!hiddenColumns.includes(col)"
+                @change="toggleColumn(col)"
+              >
+                {{ col }}
+              </el-checkbox>
+            </div>
+          </el-popover>
         </div>
       </div>
 
@@ -79,11 +105,11 @@
         <el-table-column type="selection" width="55" />
         
         <!-- 固定显示内部ID -->
-        <el-table-column prop="id" label="用户ID" width="120" />
+        <el-table-column prop="id" label="内部ID" width="100" />
         
         <!-- 动态渲染数据列 -->
         <el-table-column 
-          v-for="col in dynamicColumns" 
+          v-for="col in visibleColumns" 
           :key="col" 
           :prop="col" 
           :label="col" 
@@ -130,30 +156,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Upload, Download, Delete, Search, Filter, UploadFilled, RefreshRight, Setting } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings
-import { ImportData, GetRawDataList, ExportData } from '../../wailsjs/go/main/App'
+import { ImportData, GetRawDataList, ExportData, DeleteRawData } from '../../wailsjs/go/main/App'
 
 const isLoading = ref(false)
 const isImporting = ref(false)
+
 const searchQuery = ref('')
+const searchCol = ref('')
 
 const tableData = ref<any[]>([])
 const dynamicColumns = ref<string[]>([])
 const selectedRows = ref<any[]>([])
+const hiddenColumns = ref<string[]>([])
 
 const currentPage = ref(1)
 const pageSize = ref(10)
 const totalRecords = ref(0)
+const currentFileName = ref('全部数据')
+
+// 计算需要展示的列
+const visibleColumns = computed(() => {
+  return dynamicColumns.value.filter(col => !hiddenColumns.value.includes(col))
+})
+
+const toggleColumn = (col: string) => {
+  const idx = hiddenColumns.value.indexOf(col)
+  if (idx > -1) {
+    hiddenColumns.value.splice(idx, 1)
+  } else {
+    hiddenColumns.value.push(col)
+  }
+}
 
 // 获取真实数据
 const fetchTableData = async () => {
   isLoading.value = true
   try {
-    const res = await GetRawDataList(currentPage.value, pageSize.value)
+    const res = await GetRawDataList(currentPage.value, pageSize.value, searchCol.value, searchQuery.value)
     
     // 解析 JSON 数据并展平
     const parsedData = res.Records.map((r: any) => {
@@ -194,6 +238,7 @@ const handleImportClick = async () => {
     const count = await ImportData("") // 传入空字符串，Wails 后端会自动弹窗选择文件
     if (count > 0) {
       ElMessage.success(`成功导入 ${count} 条数据`)
+      currentFileName.value = '最新导入数据'
       currentPage.value = 1
       fetchTableData()
     }
@@ -204,6 +249,35 @@ const handleImportClick = async () => {
     }
   } finally {
     isImporting.value = false
+  }
+}
+
+const handleDeleteClick = async () => {
+  if (selectedRows.value.length === 0) {
+    ElMessage.warning('请先选择要删除的数据')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(`确定要删除选中的 ${selectedRows.value.length} 条数据吗？此操作不可恢复。`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    const ids = selectedRows.value.map(row => row.id)
+    await DeleteRawData(ids)
+    ElMessage.success('删除成功')
+    
+    // 如果当前页数据全被删除，则跳到上一页
+    if (tableData.value.length === ids.length && currentPage.value > 1) {
+      currentPage.value -= 1
+    }
+    fetchTableData()
+  } catch (e: any) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + String(e))
+    }
   }
 }
 
@@ -478,6 +552,14 @@ onMounted(() => {
     color: var(--tm-text-primary);
     background-color: #e5e5e5;
   }
+}
+
+.column-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 /* --- 分页 --- */

@@ -9,6 +9,8 @@ export function ChatWithAI(arg1:string):Promise<string>;
 
 export function CreateTag(arg1:model.SysTag):Promise<void>;
 
+export function DeleteRawData(arg1:Array<number>):Promise<void>;
+
 export function DryRunRule(arg1:string,arg2:number):Promise<Array<taglogic.DryRunResult>>;
 
 export function ExportData(arg1:number,arg2:string):Promise<void>;
@@ -21,7 +23,7 @@ export function GetAppConfig():Promise<config.AppConfig>;
 
 export function GetDashboardStats():Promise<model.DashboardStats>;
 
-export function GetRawDataList(arg1:number,arg2:number):Promise<main.PagedData>;
+export function GetRawDataList(arg1:number,arg2:number,arg3:string,arg4:string):Promise<main.PagedData>;
 
 export function GetRuleByTag(arg1:number):Promise<model.SysMatchRule>;
 

@@ -4,13 +4,10 @@
     <header class="page-header">
       <h1 class="page-title">概览控制台</h1>
       <div class="header-right">
-        <div class="task-status-pill">
+        <div class="task-status-pill" v-if="runningTask">
           <el-icon class="is-loading"><Loading /></el-icon>
-          <span>正在执行打标任务: 2024年Q1用户数据打标 (已完成67%)</span>
+          <span>正在执行打标任务: {{ runningTask.name }}</span>
         </div>
-        <el-button circle class="settings-btn">
-          <el-icon><Setting /></el-icon>
-        </el-button>
       </div>
     </header>
 
@@ -30,8 +27,8 @@
               <el-icon><Coin /></el-icon>
             </div>
           </div>
-          <div class="card-value">128,567</div>
-          <div class="card-trend green-text">较上周增长 12.5%</div>
+          <div class="card-value">{{ stats.totalRecords || 0 }}</div>
+          <div class="card-trend green-text">当前库内记录总数</div>
         </div>
       </el-col>
       <el-col :span="6">
@@ -42,8 +39,8 @@
               <el-icon><PriceTag /></el-icon>
             </div>
           </div>
-          <div class="card-value">97,234</div>
-          <div class="card-trend green-text">打标覆盖率 75.6%</div>
+          <div class="card-value">{{ stats.taggedRecords || 0 }}</div>
+          <div class="card-trend green-text">打标覆盖率 {{ stats.totalRecords ? Math.round((stats.taggedRecords / stats.totalRecords) * 100) : 0 }}%</div>
         </div>
       </el-col>
       <el-col :span="6">
@@ -54,8 +51,8 @@
               <el-icon><Collection /></el-icon>
             </div>
           </div>
-          <div class="card-value">42</div>
-          <div class="card-trend green-text">较上月新增 8 个标签</div>
+          <div class="card-value">{{ stats.totalTags || 0 }}</div>
+          <div class="card-trend green-text">系统定义的分类数量</div>
         </div>
       </el-col>
       <el-col :span="6">
@@ -66,8 +63,8 @@
               <el-icon><Document /></el-icon>
             </div>
           </div>
-          <div class="card-value">68</div>
-          <div class="card-trend red-text">3 条规则待优化</div>
+          <div class="card-value">{{ stats.totalRules || 0 }}</div>
+          <div class="card-trend green-text">自动化打标策略数</div>
         </div>
       </el-col>
     </el-row>
@@ -142,7 +139,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Loading, Setting, Coin, PriceTag, Collection, Document, UploadFilled, ArrowRight } from '@element-plus/icons-vue'
 import { GetDashboardStats, GetTaskBatches } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
@@ -156,6 +153,10 @@ const stats = ref<model.DashboardStats>({
 
 const recentTasks = ref<any[]>([])
 const loadingTasks = ref(false)
+
+const runningTask = computed(() => {
+  return recentTasks.value.find(t => t.statusType === 'running')
+})
 
 const loadDashboardData = async () => {
   try {

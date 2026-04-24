@@ -10,6 +10,10 @@ export function CreateTag(arg1) {
   return window['go']['main']['App']['CreateTag'](arg1);
 }
 
+export function DeleteRawData(arg1) {
+  return window['go']['main']['App']['DeleteRawData'](arg1);
+}
+
 export function DryRunRule(arg1, arg2) {
   return window['go']['main']['App']['DryRunRule'](arg1, arg2);
 }
@@ -34,8 +38,8 @@ export function GetDashboardStats() {
   return window['go']['main']['App']['GetDashboardStats']();
 }
 
-export function GetRawDataList(arg1, arg2) {
-  return window['go']['main']['App']['GetRawDataList'](arg1, arg2);
+export function GetRawDataList(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['GetRawDataList'](arg1, arg2, arg3, arg4);
 }
 
 export function GetRuleByTag(arg1) {
