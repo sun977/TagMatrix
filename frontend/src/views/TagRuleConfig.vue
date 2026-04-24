@@ -226,7 +226,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { CreateTag, GetAllTags, SaveRule, DryRunRule } from '../../wailsjs/go/main/App'
+import { CreateTag, GetAllTags, SaveRule, DryRunRule, GetRuleByTag } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 
 const filterText = ref('')
@@ -310,25 +310,29 @@ const rules = ref<any[]>([])
 const hasRunDry = ref(false)
 const runningDry = ref(false)
 
-const mockDryRunData = [
-  { id: 'U000001', name: '张三', amount: 2356.80, loginTime: '2024-04-24 10:23', matched: true, isOld: false },
-  { id: 'U000003', name: '王五', amount: 1245.90, loginTime: '2024-04-24 09:12', matched: true, isOld: false },
-  { id: 'U000005', name: '孙七', amount: 5892.30, loginTime: '2024-04-24 11:05', matched: true, isOld: false },
-  { id: 'U000002', name: '李四', amount: 567.20, loginTime: '2024-04-23 16:45', matched: false, isOld: false },
-  { id: 'U000004', name: '赵六', amount: 89.50, loginTime: '2024-04-20 14:32', matched: false, isOld: true }
-]
+const mockDryRunData = ref<any[]>([])
 
-const handleNodeClick = (data: any) => {
+const handleNodeClick = async (data: any) => {
   // 只允许给没有子节点的叶子标签挂载规则 (或者这里放开限制，视业务而定)
   selectedTag.value = data
   if (!data.raw) data.raw = {}
   
-  // mock 初始化规则
-  rules.value = [
-    { name: '消费金额条件', enabled: true, field: 'amount', operator: '>=', value: '1000', unit: '元' },
-    { name: '活跃度条件', enabled: true, field: 'last_login', operator: '>=', value: '2024-03-24', unit: '(近30天内)' }
-  ]
   hasRunDry.value = false
+  
+  try {
+    const rule = await GetRuleByTag(data.id)
+    if (rule && rule.rule_json) {
+      const parsed = JSON.parse(rule.rule_json)
+      matchLogic.value = parsed.logic || 'AND'
+      rules.value = parsed.conditions || []
+    } else {
+      matchLogic.value = 'AND'
+      rules.value = []
+    }
+  } catch (e) {
+    matchLogic.value = 'AND'
+    rules.value = []
+  }
 }
 
 const addRule = () => {
@@ -368,10 +372,32 @@ const handleSaveRule = async () => {
 
 const handleDryRun = async () => {
   runningDry.value = true
-  setTimeout(() => {
-    runningDry.value = false
+  try {
+    const ruleObj = { logic: matchLogic.value, conditions: rules.value }
+    const ruleJSON = JSON.stringify(ruleObj)
+    const results = await DryRunRule(ruleJSON, 100) // Call Go API
+    
+    mockDryRunData.value = results.map((r: any) => {
+        let d: any = {}
+        try {
+            d = JSON.parse(r.data || '{}')
+        } catch (e) {}
+        
+        return {
+            id: r.record_id,
+            name: d.name || d.user_name || '-',
+            amount: Number(d.amount) || 0,
+            loginTime: d.loginTime || d.last_login || '-',
+            matched: r.matched,
+            isOld: false 
+        }
+    })
     hasRunDry.value = true
-  }, 800)
+  } catch (e: any) {
+    ElMessage.error('试运行失败: ' + String(e))
+  } finally {
+    runningDry.value = false
+  }
 }
 
 // --- 添加标签弹窗逻辑 ---

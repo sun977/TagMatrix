@@ -152,11 +152,98 @@ func (a *App) GetRawDataList(page, pageSize int) (*PagedData, error) {
 }
 
 func (a *App) GetTaggedDataList(keyword, tag, batch string, page, pageSize int) (*model.PagedTaggedData, error) {
-	// TODO: 完整的联表过滤查询逻辑
-	// 当前先返回一个空结果，等联调 TaggedData 页面时再补充具体 SQL
+	var total int64
+	var dtos []model.TaggedRecordDto
+
+	// 1. 构建查询构造器
+	db := model.DB.Model(&model.RawDataRecord{})
+
+	// 如果有 tag 或者 batch 过滤，我们需要 JOIN sys_entity_tag 表
+	if tag != "" || batch != "" {
+		db = db.Joins("JOIN sys_entity_tags ON sys_entity_tags.record_id = raw_data_records.id")
+		if tag != "" {
+			// 根据 tag_id 过滤
+			db = db.Where("sys_entity_tags.tag_id = ?", tag)
+		}
+		if batch != "" {
+			// 根据 batch_id 过滤
+			db = db.Where("sys_entity_tags.batch_id = ?", batch)
+		}
+		// 因为 join 可能会产生重复记录，我们需要 group by 原始记录 ID
+		db = db.Group("raw_data_records.id")
+	}
+
+	if keyword != "" {
+		db = db.Where("raw_data_records.data LIKE ?", "%"+keyword+"%")
+	}
+
+	// 2. 统计总数 (需要考虑 GROUP BY 的情况)
+	if tag != "" || batch != "" {
+		// 使用子查询统计总数
+		model.DB.Table("(?) as u", db.Select("raw_data_records.id")).Count(&total)
+	} else {
+		db.Count(&total)
+	}
+
+	// 3. 分页查询原始记录
+	var records []model.RawDataRecord
+	offset := (page - 1) * pageSize
+	err := db.Select("raw_data_records.*").Order("raw_data_records.id desc").Offset(offset).Limit(pageSize).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+
+	// 4. 组装 DTO (查询相关的 Tags 和 Batch)
+	for _, r := range records {
+		dto := model.TaggedRecordDto{
+			ID:         r.ID,
+			Content:    r.Data, // 将原始数据内容传递给前端，前端可做解析
+			UpdateTime: r.UpdatedAt.Format("2006-01-02 15:04:05"),
+			Tags:       []model.TagDto{},
+		}
+
+		// 查询这条记录的所有标签
+		var entityTags []model.SysEntityTag
+		model.DB.Where("record_id = ?", r.ID).Find(&entityTags)
+
+		if len(entityTags) > 0 {
+			dto.Status = "success"
+			// 查出最后一个 BatchID
+			lastBatchID := entityTags[len(entityTags)-1].BatchID
+			if lastBatchID > 0 {
+				var b model.TagTaskBatch
+				if err := model.DB.First(&b, lastBatchID).Error; err == nil {
+					dto.BatchName = b.Name
+				}
+			}
+
+			// 查询具体的 Tag 详情
+			var tagIDs []uint64
+			for _, et := range entityTags {
+				tagIDs = append(tagIDs, et.TagID)
+			}
+
+			if len(tagIDs) > 0 {
+				var tags []model.SysTag
+				model.DB.Where("id IN ?", tagIDs).Find(&tags)
+				for _, t := range tags {
+					dto.Tags = append(dto.Tags, model.TagDto{
+						Name:  t.Name,
+						Color: t.Color,
+					})
+				}
+			}
+		} else {
+			dto.Status = "unmatched"
+			dto.BatchName = "-"
+		}
+
+		dtos = append(dtos, dto)
+	}
+
 	return &model.PagedTaggedData{
-		Total:   0,
-		Records: []model.TaggedRecordDto{},
+		Total:   total,
+		Records: dtos,
 	}, nil
 }
 
@@ -172,6 +259,21 @@ func (a *App) GetAllTags() ([]model.SysTag, error) {
 
 func (a *App) SaveRule(rule model.SysMatchRule) error {
 	return a.tagLogic.SaveRule(&rule)
+}
+
+func (a *App) GetRuleByTag(tagID uint64) (*model.SysMatchRule, error) {
+	var rule model.SysMatchRule
+	err := model.DB.Where("tag_id = ?", tagID).First(&rule).Error
+	if err != nil {
+		return nil, err
+	}
+	return &rule, nil
+}
+
+func (a *App) GetAllRules() ([]model.SysMatchRule, error) {
+	var rules []model.SysMatchRule
+	err := model.DB.Find(&rules).Error
+	return rules, err
 }
 
 func (a *App) DryRunRule(ruleJSON string, limit int) ([]taglogic.DryRunResult, error) {

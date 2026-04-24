@@ -10,15 +10,33 @@ import (
 
 // AppConfig 定义了整个应用的配置结构
 type AppConfig struct {
-	AI AIConfig `json:"ai"`
+	AI     AIConfig     `json:"ai"`
+	System SystemConfig `json:"system"`
+	Adv    AdvConfig    `json:"adv"`
 }
 
 // AIConfig 定义了 AI 相关的配置
 type AIConfig struct {
-	APIKey       string `json:"api_key"`
-	BaseURL      string `json:"base_url"`
-	Model        string `json:"model"`
-	SystemPrompt string `json:"system_prompt"`
+	APIKey       string  `json:"api_key"`
+	BaseURL      string  `json:"base_url"`
+	Model        string  `json:"model"`
+	Temperature  float64 `json:"temperature"`
+	SystemPrompt string  `json:"system_prompt"`
+}
+
+// SystemConfig 定义了系统相关的配置
+type SystemConfig struct {
+	DefaultMode      string `json:"default_mode"`
+	AutoBackup       bool   `json:"auto_backup"`
+	TaskNotification bool   `json:"task_notification"`
+	PreviewRows      int    `json:"preview_rows"`
+}
+
+// AdvConfig 定义了高级配置
+type AdvConfig struct {
+	Concurrency int  `json:"concurrency"`
+	Retries     int  `json:"retries"`
+	DebugMode   bool `json:"debug_mode"`
 }
 
 var (
@@ -38,9 +56,10 @@ func InitConfig(appDataDir string) error {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		defaultConfig := &AppConfig{
 			AI: AIConfig{
-				APIKey:  "",
-				BaseURL: "https://api.openai.com/v1",
-				Model:   "gpt-4o-mini",
+				APIKey:      "",
+				BaseURL:     "https://api.openai.com/v1",
+				Model:       "gpt-4o-mini",
+				Temperature: 0.7,
 				SystemPrompt: `你是一个专业的数据分析和打标辅助助手。
 你的主要任务是：
 1. 解答用户关于 TagMatrix 数据打标系统如何使用的问题。
@@ -50,6 +69,17 @@ func InitConfig(appDataDir string) error {
 请注意：
 - 用户的原始导入数据存储在 raw_data_records 表的 data 字段中（JSON 格式）。在 SQLite 中查询 JSON 数据请使用 json_extract 函数。
 - 给出 SQL 时请使用 markdown 代码块包裹，以便前端渲染。`,
+			},
+			System: SystemConfig{
+				DefaultMode:      "overwrite",
+				AutoBackup:       true,
+				TaskNotification: true,
+				PreviewRows:      20,
+			},
+			Adv: AdvConfig{
+				Concurrency: 5,
+				Retries:     3,
+				DebugMode:   false,
 			},
 		}
 

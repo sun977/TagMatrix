@@ -13,6 +13,8 @@ export function DryRunRule(arg1:string,arg2:number):Promise<Array<taglogic.DryRu
 
 export function ExportData(arg1:number,arg2:string):Promise<void>;
 
+export function GetAllRules():Promise<Array<model.SysMatchRule>>;
+
 export function GetAllTags():Promise<Array<model.SysTag>>;
 
 export function GetAppConfig():Promise<config.AppConfig>;
@@ -20,6 +22,8 @@ export function GetAppConfig():Promise<config.AppConfig>;
 export function GetDashboardStats():Promise<model.DashboardStats>;
 
 export function GetRawDataList(arg1:number,arg2:number):Promise<main.PagedData>;
+
+export function GetRuleByTag(arg1:number):Promise<model.SysMatchRule>;
 
 export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<model.PagedTaggedData>;
 

@@ -113,12 +113,12 @@
               <el-button size="small" class="action-btn">查看详情</el-button>
               <el-button type="danger" link size="small">终止</el-button>
             </template>
-            <template v-else-if="scope.row.statusType === 'success'">
+            <template v-else-if="scope.row.statusType === 'completed'">
               <el-button size="small" class="action-btn">查看日志</el-button>
               <el-button size="small" class="action-btn">导出</el-button>
               <el-button type="danger" link size="small" @click="handleRollback(scope.row.id)">回退</el-button>
             </template>
-            <template v-else-if="scope.row.statusType === 'error'">
+            <template v-else-if="scope.row.statusType === 'failed'">
               <el-button type="danger" link size="small">查看错误日志</el-button>
               <el-button type="success" size="small" class="action-btn retry-btn">重试</el-button>
             </template>
@@ -149,7 +149,8 @@
 import { ref, onMounted } from 'vue'
 import { VideoPlay, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules } from '../../wailsjs/go/main/App'
+import { model } from '../../wailsjs/go/models'
 
 const loadingBatches = ref(false)
 
@@ -166,39 +167,30 @@ const filterTime = ref('7d')
 const isSubmitting = ref(false)
 
 // 纯 Mock 数据以适配设计图展示
-const mockTaskHistory = ref([
-  {
-    id: 1, name: '2024年Q1用户数据打标', statusType: 'running', statusText: '执行中',
-    progress: 67, processed: '16,892 / 25,000', time: '00:12:34', creator: '数据管理员', createTime: '2024-04-24 13:23'
-  },
-  {
-    id: 2, name: '高价值用户标签更新', statusType: 'success', statusText: '已完成',
-    progress: 100, processed: '42,568 / 42,568', time: '00:34:12', creator: '数据分析师', createTime: '2024-04-23 15:42'
-  },
-  {
-    id: 3, name: '用户行为标签批量更新', statusType: 'error', statusText: '失败',
-    progress: 32, processed: '12,345 / 38,900', time: '00:18:45', creator: '运营专员', createTime: '2024-04-22 09:17'
-  },
-  {
-    id: 4, name: '新用户注册标签初始化', statusType: 'success', statusText: '已完成',
-    progress: 100, processed: '15,678 / 15,678', time: '00:08:23', creator: '数据管理员', createTime: '2024-04-21 11:05'
-  },
-  {
-    id: 5, name: '历史数据全量打标', statusType: 'success', statusText: '已完成',
-    progress: 100, processed: '89,432 / 89,432', time: '01:23:45', creator: '数据分析师', createTime: '2024-04-20 16:30'
-  },
-  {
-    id: 6, name: '流失用户标签识别', statusType: 'pending', statusText: '待执行',
-    progress: 0, processed: '0 / 52,341', time: '-', creator: '运营经理', createTime: '2024-04-19 14:20'
-  }
-])
+const mockTaskHistory = ref<any[]>([])
 
 const fetchBatches = async () => {
   loadingBatches.value = true
-  // 这里可以调用 GetTaskBatches()
-  setTimeout(() => {
+  try {
+    const batches = await GetTaskBatches()
+    mockTaskHistory.value = batches.map((b: model.TagTaskBatch) => {
+      return {
+        id: b.id,
+        name: b.name,
+        statusType: b.status,
+        statusText: b.status === 'running' ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : '未知')),
+        progress: b.status === 'completed' ? 100 : (b.status === 'running' ? 50 : 0),
+        processed: `${b.total_processed} 条`,
+        time: '-',
+        creator: '系统',
+        createTime: new Date(b.created_at || Date.now()).toLocaleString()
+      }
+    })
+  } catch (e: any) {
+    ElMessage.error('获取任务历史失败: ' + String(e))
+  } finally {
     loadingBatches.value = false
-  }, 500)
+  }
 }
 
 const submitTask = async () => {
@@ -207,36 +199,43 @@ const submitTask = async () => {
   }
   isSubmitting.value = true
   
-  // mock 提交
-  setTimeout(() => {
+  try {
+    let ruleIDs: number[] = []
+    if (taskForm.value.rules === 'all') {
+      const rules = await GetAllRules()
+      ruleIDs = rules.map(r => r.id)
+    } else {
+      ruleIDs = [parseInt(taskForm.value.rules)]
+    }
+
+    const isPrimary = taskForm.value.tagMode === 'overwrite'
+
+    await RunTaggingTask(ruleIDs, taskForm.value.batchName, isPrimary)
     ElMessage.success(`任务提交成功`)
-    isSubmitting.value = false
-    
-    // 添加到 mock 列表最前面
-    mockTaskHistory.value.unshift({
-      id: Date.now(),
-      name: taskForm.value.batchName,
-      statusType: 'running',
-      statusText: '执行中',
-      progress: 0,
-      processed: '0 / 25,000',
-      time: '00:00:00',
-      creator: '当前用户',
-      createTime: new Date().toLocaleString()
-    })
     
     taskForm.value.batchName = ''
-  }, 1000)
+    fetchBatches()
+  } catch (e: any) {
+    ElMessage.error('提交失败: ' + String(e))
+  } finally {
+    isSubmitting.value = false
+  }
 }
 
 const handleRollback = async (batchId: number) => {
-  ElMessage.success('模拟回退成功')
+  try {
+    await RollbackTask(batchId)
+    ElMessage.success('回退成功')
+    fetchBatches()
+  } catch (e: any) {
+    ElMessage.error('回退失败: ' + String(e))
+  }
 }
 
 const getProgressColor = (statusType: string) => {
   if (statusType === 'running') return '#52c48f'
-  if (statusType === 'success') return '#3a8ee6'
-  if (statusType === 'error') return '#f56c6c'
+  if (statusType === 'completed') return '#3a8ee6'
+  if (statusType === 'failed') return '#f56c6c'
   return '#e4e7ed'
 }
 

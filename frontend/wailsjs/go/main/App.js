@@ -18,6 +18,10 @@ export function ExportData(arg1, arg2) {
   return window['go']['main']['App']['ExportData'](arg1, arg2);
 }
 
+export function GetAllRules() {
+  return window['go']['main']['App']['GetAllRules']();
+}
+
 export function GetAllTags() {
   return window['go']['main']['App']['GetAllTags']();
 }
@@ -32,6 +36,10 @@ export function GetDashboardStats() {
 
 export function GetRawDataList(arg1, arg2) {
   return window['go']['main']['App']['GetRawDataList'](arg1, arg2);
+}
+
+export function GetRuleByTag(arg1) {
+  return window['go']['main']['App']['GetRuleByTag'](arg1);
 }
 
 export function GetTaggedDataList(arg1, arg2, arg3, arg4, arg5) {

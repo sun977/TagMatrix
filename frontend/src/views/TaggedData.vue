@@ -22,16 +22,13 @@
         
         <el-form-item label="标签分类">
           <el-select v-model="filterForm.tag" placeholder="全部标签" clearable class="w-150">
-            <el-option label="高净值用户" value="high_value" />
-            <el-option label="活跃用户" value="active" />
-            <el-option label="流失预警" value="churn_risk" />
+            <el-option v-for="tag in tagOptions" :key="tag.id" :label="tag.name" :value="String(tag.id)" />
           </el-select>
         </el-form-item>
 
         <el-form-item label="打标批次">
           <el-select v-model="filterForm.batch" placeholder="全部批次" clearable class="w-150">
-            <el-option label="2024年Q1用户数据打标" value="batch_1" />
-            <el-option label="历史数据全量打标" value="batch_2" />
+            <el-option v-for="batch in batchOptions" :key="batch.id" :label="batch.name" :value="String(batch.id)" />
           </el-select>
         </el-form-item>
 
@@ -98,9 +95,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { Search, Download, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import { GetTaggedDataList, ExportData, GetAllTags, GetTaskBatches } from '../../wailsjs/go/main/App'
 
 const loading = ref(false)
 
@@ -111,93 +109,79 @@ const filterForm = reactive({
   batch: ''
 })
 
+// 下拉选项数据
+const tagOptions = ref<any[]>([])
+const batchOptions = ref<any[]>([])
+
 // 分页状态
 const currentPage = ref(1)
 const pageSize = ref(20)
-const totalItems = ref(128567) // Mock 总数
+const totalItems = ref(0) 
 
-// Mock 表格数据
-const tableData = ref([
-  {
-    id: 'D-100234',
-    content: '用户最近30天登录次数超过20次，且购买了高级会员套餐。',
-    tags: [
-      { name: '高净值用户', color: '#f56c6c' },
-      { name: '活跃用户', color: '#52c48f' }
-    ],
-    batchName: '2024年Q1用户数据打标',
-    updateTime: '2024-04-24 10:30:00',
-    status: 'success'
-  },
-  {
-    id: 'D-100235',
-    content: '该账号已连续60天未产生任何交易，最近一次登录在3个月前。',
-    tags: [
-      { name: '流失预警', color: '#e6a23c' }
-    ],
-    batchName: '历史数据全量打标',
-    updateTime: '2024-04-23 15:42:11',
-    status: 'success'
-  },
-  {
-    id: 'D-100236',
-    content: '新注册用户，完成了基础信息填写，尚未进行首次购买。',
-    tags: [
-      { name: '新用户', color: '#409eff' }
-    ],
-    batchName: '2024年Q1用户数据打标',
-    updateTime: '2024-04-24 11:05:22',
-    status: 'success'
-  },
-  {
-    id: 'D-100237',
-    content: '用户咨询了退款政策，并在评价中给出了1星。',
-    tags: [
-      { name: '高危客诉', color: '#f56c6c' },
-      { name: '流失预警', color: '#e6a23c' }
-    ],
-    batchName: '2024年Q1用户数据打标',
-    updateTime: '2024-04-24 11:30:45',
-    status: 'success'
-  },
-  {
-    id: 'D-100238',
-    content: '常规浏览行为，无特殊动作。',
-    tags: [],
-    batchName: '历史数据全量打标',
-    updateTime: '2024-04-20 16:30:00',
-    status: 'unmatched'
-  }
-])
+// 表格数据
+const tableData = ref<any[]>([])
 
-const handleSearch = () => {
+const handleSearch = async () => {
   loading.value = true
-  setTimeout(() => {
+  try {
+    const res = await GetTaggedDataList(filterForm.keyword, filterForm.tag, filterForm.batch, currentPage.value, pageSize.value)
+    if (res) {
+      tableData.value = res.records || []
+      totalItems.value = res.total || 0
+    }
+  } catch (e) {
+    ElMessage.error('查询失败: ' + String(e))
+  } finally {
     loading.value = false
-    ElMessage.success('查询成功')
-  }, 500)
+  }
 }
 
 const resetFilter = () => {
   filterForm.keyword = ''
   filterForm.tag = ''
   filterForm.batch = ''
+  currentPage.value = 1
   handleSearch()
 }
 
-const handleExport = () => {
-  ElMessage.success('正在准备导出数据，请稍候...')
+const handleExport = async () => {
+  try {
+    const batchId = filterForm.batch ? parseInt(filterForm.batch) : 0
+    await ExportData(batchId, '')
+    ElMessage.success('导出成功')
+  } catch (e: any) {
+    if (e !== 'cancelled') {
+      ElMessage.error('导出失败: ' + String(e))
+    }
+  }
 }
 
 const handleSizeChange = (val: number) => {
-  console.log(`每页 ${val} 条`)
+  pageSize.value = val
   handleSearch()
 }
 
 const handleCurrentChange = (val: number) => {
-  console.log(`当前页: ${val}`)
+  currentPage.value = val
   handleSearch()
 }
+
+const loadOptions = async () => {
+  try {
+    const tags = await GetAllTags()
+    if (tags) tagOptions.value = tags
+
+    const batches = await GetTaskBatches()
+    if (batches) batchOptions.value = batches
+  } catch (e) {
+    console.error('加载选项失败', e)
+  }
+}
+
+onMounted(() => {
+  loadOptions()
+  handleSearch()
+})
 </script>
 
 <style scoped lang="scss">

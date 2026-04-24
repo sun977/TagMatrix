@@ -142,51 +142,54 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Loading, Setting, Coin, PriceTag, Collection, Document, UploadFilled, ArrowRight } from '@element-plus/icons-vue'
+import { GetDashboardStats, GetTaskBatches } from '../../wailsjs/go/main/App'
+import { model } from '../../wailsjs/go/models'
 
-const recentTasks = ref([
-  {
-    name: '2024年Q1用户数据打标',
-    statusType: 'running',
-    statusText: '执行中',
-    processed: '16,892 / 25,000',
-    time: '00:12:34',
-    createTime: '2024-04-24 13:23'
-  },
-  {
-    name: '高价值用户标签更新',
-    statusType: 'success',
-    statusText: '已完成',
-    processed: '42,568 / 42,568',
-    time: '00:34:12',
-    createTime: '2024-04-23 15:42'
-  },
-  {
-    name: '用户行为标签批量更新',
-    statusType: 'error',
-    statusText: '失败',
-    processed: '12,345 / 38,900',
-    time: '00:18:45',
-    createTime: '2024-04-22 09:17'
-  },
-  {
-    name: '新用户注册标签初始化',
-    statusType: 'success',
-    statusText: '已完成',
-    processed: '15,678 / 15,678',
-    time: '00:08:23',
-    createTime: '2024-04-21 11:05'
-  },
-  {
-    name: '历史数据全量打标',
-    statusType: 'success',
-    statusText: '已完成',
-    processed: '89,432 / 89,432',
-    time: '01:23:45',
-    createTime: '2024-04-20 16:30'
+const stats = ref<model.DashboardStats>({
+  totalRecords: 0,
+  taggedRecords: 0,
+  totalTags: 0,
+  totalRules: 0
+} as any)
+
+const recentTasks = ref<any[]>([])
+const loadingTasks = ref(false)
+
+const loadDashboardData = async () => {
+  try {
+    const s = await GetDashboardStats()
+    if (s) stats.value = s
+  } catch (e) {
+    console.error('Failed to load stats:', e)
   }
-])
+
+  try {
+    loadingTasks.value = true
+    const batches = await GetTaskBatches()
+    // 只取前5条
+    const recent = batches.slice(0, 5)
+    recentTasks.value = recent.map((b: model.TagTaskBatch) => {
+      return {
+        name: b.name,
+        statusType: b.status,
+        statusText: b.status === 'running' ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : '未知')),
+        processed: `${b.total_processed}`,
+        time: '-',
+        createTime: new Date(b.created_at || Date.now()).toLocaleString()
+      }
+    })
+  } catch (e) {
+    console.error('Failed to load recent tasks:', e)
+  } finally {
+    loadingTasks.value = false
+  }
+}
+
+onMounted(() => {
+  loadDashboardData()
+})
 </script>
 
 <style scoped lang="scss">

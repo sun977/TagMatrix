@@ -143,7 +143,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { GetAppConfig, SaveAppConfig } from '../../wailsjs/go/main/App'
+import { config } from '../../wailsjs/go/models'
 
 const props = defineProps<{
   modelValue: boolean
@@ -157,6 +160,9 @@ const dialogVisible = ref(props.modelValue)
 
 watch(() => props.modelValue, (newVal) => {
   dialogVisible.value = newVal
+  if (newVal) {
+    loadSettings()
+  }
 })
 
 watch(() => dialogVisible.value, (newVal) => {
@@ -180,14 +186,70 @@ const defaultForm = {
 
 const form = reactive({ ...defaultForm })
 
+const loadSettings = async () => {
+  try {
+    const cfg = await GetAppConfig()
+    if (cfg && cfg.ai) {
+      form.apiKey = cfg.ai.api_key || ''
+      form.baseUrl = cfg.ai.base_url || ''
+      form.model = cfg.ai.model || ''
+      form.temperature = cfg.ai.temperature || 0.7
+      form.systemPrompt = cfg.ai.system_prompt || ''
+    }
+    if (cfg && cfg.system) {
+      form.defaultMode = cfg.system.default_mode || 'overwrite'
+      form.autoBackup = cfg.system.auto_backup
+      form.taskNotification = cfg.system.task_notification
+      form.previewRows = cfg.system.preview_rows || 20
+    }
+    if (cfg && cfg.adv) {
+      form.concurrency = cfg.adv.concurrency || 5
+      form.retries = cfg.adv.retries || 3
+      form.debugMode = cfg.adv.debug_mode
+    }
+  } catch (e) {
+    console.error('Failed to load settings:', e)
+    ElMessage.error('加载配置失败')
+  }
+}
+
 const resetDefaults = () => {
   Object.assign(form, defaultForm)
 }
 
-const saveSettings = () => {
-  // TODO: Save settings logic
-  dialogVisible.value = false
+const saveSettings = async () => {
+  try {
+    const newCfg = new config.AppConfig()
+    newCfg.ai = new config.AIConfig()
+    newCfg.ai.api_key = form.apiKey
+    newCfg.ai.base_url = form.baseUrl
+    newCfg.ai.model = form.model
+    newCfg.ai.temperature = form.temperature
+    newCfg.ai.system_prompt = form.systemPrompt
+
+    newCfg.system = new config.SystemConfig()
+    newCfg.system.default_mode = form.defaultMode
+    newCfg.system.auto_backup = form.autoBackup
+    newCfg.system.task_notification = form.taskNotification
+    newCfg.system.preview_rows = form.previewRows
+
+    newCfg.adv = new config.AdvConfig()
+    newCfg.adv.concurrency = form.concurrency
+    newCfg.adv.retries = form.retries
+    newCfg.adv.debug_mode = form.debugMode
+
+    await SaveAppConfig(newCfg)
+    ElMessage.success('设置已保存')
+    dialogVisible.value = false
+  } catch (e) {
+    console.error('Failed to save settings:', e)
+    ElMessage.error('保存设置失败')
+  }
 }
+
+onMounted(() => {
+  loadSettings()
+})
 </script>
 
 <style scoped lang="scss">

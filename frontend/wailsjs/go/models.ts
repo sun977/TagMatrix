@@ -4,6 +4,7 @@ export namespace config {
 	    api_key: string;
 	    base_url: string;
 	    model: string;
+	    temperature: number;
 	    system_prompt: string;
 	
 	    static createFrom(source: any = {}) {
@@ -15,11 +16,48 @@ export namespace config {
 	        this.api_key = source["api_key"];
 	        this.base_url = source["base_url"];
 	        this.model = source["model"];
+	        this.temperature = source["temperature"];
 	        this.system_prompt = source["system_prompt"];
+	    }
+	}
+	export class AdvConfig {
+	    concurrency: number;
+	    retries: number;
+	    debug_mode: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AdvConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.concurrency = source["concurrency"];
+	        this.retries = source["retries"];
+	        this.debug_mode = source["debug_mode"];
+	    }
+	}
+	export class SystemConfig {
+	    default_mode: string;
+	    auto_backup: boolean;
+	    task_notification: boolean;
+	    preview_rows: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SystemConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.default_mode = source["default_mode"];
+	        this.auto_backup = source["auto_backup"];
+	        this.task_notification = source["task_notification"];
+	        this.preview_rows = source["preview_rows"];
 	    }
 	}
 	export class AppConfig {
 	    ai: AIConfig;
+	    system: SystemConfig;
+	    adv: AdvConfig;
 	
 	    static createFrom(source: any = {}) {
 	        return new AppConfig(source);
@@ -28,6 +66,8 @@ export namespace config {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ai = this.convertValues(source["ai"], AIConfig);
+	        this.system = this.convertValues(source["system"], SystemConfig);
+	        this.adv = this.convertValues(source["adv"], AdvConfig);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
