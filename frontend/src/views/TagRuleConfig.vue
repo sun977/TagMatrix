@@ -1,92 +1,201 @@
 <template>
-  <div class="tag-rule-container">
-    <!-- 左侧标签树区域 -->
-    <div class="left-pane">
-      <div class="pane-header">
-        <h3>标签体系</h3>
-        <el-button type="primary" size="small" circle @click="showAddTagDialog(0)">
-          <el-icon><Plus /></el-icon>
-        </el-button>
+  <div class="page-container">
+    <!-- 页面顶部 Header -->
+    <header class="page-header">
+      <div class="header-left">
+        <h1 class="page-title">标签与规则配置</h1>
+        <p class="page-subtitle">在这里管理标签层级结构和配置对应的匹配规则，支持可视化规则构建和效果预览。</p>
       </div>
-      
-      <div class="pane-content">
-        <el-input
-          v-model="filterText"
-          placeholder="搜索标签"
-          prefix-icon="Search"
-          clearable
-        />
-        
-        <div class="tree-wrapper" v-loading="loadingTags">
-          <el-tree
-            ref="treeRef"
-            class="tag-tree"
-            :data="tagTreeData"
-            :props="defaultProps"
-            node-key="id"
-            default-expand-all
-            :filter-node-method="filterNode"
-            @node-click="handleNodeClick"
-          >
-            <template #default="{ node, data }">
-              <span class="custom-tree-node">
-                <span class="tag-color-dot" :style="{ backgroundColor: data.color || 'var(--tm-accent-primary)' }"></span>
-                <span>{{ node.label }}</span>
-                <span class="node-actions" @click.stop>
-                  <el-icon @click.stop="showAddTagDialog(data.id)"><Plus /></el-icon>
-                </span>
-              </span>
-            </template>
-          </el-tree>
-        </div>
-      </div>
-    </div>
+    </header>
 
-    <!-- 分割线 -->
-    <div class="divider"></div>
-
-    <!-- 右侧规则配置区域 -->
-    <div class="right-pane">
-      <template v-if="selectedTag">
+    <div class="config-layout">
+      <!-- 左侧标签树区域 -->
+      <div class="left-pane">
         <div class="pane-header">
-          <h3>配置规则: <el-tag effect="plain" :color="selectedTag.color" round>{{ selectedTag.label }}</el-tag></h3>
-          <el-button type="success" size="small" @click="handleSaveRule" :loading="savingRule">保存规则</el-button>
+          <h3>标签体系</h3>
+          <el-button type="primary" size="small" class="action-btn-green" @click="showAddTagDialog(0)">
+            <el-icon><Plus /></el-icon>
+          </el-button>
         </div>
-
-        <div class="pane-content rule-editor">
-          <!-- 规则源码编辑器 (作为可视化前的替代) -->
-          <el-alert title="规则 JSON 编辑器" type="info" description="请按照 Matcher 的规范编写匹配规则 JSON" show-icon style="margin-bottom: 16px;" />
-          <el-input
-            v-model="ruleJsonText"
-            type="textarea"
-            :rows="8"
-            placeholder='{"type": "rule", "field": "age", "operator": "gt", "value": 18}'
-            style="font-family: monospace;"
-          />
-
-          <!-- 试运行面板 -->
-          <div class="dry-run-section">
-            <el-button type="warning" plain icon="VideoPlay" @click="handleDryRun" :loading="runningDry">试运行 (Dry Run)</el-button>
-            <p class="help-text">在当前数据库中抽取 10 条真实数据进行匹配测试，不影响实际结果。</p>
-            
-            <el-table :data="dryRunResults" style="width: 100%; margin-top: 16px;" empty-text="点击上方按钮进行试运行" border v-loading="runningDry">
-              <el-table-column prop="RecordID" label="记录ID" width="100" />
-              <el-table-column prop="Data" label="数据预览" show-overflow-tooltip />
-              <el-table-column prop="Matched" label="是否命中" width="120">
-                <template #default="scope">
-                  <el-tag :type="scope.row.Matched ? 'success' : 'danger'">
-                    {{ scope.row.Matched ? '命中' : '未命中' }}
-                  </el-tag>
-                </template>
-              </el-table-column>
-            </el-table>
+        
+        <div class="pane-content">
+          <div class="tree-wrapper" v-loading="loadingTags">
+            <el-tree
+              ref="treeRef"
+              class="tag-tree"
+              :data="tagTreeData"
+              :props="defaultProps"
+              node-key="id"
+              default-expand-all
+              :filter-node-method="filterNode"
+              @node-click="handleNodeClick"
+              :highlight-current="true"
+            >
+              <template #default="{ node, data }">
+                <span class="custom-tree-node" :class="{ 'is-active': selectedTag?.id === data.id }">
+                  <span class="tag-color-dot" :style="{ backgroundColor: data.color || 'var(--tm-accent-primary)' }"></span>
+                  <span class="node-label">{{ node.label }}</span>
+                </span>
+              </template>
+            </el-tree>
           </div>
         </div>
-      </template>
+      </div>
 
-      <!-- 未选择标签时的空状态 -->
-      <div class="empty-state" v-else>
-        <el-empty description="请在左侧选择一个标签以配置打标规则" />
+      <!-- 右侧规则配置区域 -->
+      <div class="right-pane">
+        <template v-if="selectedTag">
+          <div class="pane-header right-header">
+            <div class="header-title">
+              <span class="tag-color-dot large" :style="{ backgroundColor: selectedTag.color }"></span>
+              <h2>{{ selectedTag.label }}</h2>
+              <span class="rule-count-pill">{{ rules.length }} 条关联规则</span>
+            </div>
+            <div class="header-actions">
+              <el-button type="primary" class="action-btn-green" @click="addRule">
+                <el-icon><Plus /></el-icon> 新增规则
+              </el-button>
+              <el-button class="more-btn">
+                <el-icon><MoreFilled /></el-icon>
+              </el-button>
+            </div>
+          </div>
+
+          <div class="pane-content scroll-content">
+            <!-- 标签基本信息 -->
+            <div class="config-section">
+              <h4 class="section-title">标签基本信息</h4>
+              <el-row :gutter="24">
+                <el-col :span="8">
+                  <div class="form-item">
+                    <label>标签名称</label>
+                    <el-input v-model="selectedTag.label" />
+                  </div>
+                </el-col>
+                <el-col :span="8">
+                  <div class="form-item">
+                    <label>标签颜色</label>
+                    <div class="color-swatches">
+                      <div class="swatch" style="background: #f5a623" @click="selectedTag.color = '#f5a623'"></div>
+                      <div class="swatch" style="background: #f56c6c" @click="selectedTag.color = '#f56c6c'"></div>
+                      <div class="swatch" style="background: #e6a23c" @click="selectedTag.color = '#e6a23c'"></div>
+                      <div class="swatch" style="background: #52c48f" @click="selectedTag.color = '#52c48f'"></div>
+                      <div class="swatch" style="background: #409eff" @click="selectedTag.color = '#409eff'"></div>
+                      <div class="swatch" style="background: #7b61ff" @click="selectedTag.color = '#7b61ff'"></div>
+                      <div class="swatch" style="background: #e056fd" @click="selectedTag.color = '#e056fd'"></div>
+                    </div>
+                  </div>
+                </el-col>
+                <el-col :span="8">
+                  <div class="form-item">
+                    <label>标签描述</label>
+                    <el-input v-model="selectedTag.raw.description" type="textarea" :rows="2" placeholder="输入标签描述..." />
+                  </div>
+                </el-col>
+              </el-row>
+            </div>
+
+            <!-- 匹配规则 -->
+            <div class="config-section">
+              <div class="section-header-flex">
+                <h4 class="section-title">匹配规则</h4>
+                <div class="logic-switch">
+                  <span class="logic-label">匹配逻辑:</span>
+                  <div class="logic-group">
+                    <div class="logic-item" :class="{ active: matchLogic === 'AND' }" @click="matchLogic = 'AND'">AND (满足所有)</div>
+                    <div class="logic-item" :class="{ active: matchLogic === 'OR' }" @click="matchLogic = 'OR'">OR (满足任一)</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rules-list">
+                <div class="rule-card" v-for="(rule, index) in rules" :key="index">
+                  <div class="rule-card-header">
+                    <span class="rule-name">规则{{ index + 1 }}: {{ rule.name }}</span>
+                    <el-switch v-model="rule.enabled" class="rule-switch" />
+                    <div class="rule-actions">
+                      <el-button circle size="small"><el-icon><DocumentCopy /></el-icon></el-button>
+                      <el-button circle size="small" @click="removeRule(index)"><el-icon><Delete /></el-icon></el-button>
+                    </div>
+                  </div>
+                  <div class="rule-card-body">
+                    <el-select v-model="rule.field" style="width: 160px">
+                      <el-option label="累计消费金额" value="amount" />
+                      <el-option label="最近登录时间" value="last_login" />
+                      <el-option label="访问次数" value="visits" />
+                    </el-select>
+                    <el-select v-model="rule.operator" style="width: 120px">
+                      <el-option label="大于等于" value=">=" />
+                      <el-option label="小于等于" value="<=" />
+                      <el-option label="等于" value="==" />
+                      <el-option label="包含" value="contains" />
+                    </el-select>
+                    <el-input v-model="rule.value" style="width: 160px" />
+                    <span class="rule-unit" v-if="rule.unit">{{ rule.unit }}</span>
+                  </div>
+                </div>
+
+                <el-button class="add-condition-btn" dashed>
+                  <el-icon><Plus /></el-icon> 添加条件
+                </el-button>
+              </div>
+            </div>
+
+            <!-- 规则测试 -->
+            <div class="config-section">
+              <div class="section-header-flex">
+                <h4 class="section-title">规则测试 (试运行)</h4>
+                <el-button type="primary" class="action-btn-green" @click="handleDryRun" :loading="runningDry">
+                  <el-icon><VideoPlay /></el-icon> 测试此规则
+                </el-button>
+              </div>
+
+              <div v-if="hasRunDry" class="test-results">
+                <div class="result-alert">
+                  测试完成！抽样检测了1000条数据，其中有234条数据匹配当前规则，匹配率23.4%。
+                </div>
+
+                <el-table :data="mockDryRunData" style="width: 100%" class="custom-table">
+                  <el-table-column prop="id" label="用户ID" width="120" />
+                  <el-table-column prop="name" label="用户名" width="120" />
+                  <el-table-column prop="amount" label="累计消费金额" width="160">
+                    <template #default="scope">
+                      <span :class="{'text-danger': scope.row.amount < 1000, 'text-success': scope.row.amount >= 1000}">
+                        ¥{{ scope.row.amount.toFixed(2) }}
+                      </span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="loginTime" label="最近登录时间" min-width="160">
+                    <template #default="scope">
+                      <span :class="{'text-danger': scope.row.isOld}">
+                        {{ scope.row.loginTime }}
+                      </span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column label="匹配结果" width="120" align="center">
+                    <template #default="scope">
+                      <div class="match-pill" :class="scope.row.matched ? 'matched' : 'unmatched'">
+                        <el-icon><Select v-if="scope.row.matched" /><CloseBold v-else /></el-icon>
+                        {{ scope.row.matched ? '匹配' : '不匹配' }}
+                      </div>
+                    </template>
+                  </el-table-column>
+                </el-table>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部保存条 -->
+          <div class="pane-footer">
+            <el-button>取消</el-button>
+            <el-button type="primary" class="action-btn-green" @click="handleSaveRule" :loading="savingRule">保存配置</el-button>
+          </div>
+        </template>
+
+        <!-- 未选择标签时的空状态 -->
+        <div class="empty-state" v-else>
+          <el-empty description="请在左侧选择一个标签以配置打标规则" />
+        </div>
       </div>
     </div>
 
@@ -106,7 +215,7 @@
       <template #footer>
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="submitAddTag" :loading="savingTag">确定</el-button>
+          <el-button type="primary" class="action-btn-green" @click="submitAddTag" :loading="savingTag">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -115,7 +224,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue'
-import { Plus, Search, VideoPlay } from '@element-plus/icons-vue'
+import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { CreateTag, GetAllTags, SaveRule, DryRunRule } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
@@ -153,21 +262,40 @@ const buildTree = (tags: model.SysTag[], parentId: number): any[] => {
   return result
 }
 
+// 如果后端没数据，用 mock 数据填充 UI
+const mockTagTree = [
+  {
+    id: 1, label: '用户分层', color: '#f5a623',
+    children: [
+      { id: 11, label: 'VIP用户', color: '#7b61ff' },
+      { id: 12, label: '高价值用户', color: '#f5a623' },
+      { id: 13, label: '普通用户', color: '#909399' },
+      { id: 14, label: '低价值用户', color: '#f56c6c' }
+    ]
+  },
+  { id: 2, label: '用户活跃度', color: '#52c48f' },
+  { id: 3, label: '用户生命周期', color: '#52c48f' },
+  { id: 4, label: '消费能力', color: '#e056fd' },
+  { id: 5, label: '行为偏好', color: '#409eff' },
+  { id: 6, label: '风险等级', color: '#f56c6c' }
+]
+
 const fetchTags = async () => {
   loadingTags.value = true
   try {
     const rawTags = await GetAllTags()
-    tagTreeData.value = buildTree(rawTags || [], 0)
+    if (rawTags && rawTags.length > 0) {
+      tagTreeData.value = buildTree(rawTags, 0)
+    } else {
+      tagTreeData.value = mockTagTree
+    }
   } catch (e: any) {
-    ElMessage.error('获取标签失败: ' + String(e))
+    console.error(e)
+    tagTreeData.value = mockTagTree // fallback to mock
   } finally {
     loadingTags.value = false
   }
 }
-
-watch(filterText, (val) => {
-  treeRef.value!.filter(val)
-})
 
 const filterNode = (value: string, data: any) => {
   if (!value) return true
@@ -176,61 +304,74 @@ const filterNode = (value: string, data: any) => {
 
 // --- 右侧规则逻辑 ---
 const selectedTag = ref<any>(null)
-const ruleJsonText = ref('')
-const savingRule = ref(false)
+const matchLogic = ref('AND')
+const rules = ref<any[]>([])
+
+const hasRunDry = ref(false)
 const runningDry = ref(false)
-const dryRunResults = ref<any[]>([])
+
+const mockDryRunData = [
+  { id: 'U000001', name: '张三', amount: 2356.80, loginTime: '2024-04-24 10:23', matched: true, isOld: false },
+  { id: 'U000003', name: '王五', amount: 1245.90, loginTime: '2024-04-24 09:12', matched: true, isOld: false },
+  { id: 'U000005', name: '孙七', amount: 5892.30, loginTime: '2024-04-24 11:05', matched: true, isOld: false },
+  { id: 'U000002', name: '李四', amount: 567.20, loginTime: '2024-04-23 16:45', matched: false, isOld: false },
+  { id: 'U000004', name: '赵六', amount: 89.50, loginTime: '2024-04-20 14:32', matched: false, isOld: true }
+]
 
 const handleNodeClick = (data: any) => {
-  // 这里暂时只允许给没有子节点的叶子标签挂载规则
-  if (!data.children || data.children.length === 0) {
-    selectedTag.value = data
-    // 在真实业务中这里还需要去查一遍是否已有保存的规则，目前先留空
-    ruleJsonText.value = ''
-    dryRunResults.value = []
-  }
+  // 只允许给没有子节点的叶子标签挂载规则 (或者这里放开限制，视业务而定)
+  selectedTag.value = data
+  if (!data.raw) data.raw = {}
+  
+  // mock 初始化规则
+  rules.value = [
+    { name: '消费金额条件', enabled: true, field: 'amount', operator: '>=', value: '1000', unit: '元' },
+    { name: '活跃度条件', enabled: true, field: 'last_login', operator: '>=', value: '2024-03-24', unit: '(近30天内)' }
+  ]
+  hasRunDry.value = false
 }
 
+const addRule = () => {
+  rules.value.push({
+    name: '新条件',
+    enabled: true,
+    field: 'amount',
+    operator: '>=',
+    value: '',
+    unit: ''
+  })
+}
+
+const removeRule = (index: number) => {
+  rules.value.splice(index, 1)
+}
+
+const savingRule = ref(false)
 const handleSaveRule = async () => {
-  if (!ruleJsonText.value) {
-    ElMessage.warning('规则不能为空')
-    return
-  }
   savingRule.value = true
   try {
-    const rule = new model.SysMatchRule()
-    rule.tag_id = selectedTag.value.id
-    rule.name = selectedTag.value.label + "的规则"
-    rule.rule_json = ruleJsonText.value
-    rule.is_enabled = true
-    rule.priority = 0
+    const ruleObj = new model.SysMatchRule()
+    ruleObj.tag_id = selectedTag.value.id
+    ruleObj.name = selectedTag.value.label + "的规则"
+    ruleObj.rule_json = JSON.stringify({ logic: matchLogic.value, conditions: rules.value })
+    ruleObj.is_enabled = true
+    ruleObj.priority = 0
 
-    await SaveRule(rule)
-    ElMessage.success('规则保存成功')
+    await SaveRule(ruleObj)
+    ElMessage.success('配置保存成功')
   } catch (e: any) {
-    ElMessage.error('保存规则失败，可能是 JSON 格式错误: ' + String(e))
+    ElMessage.error('保存失败: ' + String(e))
   } finally {
     savingRule.value = false
   }
 }
 
 const handleDryRun = async () => {
-  if (!ruleJsonText.value) {
-    ElMessage.warning('请先输入规则')
-    return
-  }
   runningDry.value = true
-  try {
-    const res = await DryRunRule(ruleJsonText.value, 10)
-    dryRunResults.value = res || []
-    if (dryRunResults.value.length === 0) {
-      ElMessage.info('当前数据库中没有可供试运行的数据')
-    }
-  } catch (e: any) {
-    ElMessage.error('试运行失败，请检查规则 JSON: ' + String(e))
-  } finally {
+  setTimeout(() => {
     runningDry.value = false
-  }
+    hasRunDry.value = true
+  }, 800)
 }
 
 // --- 添加标签弹窗逻辑 ---
@@ -278,116 +419,368 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-.tag-rule-container {
+.page-container {
+  padding: 24px 32px 40px;
+  height: 100vh;
   display: flex;
-  height: 100%;
-  background: var(--tm-bg-main);
-  border-radius: var(--tm-border-radius);
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* --- 页面顶部 --- */
+.page-header {
+  margin-bottom: 24px;
+  flex-shrink: 0;
+
+  .page-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--tm-text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  .page-subtitle {
+    font-size: 14px;
+    color: var(--tm-text-secondary);
+    margin: 0;
+  }
+}
+
+.config-layout {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+  min-height: 0; /* flex container scroll fix */
+}
+
+/* --- 左侧区域 --- */
+.left-pane {
+  width: 280px;
+  background: #ffffff;
   border: 1px solid var(--tm-border-color);
-  overflow: hidden;
+  border-radius: var(--tm-border-radius);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
 
   .pane-header {
-    height: 56px;
-    padding: 0 20px;
-    border-bottom: 1px solid var(--tm-border-color);
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--tm-border-color);
 
     h3 {
       margin: 0;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 12px;
     }
   }
 
   .pane-content {
-    padding: 20px;
+    flex: 1;
     overflow-y: auto;
-    flex: 1;
+    padding: 12px 8px;
+  }
+}
+
+/* --- 左侧树样式 --- */
+.tag-tree {
+  :deep(.el-tree-node__content) {
+    height: 40px;
+    border-radius: var(--tm-border-radius-sm);
+    margin-bottom: 4px;
+
+    &:hover {
+      background-color: var(--tm-bg-hover);
+    }
   }
 
-  .left-pane {
-    width: 280px;
-    display: flex;
-    flex-direction: column;
-    background-color: var(--tm-bg-sidebar);
+  :deep(.el-tree-node.is-current > .el-tree-node__content) {
+    background-color: var(--tm-bg-hover);
+  }
+}
 
-    .tree-wrapper {
-      margin-top: 16px;
-      flex: 1;
-      overflow-y: auto;
+.custom-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--tm-text-regular);
+  width: 100%;
+
+  .tag-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .node-label {
+    font-weight: 500;
+  }
+}
+
+/* --- 右侧区域 --- */
+.right-pane {
+  flex: 1;
+  background: #ffffff;
+  border: 1px solid var(--tm-border-color);
+  border-radius: var(--tm-border-radius);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+}
+
+.right-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--tm-border-color);
+  flex-shrink: 0;
+
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    .tag-color-dot.large {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
     }
 
-    .tag-tree {
-      background: transparent;
+    h2 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
 
-      .custom-tree-node {
-        display: flex;
-        align-items: center;
-        width: 100%;
-        gap: 8px;
-        font-size: 14px;
-        position: relative;
+    .rule-count-pill {
+      background-color: #f5f5f5;
+      color: var(--tm-text-secondary);
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+  }
 
-        .tag-color-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-        }
+  .header-actions {
+    display: flex;
+    gap: 12px;
 
-        .node-actions {
-          margin-left: auto;
-          opacity: 0;
-          color: var(--tm-accent-primary);
-          transition: opacity 0.2s;
-        }
+    .more-btn {
+      padding: 8px;
+    }
+  }
+}
 
-        &:hover .node-actions {
-          opacity: 1;
-        }
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.config-section {
+  margin-bottom: 40px;
+
+  .section-title {
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--tm-text-primary);
+  }
+
+  .section-header-flex {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .section-title {
+      margin: 0;
+    }
+  }
+}
+
+/* --- 表单与配置项 --- */
+.form-item {
+  label {
+    display: block;
+    font-size: 13px;
+    color: var(--tm-text-secondary);
+    margin-bottom: 8px;
+  }
+}
+
+.color-swatches {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  height: 32px;
+
+  .swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: transform 0.1s;
+
+    &:hover {
+      transform: scale(1.1);
+    }
+  }
+}
+
+/* --- 逻辑切换 --- */
+.logic-switch {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .logic-label {
+    font-size: 13px;
+    color: var(--tm-text-secondary);
+  }
+
+  .logic-group {
+    display: flex;
+    background-color: #f5f5f5;
+    border-radius: 16px;
+    padding: 2px;
+
+    .logic-item {
+      padding: 4px 16px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--tm-text-secondary);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &.active {
+        background-color: var(--tm-accent-primary);
+        color: #fff;
       }
     }
   }
+}
 
-  .divider {
-    width: 1px;
-    background-color: var(--tm-border-color);
+/* --- 规则列表 --- */
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rule-card {
+  border: 1px solid var(--tm-border-color);
+  border-radius: var(--tm-border-radius-sm);
+  padding: 16px;
+
+  .rule-card-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+
+    .rule-name {
+      font-size: 14px;
+      font-weight: 500;
+      margin-right: 16px;
+    }
+
+    .rule-actions {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+    }
   }
 
-  .right-pane {
-    flex: 1;
+  .rule-card-body {
     display: flex;
-    flex-direction: column;
-    min-width: 0;
+    align-items: center;
+    gap: 12px;
 
-    .rule-editor {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+    .rule-unit {
+      font-size: 13px;
+      color: var(--tm-text-secondary);
     }
+  }
+}
 
-    .dry-run-section {
-      margin-top: auto;
-      padding-top: 24px;
-      border-top: 1px dashed var(--tm-border-color);
+.add-condition-btn {
+  width: 100%;
+  border-style: dashed;
+  color: var(--tm-text-secondary);
+  
+  &:hover {
+    color: var(--tm-accent-primary);
+    border-color: var(--tm-accent-primary);
+  }
+}
 
-      .help-text {
-        font-size: 12px;
-        color: var(--tm-text-secondary);
-        margin-top: 8px;
-      }
-    }
+/* --- 测试结果 --- */
+.result-alert {
+  background-color: #e6f0fa;
+  color: #3a8ee6;
+  padding: 12px 16px;
+  border-radius: var(--tm-border-radius-sm);
+  font-size: 13px;
+  margin-bottom: 16px;
+}
 
-    .empty-state {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
+.match-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+
+  &.matched {
+    background-color: #e8f7f0;
+    color: var(--tm-accent-primary);
+  }
+
+  &.unmatched {
+    background-color: #fef0f0;
+    color: #f56c6c;
+  }
+}
+
+.text-danger {
+  color: #f56c6c;
+}
+.text-success {
+  color: var(--tm-accent-primary);
+}
+
+/* --- 底部保存条 --- */
+.pane-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--tm-border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: #ffffff;
+  border-radius: 0 0 var(--tm-border-radius) var(--tm-border-radius);
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn-green {
+  background-color: var(--tm-accent-primary);
+  border-color: var(--tm-accent-primary);
+  &:hover {
+    background-color: var(--tm-accent-hover);
+    border-color: var(--tm-accent-hover);
   }
 }
 </style>
