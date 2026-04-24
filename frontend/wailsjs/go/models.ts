@@ -128,6 +128,110 @@ export namespace main {
 
 export namespace model {
 	
+	export class DashboardStats {
+	    totalRecords: number;
+	    taggedRecords: number;
+	    totalTags: number;
+	    totalRules: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashboardStats(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.totalRecords = source["totalRecords"];
+	        this.taggedRecords = source["taggedRecords"];
+	        this.totalTags = source["totalTags"];
+	        this.totalRules = source["totalRules"];
+	    }
+	}
+	export class TagDto {
+	    name: string;
+	    color: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TagDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.color = source["color"];
+	    }
+	}
+	export class TaggedRecordDto {
+	    id: number;
+	    content: string;
+	    tags: TagDto[];
+	    batchName: string;
+	    updateTime: string;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TaggedRecordDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.content = source["content"];
+	        this.tags = this.convertValues(source["tags"], TagDto);
+	        this.batchName = source["batchName"];
+	        this.updateTime = source["updateTime"];
+	        this.status = source["status"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PagedTaggedData {
+	    total: number;
+	    records: TaggedRecordDto[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PagedTaggedData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.total = source["total"];
+	        this.records = this.convertValues(source["records"], TaggedRecordDto);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class RawDataRecord {
 	    id: number;
 	    // Go type: time
@@ -262,6 +366,7 @@ export namespace model {
 		    return a;
 		}
 	}
+	
 	export class TagTaskBatch {
 	    id: number;
 	    // Go type: time

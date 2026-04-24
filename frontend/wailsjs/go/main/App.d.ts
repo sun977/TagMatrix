@@ -17,7 +17,11 @@ export function GetAllTags():Promise<Array<model.SysTag>>;
 
 export function GetAppConfig():Promise<config.AppConfig>;
 
+export function GetDashboardStats():Promise<model.DashboardStats>;
+
 export function GetRawDataList(arg1:number,arg2:number):Promise<main.PagedData>;
+
+export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<model.PagedTaggedData>;
 
 export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
 

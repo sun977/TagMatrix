@@ -65,6 +65,26 @@ func (a *App) SaveAppConfig(newConfig config.AppConfig) error {
 	return config.SaveConfig(newConfig)
 }
 
+// ----------------- Dashboard & Stats API -----------------
+
+func (a *App) GetDashboardStats() (*model.DashboardStats, error) {
+	var stats model.DashboardStats
+
+	// 总数据量
+	model.DB.Model(&model.RawDataRecord{}).Count(&stats.TotalRecords)
+
+	// 标签总数
+	model.DB.Model(&model.SysTag{}).Count(&stats.TotalTags)
+
+	// 规则总数
+	model.DB.Model(&model.SysMatchRule{}).Count(&stats.TotalRules)
+
+	// 已打标数据量 (去重统计有多少 record_id 在 entity_tag 表中)
+	model.DB.Model(&model.SysEntityTag{}).Select("count(distinct(record_id))").Count(&stats.TaggedRecords)
+
+	return &stats, nil
+}
+
 // ----------------- Data Import/Export API -----------------
 
 func (a *App) ImportData(filePath string) (int, error) {
@@ -128,6 +148,15 @@ func (a *App) GetRawDataList(page, pageSize int) (*PagedData, error) {
 	return &PagedData{
 		Total:   total,
 		Records: records,
+	}, nil
+}
+
+func (a *App) GetTaggedDataList(keyword, tag, batch string, page, pageSize int) (*model.PagedTaggedData, error) {
+	// TODO: 完整的联表过滤查询逻辑
+	// 当前先返回一个空结果，等联调 TaggedData 页面时再补充具体 SQL
+	return &model.PagedTaggedData{
+		Total:   0,
+		Records: []model.TaggedRecordDto{},
 	}, nil
 }
 
