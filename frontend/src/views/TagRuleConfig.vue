@@ -456,6 +456,15 @@ const handleDryRun = async () => {
     const ruleJSON = JSON.stringify(neoRule)
     const results = await DryRunRule(ruleJSON, testLimit.value) // Call Go API
     
+    if (!results || results.length === 0) {
+      ElMessage.warning('当前数据库中没有可供试运行的目标数据，请先导入数据！')
+      mockDryRunData.value = []
+      dynamicColumns.value = []
+      testSummary.value = { total: 0, matched: 0, ratio: '0.0' }
+      hasRunDry.value = true
+      return
+    }
+
     let matchedCount = 0
     const columnsSet = new Set<string>()
 
