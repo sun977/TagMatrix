@@ -1,0 +1,90 @@
+/* src/assets/styles/main.scss */
+
+:root {
+  /* ==========================================================================
+     Colors based on the provided reference image (Notion / ChatGPT-like vibe)
+     ========================================================================== */
+
+  // 主题强调色 (绿色) - 对应图中按钮和选中的文字
+  --tm-accent-primary: #52c48f;
+  --tm-accent-hover: #45a779;
+  --tm-accent-light: #e8f7f0; // 浅绿背景
+
+  // 背景色体系
+  --tm-bg-main: #ffffff;      // 主内容区背景
+  --tm-bg-sidebar: #fbfbfb;   // 侧边栏/右侧栏背景
+  --tm-bg-hover: #f1f1f1;     // 列表/按钮 hover 背景
+  --tm-bg-active: #ebebeb;    // 侧边栏选中背景
+
+  // 文本色体系
+  --tm-text-primary: #2c2c2c; // 主标题、重要文字
+  --tm-text-regular: #4a4a4a; // 普通正文
+  --tm-text-secondary: #8c8c8c; // 辅助性文字，如“设置”、“查看更多”
+
+  // 边框和线条
+  --tm-border-color: #f0f0f0; // 极浅的分割线
+  --tm-border-radius: 12px;   // 卡片、输入框大圆角
+  --tm-border-radius-sm: 8px; // 按钮、列表项圆角
+
+  // 阴影
+  --tm-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.04);
+  --tm-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06);
+
+  /* ==========================================================================
+     Element Plus 主题变量覆盖
+     我们使用 --tm-accent-primary 替换掉其默认的科技蓝
+     ========================================================================== */
+  --el-color-primary: var(--tm-accent-primary);
+  --el-color-primary-light-3: var(--tm-accent-hover);
+  --el-color-primary-light-5: #85d7b3;
+  --el-color-primary-light-7: #b8ead3;
+  --el-color-primary-light-8: #d2f1e2;
+  --el-color-primary-light-9: var(--tm-accent-light);
+  --el-color-primary-dark-2: #429d72;
+
+  --el-border-radius-base: var(--tm-border-radius-sm);
+  --el-border-radius-small: 6px;
+  --el-border-radius-round: 20px;
+  
+  --el-bg-color-page: var(--tm-bg-main);
+  --el-text-color-primary: var(--tm-text-primary);
+  --el-text-color-regular: var(--tm-text-regular);
+  --el-text-color-secondary: var(--tm-text-secondary);
+  --el-border-color: var(--tm-border-color);
+  --el-border-color-light: #f5f5f5;
+  --el-border-color-lighter: #f9f9f9;
+}
+
+body, html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--tm-bg-main);
+  color: var(--tm-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+/* 隐藏滚动条但保留滚动功能 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d9d9d9;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #bfbfbf;
+}

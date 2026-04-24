@@ -79,8 +79,9 @@
 ---
 
 ### [T7] UI 集成与最终打磨 (UI Integration & Polish)
-*状态: 🟡 准备进行中 (Pending/Next)*
-- [ ] 引入 Element Plus UI 框架和 Pinia
+*状态: 🟡 进行中 (In Progress)*
+- [x] 输出前端 UI 设计与规划文档 (`UI_DESIGN.md`)
+- [x] 引入 Element Plus UI 框架、Icons、Vue Router 和 Pinia
 - [ ] 开发前端页面：数据源管理、标签/规则配置、任务看板、AI 助手面板
 - [ ] 联调所有的 Wails IPC 接口
 - [ ] 边界测试与异常捕获优化
