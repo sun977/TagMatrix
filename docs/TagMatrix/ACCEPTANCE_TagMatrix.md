@@ -51,16 +51,16 @@
 ---
 
 ### [T4] 规则引擎适配与标签管理 (Matcher & Tag Management)
-*状态: 🟡 准备进行中 (Pending/Next)*
-- [ ] 移植原 NeoScan 项目的 `matcher` 匹配引擎到 `internal/pkg/matcher`
-- [ ] 实现标签 CRUD (支持树状层级)
-- [ ] 实现规则 CRUD (支持序列化 `matcher` JSON)
-- [ ] 实现 `DryRunRule` 试运行接口 (仅评估不落盘)
+*状态: ✅ 已完成 (Completed)*
+- [x] 移植原 NeoScan 项目的 `matcher` 匹配引擎到 `internal/pkg/matcher`
+- [x] 实现标签 CRUD (支持树状层级)
+- [x] 实现规则 CRUD (支持序列化 `matcher` JSON)
+- [x] 实现 `DryRunRule` 试运行接口 (仅评估不落盘)
 
 ---
 
 ### [T5] 打标任务引擎与回退流 (Task Engine & Rollback)
-*状态: ⚪ 未开始 (Not Started)*
+*状态: 🟡 准备进行中 (Pending/Next)*
 - [ ] 设计 Goroutine Worker Pool 架构处理海量数据
 - [ ] 编写流式读取 SQLite 原始数据并丢入 Worker 的逻辑
 - [ ] 结合 `matcher` 执行布尔判定并写入 `tag_task_logs` 和 `sys_entity_tags`
