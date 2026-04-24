@@ -1,10 +1,14 @@
 <template>
-  <div class="layout-container">
+  <div class="layout-container" :class="{ 'is-dragging': isDragging }">
     <!-- 左侧极简导航栏 -->
-    <aside class="sidebar">
+    <aside 
+      class="sidebar" 
+      :class="{ 'is-collapsed': isCollapsed, 'is-dragging': isDragging }"
+      :style="{ width: actualSidebarWidth + 'px' }"
+    >
       <div class="sidebar-header">
         <el-icon :size="24" color="var(--tm-accent-primary)"><Grid /></el-icon>
-        <span class="logo-text">TagMatrix</span>
+        <span class="logo-text" v-if="!isCollapsed">TagMatrix</span>
       </div>
 
       <nav class="sidebar-menu">
@@ -16,15 +20,26 @@
           active-class="is-active"
         >
           <el-icon><component :is="route.meta?.icon" /></el-icon>
-          <span>{{ route.meta?.title }}</span>
+          <span v-if="!isCollapsed">{{ route.meta?.title }}</span>
         </router-link>
 
         <!-- 全局设置 -->
         <div class="menu-item setting-btn" @click="openSettings">
           <el-icon><Setting /></el-icon>
-          <span>全局设置</span>
+          <span v-if="!isCollapsed">全局设置</span>
         </div>
       </nav>
+
+      <!-- 底部收起按钮 -->
+      <div class="sidebar-footer">
+        <div class="menu-item collapse-btn" @click="toggleCollapse">
+          <el-icon><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
+          <span v-if="!isCollapsed">收起侧边栏</span>
+        </div>
+      </div>
+
+      <!-- 拖拽调节宽度的把手 -->
+      <div class="sidebar-resizer" @mousedown="startDrag" v-show="!isCollapsed"></div>
     </aside>
 
     <!-- 主容器 -->
@@ -47,9 +62,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Grid, Setting, House, Files, PriceTag, List, Service, Coin, Finished } from '@element-plus/icons-vue'
+import { Grid, Setting, House, Files, PriceTag, List, Service, Coin, Finished, Fold, Expand } from '@element-plus/icons-vue'
 import SettingsDialog from './SettingsDialog.vue'
 
 const router = useRouter()
@@ -70,6 +85,55 @@ const toggleAIPanel = () => {
   // TODO: 呼出 AI 面板
   console.log('Toggle AI Panel')
 }
+
+// --- 侧边栏拖拽调节宽度逻辑 ---
+const sidebarWidth = ref(240)
+const isCollapsed = ref(false)
+const isDragging = ref(false)
+
+const minWidth = 200
+const maxWidth = 500
+const collapsedWidth = 68 // 折叠后的宽度
+
+const actualSidebarWidth = computed(() => {
+  return isCollapsed.value ? collapsedWidth : sidebarWidth.value
+})
+
+const toggleCollapse = () => {
+  isCollapsed.value = !isCollapsed.value
+}
+
+const startDrag = (e: MouseEvent) => {
+  if (isCollapsed.value) return // 折叠状态下不允许拖拽
+  isDragging.value = true
+  document.body.style.cursor = 'col-resize'
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+  // 防止拖拽时选中文本
+  e.preventDefault()
+}
+
+const onDrag = (e: MouseEvent) => {
+  if (!isDragging.value) return
+  let newWidth = e.clientX
+  if (newWidth < minWidth) newWidth = minWidth
+  if (newWidth > maxWidth) newWidth = maxWidth
+  sidebarWidth.value = newWidth
+}
+
+const stopDrag = () => {
+  if (isDragging.value) {
+    isDragging.value = false
+    document.body.style.cursor = ''
+    document.removeEventListener('mousemove', onDrag)
+    document.removeEventListener('mouseup', stopDrag)
+  }
+}
+
+// 组件卸载时确保移除事件监听
+onUnmounted(() => {
+  stopDrag()
+})
 </script>
 
 <style scoped lang="scss">
@@ -79,11 +143,17 @@ const toggleAIPanel = () => {
   height: 100vh;
   background-color: var(--tm-bg-main);
   overflow: hidden;
+
+  // 拖拽时防止全局文本选中
+  &.is-dragging {
+    user-select: none;
+    -webkit-user-select: none;
+  }
 }
 
 /* --- 左侧边栏 --- */
 .sidebar {
-  width: 240px;
+  position: relative;
   background-color: var(--tm-bg-sidebar);
   border-right: 1px solid var(--tm-border-color);
   display: flex;
@@ -91,12 +161,40 @@ const toggleAIPanel = () => {
   padding: 24px 16px;
   box-sizing: border-box;
   flex-shrink: 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: width;
+
+  // 拖拽过程中取消动画过渡，保持鼠标跟随的顺滑
+  &.is-dragging {
+    transition: none;
+  }
+
+  // 折叠状态下的样式调整
+  &.is-collapsed {
+    padding: 24px 10px;
+
+    .sidebar-header {
+      padding: 0 0 40px;
+      justify-content: center;
+    }
+
+    .menu-item {
+      justify-content: center;
+      padding: 12px 0;
+      
+      .el-icon {
+        margin-right: 0;
+      }
+    }
+  }
 
   .sidebar-header {
     display: flex;
     align-items: center;
     gap: 12px;
     padding: 0 12px 40px;
+    white-space: nowrap;
+    overflow: hidden;
     
     .logo-text {
       font-weight: 700;
@@ -111,6 +209,7 @@ const toggleAIPanel = () => {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    overflow-x: hidden;
   }
 
   .menu-item {
@@ -125,9 +224,11 @@ const toggleAIPanel = () => {
     font-weight: 500;
     transition: all 0.2s ease;
     cursor: pointer;
+    white-space: nowrap;
 
     .el-icon {
       font-size: 18px;
+      flex-shrink: 0;
     }
 
     &:hover {
@@ -143,6 +244,30 @@ const toggleAIPanel = () => {
 
   .setting-btn {
     margin-top: 24px;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding-top: 16px;
+    border-top: 1px solid var(--tm-border-color);
+    overflow: hidden;
+  }
+
+  /* --- 拖拽调整宽度的把手 --- */
+  .sidebar-resizer {
+    position: absolute;
+    top: 0;
+    right: -3px; // 悬浮在边框线上
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+    transition: background-color 0.2s;
+
+    &:hover, &:active {
+      background-color: var(--tm-accent-primary);
+      opacity: 0.5;
+    }
   }
 }
 
