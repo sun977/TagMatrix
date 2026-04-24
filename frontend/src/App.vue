@@ -1,11 +1,11 @@
 <template>
-  <Layout />
+  <router-view />
 </template>
 
 <script setup lang="ts">
-import Layout from './components/Layout.vue'
+// 根组件，只负责渲染路由
 </script>
 
 <style>
-/* 全局样式已移入 main.scss */
+/* 全局样式已在 assets/styles/main.scss 中定义 */
 </style>

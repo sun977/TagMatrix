@@ -65,8 +65,8 @@ import { ref, onMounted } from 'vue'
 import { Upload, Download } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
-// TODO: 后续引入 Wails 生成的 TS Bindings
-// import { ImportData, GetRawDataList } from '../../wailsjs/go/main/App'
+// 引入 Wails 生成的 TS Bindings
+import { ImportData, GetRawDataList, ExportData } from '../../wailsjs/go/main/App'
 
 const isLoading = ref(false)
 const isImporting = ref(false)
@@ -78,43 +78,73 @@ const currentPage = ref(1)
 const pageSize = ref(50)
 const totalRecords = ref(0)
 
-// 模拟获取数据
+// 获取真实数据
 const fetchTableData = async () => {
   isLoading.value = true
   try {
-    // 真实环境将调用 Wails API: GetRawDataList(currentPage, pageSize)
-    // 这里先模拟点数据
-    setTimeout(() => {
-      const mockData = [
-        { id: 1, name: 'Alice', age: 25, city: 'Beijing', tags: 'VIP' },
-        { id: 2, name: 'Bob', age: 30, city: 'Shanghai', tags: '' },
-      ]
-      
-      // 提取动态列头
-      if (mockData.length > 0) {
-        const cols = Object.keys(mockData[0]).filter(k => k !== 'id')
-        dynamicColumns.value = cols
+    const res = await GetRawDataList(currentPage.value, pageSize.value)
+    
+    // 解析 JSON 数据并展平
+    const parsedData = res.Records.map((r: any) => {
+      let dataObj = {}
+      try {
+        dataObj = JSON.parse(r.data)
+      } catch (e) {
+        console.warn('Failed to parse record data:', r.data)
       }
-      
-      tableData.value = mockData
-      totalRecords.value = 100 // mock total
-      isLoading.value = false
-    }, 500)
+      return {
+        id: r.id,
+        batch_id: r.batch_id,
+        ...dataObj
+      }
+    })
+
+    // 提取动态列头
+    if (parsedData.length > 0) {
+      const cols = Object.keys(parsedData[0]).filter(k => k !== 'id' && k !== 'batch_id')
+      dynamicColumns.value = cols
+    } else {
+      dynamicColumns.value = []
+    }
+    
+    tableData.value = parsedData
+    totalRecords.value = res.Total
   } catch (error) {
     console.error(error)
-    ElMessage.error('获取数据失败')
+    ElMessage.error('获取数据失败: ' + String(error))
+  } finally {
     isLoading.value = false
   }
 }
 
 const handleImportClick = async () => {
-  // TODO: 调用 Wails 提供的原生文件选择对话框
-  // window.runtime.EventsOn("import-progress", ...) // 可选：进度条
-  ElMessage.info('调用系统文件选择对话框 (待联调 Wails API)')
+  isImporting.value = true
+  try {
+    const count = await ImportData("") // 传入空字符串，Wails 后端会自动弹窗选择文件
+    if (count > 0) {
+      ElMessage.success(`成功导入 ${count} 条数据`)
+      currentPage.value = 1
+      fetchTableData()
+    }
+  } catch (error: any) {
+    // 用户取消选择文件不报错
+    if (error !== "cancelled") {
+      ElMessage.error('导入失败: ' + String(error))
+    }
+  } finally {
+    isImporting.value = false
+  }
 }
 
-const handleExportClick = () => {
-  ElMessage.info('调用系统保存对话框 (待联调 Wails API)')
+const handleExportClick = async () => {
+  try {
+    await ExportData(0, "") // 传入空字符串让后端弹窗，0 表示导出全部
+    ElMessage.success('导出成功')
+  } catch (error: any) {
+    if (error !== "cancelled") {
+      ElMessage.error('导出失败: ' + String(error))
+    }
+  }
 }
 
 const handleSizeChange = (val: number) => {
