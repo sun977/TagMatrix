@@ -7,14 +7,14 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "TagMatrix Team",
+    "name": "Sun977",
     "email": "jiuwei977@foxmail.com"
   },
   "info": {
-    "companyName": "TagMatrix",
+    "companyName": "Sun977",
     "productName": "TagMatrix",
     "productVersion": "1.2.0",
-    "copyright": "Copyright 2026 TagMatrix",
-    "comments": "数据打标系统"
+    "copyright": "Copyright 2026 Sun977",
+    "comments": "TagMatrix"
   }
 }
