@@ -60,17 +60,17 @@
 ---
 
 ### [T5] 打标任务引擎与回退流 (Task Engine & Rollback)
-*状态: 🟡 准备进行中 (Pending/Next)*
-- [ ] 设计 Goroutine Worker Pool 架构处理海量数据
-- [ ] 编写流式读取 SQLite 原始数据并丢入 Worker 的逻辑
-- [ ] 结合 `matcher` 执行布尔判定并写入 `tag_task_logs` 和 `sys_entity_tags`
-- [ ] 维护任务批次状态 (`TagTaskBatch`)
-- [ ] 实现 `RollbackTask` 接口，根据日志撤销特定批次结果
+*状态: ✅ 已完成 (Completed)*
+- [x] 设计 Goroutine Worker Pool 架构处理海量数据
+- [x] 编写流式读取 SQLite 原始数据并丢入 Worker 的逻辑
+- [x] 结合 `matcher` 执行布尔判定并写入 `tag_task_logs` 和 `sys_entity_tags`
+- [x] 维护任务批次状态 (`TagTaskBatch`)
+- [x] 实现 `RollbackTask` 接口，根据日志撤销特定批次结果
 
 ---
 
 ### [T6] AI 智能助手引擎 (AI Assistant Integration)
-*状态: ⚪ 未开始 (Not Started)*
+*状态: 🟡 准备进行中 (Pending/Next)*
 - [ ] 引入 `sashabaranov/go-openai` SDK
 - [ ] 编写获取当前 SQLite Schema 的内部函数
 - [ ] 构造 AI 提示词 (System Prompt)，注入 Schema 上下文
