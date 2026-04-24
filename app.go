@@ -10,16 +10,17 @@ import (
 	"TagMatrix/internal/service/dataimport"
 	"TagMatrix/internal/service/taglogic"
 	"TagMatrix/internal/service/taskengine"
+
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
 type App struct {
-	ctx          context.Context
-	dataImport   *dataimport.DataImportService
-	tagLogic     *taglogic.TagLogicService
-	taskEngine   *taskengine.TaskEngineService
-	aiEngine     *aiengine.AIEngineService
+	ctx        context.Context
+	dataImport *dataimport.DataImportService
+	tagLogic   *taglogic.TagLogicService
+	taskEngine *taskengine.TaskEngineService
+	aiEngine   *aiengine.AIEngineService
 }
 
 // NewApp creates a new App application struct
@@ -88,7 +89,7 @@ func (a *App) ImportData(filePath string) (int, error) {
 func (a *App) ExportData(batchID uint64, exportPath string) error {
 	if exportPath == "" {
 		file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
-			Title: "选择导出路径",
+			Title:           "选择导出路径",
 			DefaultFilename: "export_data.csv",
 			Filters: []runtime.FileFilter{
 				{DisplayName: "CSV 文件", Pattern: "*.csv"},
@@ -149,13 +150,18 @@ func (a *App) DryRunRule(ruleJSON string, limit int) ([]taglogic.DryRunResult, e
 }
 
 // ----------------- Task Engine API -----------------
-
 func (a *App) RunTaggingTask(ruleIDs []uint64, batchName string, isPrimary bool) (uint64, error) {
 	return a.taskEngine.RunTaggingTask(ruleIDs, batchName, isPrimary)
 }
 
 func (a *App) RollbackTask(batchID uint64) error {
 	return a.taskEngine.RollbackTask(a.ctx, batchID)
+}
+
+func (a *App) GetTaskBatches() ([]model.TagTaskBatch, error) {
+	var batches []model.TagTaskBatch
+	err := model.DB.Order("id desc").Find(&batches).Error
+	return batches, err
 }
 
 // ----------------- AI Engine API -----------------

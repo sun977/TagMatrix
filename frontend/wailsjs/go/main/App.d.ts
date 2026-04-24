@@ -19,6 +19,8 @@ export function GetAppConfig():Promise<config.AppConfig>;
 
 export function GetRawDataList(arg1:number,arg2:number):Promise<main.PagedData>;
 
+export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
+
 export function ImportData(arg1:string):Promise<number>;
 
 export function RollbackTask(arg1:number):Promise<void>;

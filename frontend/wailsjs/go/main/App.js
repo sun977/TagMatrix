@@ -30,6 +30,10 @@ export function GetRawDataList(arg1, arg2) {
   return window['go']['main']['App']['GetRawDataList'](arg1, arg2);
 }
 
+export function GetTaskBatches() {
+  return window['go']['main']['App']['GetTaskBatches']();
+}
+
 export function ImportData(arg1) {
   return window['go']['main']['App']['ImportData'](arg1);
 }
