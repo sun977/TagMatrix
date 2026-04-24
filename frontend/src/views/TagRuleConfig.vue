@@ -113,41 +113,41 @@
             <div class="config-section">
               <div class="section-header-flex">
                 <h4 class="section-title">规则测试 (试运行)</h4>
-                <el-button type="primary" class="action-btn-green" @click="handleDryRun" :loading="runningDry">
-                  <el-icon><VideoPlay /></el-icon> 测试此规则
-                </el-button>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                  <el-select v-model="testLimit" placeholder="测试数据范围" size="small" style="width: 150px">
+                    <el-option label="前 1000 条数据" :value="1000" />
+                    <el-option label="全库数据" :value="0" />
+                  </el-select>
+                  <el-button type="primary" class="action-btn-green" @click="handleDryRun" :loading="runningDry" size="small">
+                    <el-icon><VideoPlay /></el-icon> 测试此规则
+                  </el-button>
+                </div>
               </div>
 
               <div v-if="hasRunDry" class="test-results">
                 <div class="result-alert">
-                  测试完成！抽样检测了1000条数据，其中有234条数据匹配当前规则，匹配率23.4%。
+                  测试完成！抽样检测了 {{ testSummary.total }} 条数据，其中有 {{ testSummary.matched }} 条数据匹配当前规则，匹配率 {{ testSummary.ratio }}%。
                 </div>
 
-                <el-table :data="mockDryRunData" style="width: 100%" class="custom-table">
-                  <el-table-column prop="id" label="用户ID" width="120" />
-                  <el-table-column prop="name" label="用户名" width="120" />
-                  <el-table-column prop="amount" label="累计消费金额" width="160">
+                <el-table :data="mockDryRunData" style="width: 100%" class="custom-table" max-height="400">
+                  <el-table-column label="匹配结果" width="120" align="center" fixed="left">
                     <template #default="scope">
-                      <span :class="{'text-danger': scope.row.amount < 1000, 'text-success': scope.row.amount >= 1000}">
-                        ¥{{ scope.row.amount.toFixed(2) }}
-                      </span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="loginTime" label="最近登录时间" min-width="160">
-                    <template #default="scope">
-                      <span :class="{'text-danger': scope.row.isOld}">
-                        {{ scope.row.loginTime }}
-                      </span>
-                    </template>
-                  </el-table-column>
-                  <el-table-column label="匹配结果" width="120" align="center">
-                    <template #default="scope">
-                      <div class="match-pill" :class="scope.row.matched ? 'matched' : 'unmatched'">
-                        <el-icon><Select v-if="scope.row.matched" /><CloseBold v-else /></el-icon>
-                        {{ scope.row.matched ? '匹配' : '不匹配' }}
+                      <div class="match-pill" :class="scope.row._matched ? 'matched' : 'unmatched'">
+                        <el-icon><Select v-if="scope.row._matched" /><CloseBold v-else /></el-icon>
+                        {{ scope.row._matched ? '匹配' : '不匹配' }}
                       </div>
                     </template>
                   </el-table-column>
+                  
+                  <!-- 动态渲染数据列 -->
+                  <el-table-column
+                    v-for="col in dynamicColumns"
+                    :key="col"
+                    :prop="col"
+                    :label="col"
+                    min-width="150"
+                    show-overflow-tooltip
+                  />
                 </el-table>
               </div>
             </div>
@@ -281,6 +281,9 @@ const previewJsonStr = ref('')
 const hasRunDry = ref(false)
 const runningDry = ref(false)
 const mockDryRunData = ref<any[]>([])
+const testLimit = ref<number>(1000)
+const dynamicColumns = ref<string[]>([])
+const testSummary = ref({ total: 0, matched: 0, ratio: '0.0' })
 
 // 递归转换规则状态到 NeoScan 格式
 const buildNeoScanRule = (state: any): any => {
@@ -364,28 +367,48 @@ const handleSaveRule = async () => {
 }
 
 const handleDryRun = async () => {
+  if (!ruleState.value.conditions || ruleState.value.conditions.length === 0) {
+    ElMessage.warning('当前没有配置任何匹配规则，请先添加规则后再进行测试')
+    return
+  }
+
   runningDry.value = true
   try {
     // DryRun 依然使用 NeoScan 格式发送给后端
     const neoRule = buildNeoScanRule(ruleState.value)
     const ruleJSON = JSON.stringify(neoRule)
-    const results = await DryRunRule(ruleJSON, 100) // Call Go API
+    const results = await DryRunRule(ruleJSON, testLimit.value) // Call Go API
     
+    let matchedCount = 0
+    const columnsSet = new Set<string>()
+
     mockDryRunData.value = results.map((r: any) => {
-        let d: any = {}
-        try {
-            d = JSON.parse(r.data || '{}')
-        } catch (e) {}
-        
-        return {
-            id: r.record_id,
-            name: d.name || d.user_name || '-',
-            amount: Number(d.amount) || 0,
-            loginTime: d.loginTime || d.last_login || '-',
-            matched: r.matched,
-            isOld: false 
-        }
+      if (r.matched) matchedCount++
+      
+      let d: any = {}
+      try {
+        d = JSON.parse(r.data || '{}')
+        // 收集所有出现过的动态列
+        Object.keys(d).forEach(k => {
+          if (k !== '_source_sheet') { // 过滤掉内部字段
+            columnsSet.add(k)
+          }
+        })
+      } catch (e) {}
+      
+      return {
+        _matched: r.matched,
+        ...d
+      }
     })
+
+    dynamicColumns.value = Array.from(columnsSet)
+    testSummary.value = {
+      total: results.length,
+      matched: matchedCount,
+      ratio: results.length > 0 ? ((matchedCount / results.length) * 100).toFixed(1) : '0.0'
+    }
+
     hasRunDry.value = true
   } catch (e: any) {
     ElMessage.error('试运行失败: ' + String(e))
