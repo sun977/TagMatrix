@@ -280,6 +280,10 @@ func (a *App) DeleteTag(id uint64) error {
 	return a.tagLogic.DeleteTag(id)
 }
 
+func (a *App) CheckTagHasRules(id uint64) (bool, error) {
+	return a.tagLogic.CheckTagHasRules(id)
+}
+
 func (a *App) GetAllTags() ([]model.SysTag, error) {
 	return a.tagLogic.GetAllTags()
 }

@@ -83,29 +83,38 @@ func (s *TagLogicService) GetAllTags() ([]model.SysTag, error) {
 	return tags, err
 }
 
-// DeleteTag 删除标签及其子标签
+// DeleteTag 删除标签（包含子标签，并在事务中级联删除关联的匹配规则）
 func (s *TagLogicService) DeleteTag(id uint64) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
-		// 1. 递归找到所有子孙节点 ID
-		var allTags []model.SysTag
-		if err := tx.Find(&allTags).Error; err != nil {
-			return err
-		}
-		idsToDelete := getSubTagIDs(allTags, id)
-		idsToDelete = append(idsToDelete, id) // 包含自己
-
-		// 2. 删除相关的规则
-		if err := tx.Where("tag_id IN ?", idsToDelete).Delete(&model.SysMatchRule{}).Error; err != nil {
+		var tag model.SysTag
+		if err := tx.First(&tag, id).Error; err != nil {
 			return err
 		}
 
-		// 3. 删除相关的打标结果关联 (sys_entity_tags)
-		if err := tx.Where("tag_id IN ?", idsToDelete).Delete(&model.SysEntityTag{}).Error; err != nil {
+		// 1. 找到所有子标签的 ID
+		var children []model.SysTag
+		if err := tx.Where("path LIKE ?", tag.Path+"%").Find(&children).Error; err != nil {
 			return err
 		}
 
-		// 4. 删除标签本身
-		if err := tx.Where("id IN ?", idsToDelete).Delete(&model.SysTag{}).Error; err != nil {
+		var tagIDs []uint64
+		for _, child := range children {
+			tagIDs = append(tagIDs, child.ID)
+		}
+
+		// 2. 级联删除这些标签关联的所有匹配规则
+		if len(tagIDs) > 0 {
+			if err := tx.Where("tag_id IN ?", tagIDs).Delete(&model.SysMatchRule{}).Error; err != nil {
+				return err
+			}
+			// 删除相关的打标结果关联 (sys_entity_tags)
+			if err := tx.Where("tag_id IN ?", tagIDs).Delete(&model.SysEntityTag{}).Error; err != nil {
+				return err
+			}
+		}
+
+		// 3. 删除标签及其子标签
+		if err := tx.Where("path LIKE ?", tag.Path+"%").Delete(&model.SysTag{}).Error; err != nil {
 			return err
 		}
 
@@ -113,15 +122,33 @@ func (s *TagLogicService) DeleteTag(id uint64) error {
 	})
 }
 
-func getSubTagIDs(tags []model.SysTag, parentID uint64) []uint64 {
-	var ids []uint64
-	for _, tag := range tags {
-		if tag.ParentID == parentID {
-			ids = append(ids, tag.ID)
-			ids = append(ids, getSubTagIDs(tags, tag.ID)...)
-		}
+// CheckTagHasRules 检查标签或其子标签是否配置了匹配规则
+func (s *TagLogicService) CheckTagHasRules(id uint64) (bool, error) {
+	var tag model.SysTag
+	if err := s.db.First(&tag, id).Error; err != nil {
+		return false, err
 	}
-	return ids
+
+	var children []model.SysTag
+	if err := s.db.Where("path LIKE ?", tag.Path+"%").Find(&children).Error; err != nil {
+		return false, err
+	}
+
+	var tagIDs []uint64
+	for _, child := range children {
+		tagIDs = append(tagIDs, child.ID)
+	}
+
+	if len(tagIDs) == 0 {
+		return false, nil
+	}
+
+	var count int64
+	if err := s.db.Model(&model.SysMatchRule{}).Where("tag_id IN ?", tagIDs).Count(&count).Error; err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
 
 // ----------------- 标签导入导出 (Import/Export) -----------------

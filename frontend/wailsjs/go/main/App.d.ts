@@ -9,6 +9,8 @@ export function AnalyzeDataFile():Promise<model.FileAnalysisResult>;
 
 export function ChatWithAI(arg1:string):Promise<string>;
 
+export function CheckTagHasRules(arg1:number):Promise<boolean>;
+
 export function CreateTag(arg1:model.SysTag):Promise<void>;
 
 export function DeleteRawData(arg1:Array<number>):Promise<void>;

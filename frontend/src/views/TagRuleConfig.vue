@@ -231,7 +231,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CreateTag, DeleteTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRuleByTag } from '../../wailsjs/go/main/App'
+import { CreateTag, DeleteTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRuleByTag, CheckTagHasRules } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import RuleGroup from '../components/RuleGroup.vue'
 
@@ -287,7 +287,24 @@ const handleImportTags = async () => {
 const handleDeleteTag = async (data: any, e: Event) => {
   e.stopPropagation()
   try {
-    await ElMessageBox.confirm(`确定要删除标签 "${data.name}" 及其所有子节点吗？此操作不可恢复。`, '警告', { type: 'warning' })
+    const hasRules = await CheckTagHasRules(data.id)
+    
+    let confirmMessage = `确定要删除标签 "${data.name}" 及其所有子节点吗？此操作不可恢复。`
+    if (hasRules) {
+      confirmMessage += '<br><br><strong style="color:#f56c6c;">⚠️ 警告：该标签或其子标签已经配置了匹配规则，继续删除将永久销毁这些规则且不可恢复！</strong>'
+    }
+
+    await ElMessageBox.confirm(
+      confirmMessage,
+      '警告',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: true,
+      }
+    )
+    
     await DeleteTag(data.id)
     ElMessage.success("删除成功")
     if (selectedTag.value?.id === data.id) {

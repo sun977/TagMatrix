@@ -10,6 +10,10 @@ export function ChatWithAI(arg1) {
   return window['go']['main']['App']['ChatWithAI'](arg1);
 }
 
+export function CheckTagHasRules(arg1) {
+  return window['go']['main']['App']['CheckTagHasRules'](arg1);
+}
+
 export function CreateTag(arg1) {
   return window['go']['main']['App']['CreateTag'](arg1);
 }
