@@ -133,12 +133,33 @@ func (s *TagLogicService) ExportTags(exportPath string) error {
 		return fmt.Errorf("failed to get tag tree: %w", err)
 	}
 
-	data, err := json.MarshalIndent(tree, "", "  ")
+	exportTree := convertToExportNodes(tree)
+
+	data, err := json.MarshalIndent(exportTree, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal tag tree: %w", err)
 	}
 
 	return os.WriteFile(exportPath, data, 0644)
+}
+
+func convertToExportNodes(nodes []model.TagTreeNode) []model.ExportTagNode {
+	var result []model.ExportTagNode
+	for _, node := range nodes {
+		exportNode := model.ExportTagNode{
+			Name:        node.Name,
+			ParentID:    node.ParentID,
+			Path:        node.Path,
+			Level:       node.Level,
+			Color:       node.Color,
+			Description: node.Description,
+		}
+		if len(node.Children) > 0 {
+			exportNode.Children = convertToExportNodes(node.Children)
+		}
+		result = append(result, exportNode)
+	}
+	return result
 }
 
 // ImportTags 导入标签树 JSON 文件
@@ -148,7 +169,7 @@ func (s *TagLogicService) ImportTags(importPath string) error {
 		return fmt.Errorf("failed to read import file: %w", err)
 	}
 
-	var importedTree []model.TagTreeNode
+	var importedTree []model.ExportTagNode
 	if err := json.Unmarshal(data, &importedTree); err != nil {
 		return fmt.Errorf("invalid json format: %w", err)
 	}
@@ -158,7 +179,7 @@ func (s *TagLogicService) ImportTags(importPath string) error {
 	})
 }
 
-func (s *TagLogicService) importTagNodes(tx *gorm.DB, nodes []model.TagTreeNode, parentID uint64) error {
+func (s *TagLogicService) importTagNodes(tx *gorm.DB, nodes []model.ExportTagNode, parentID uint64) error {
 	for _, node := range nodes {
 		// 检查当前名称在父节点下是否已存在
 		var existingTag model.SysTag

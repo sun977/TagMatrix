@@ -42,3 +42,14 @@ type TagTreeNode struct {
 	SysTag
 	Children []TagTreeNode `json:"children"`
 }
+
+// ExportTagNode 用于导出为 JSON 的精简结构，去除了数据库 ID 和时间戳等无用信息
+type ExportTagNode struct {
+	Name        string          `json:"name"`
+	ParentID    uint64          `json:"parent_id"`
+	Path        string          `json:"path"`
+	Level       int             `json:"level"`
+	Color       string          `json:"color"`
+	Description string          `json:"description"`
+	Children    []ExportTagNode `json:"children,omitempty"`
+}

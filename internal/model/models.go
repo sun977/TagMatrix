@@ -24,8 +24,8 @@ type RawDataRecord struct {
 // SysTag 标签定义表 (树状结构)
 type SysTag struct {
 	BaseModel
-	Name        string         `json:"name" gorm:"size:100;not null;index:idx_parent_name,unique;comment:标签名称"`
-	ParentID    uint64         `json:"parent_id" gorm:"default:0;index:idx_parent_name,unique;comment:父级标签ID，0表示根节点"`
+	Name        string         `json:"name" gorm:"size:100;not null;comment:标签名称"`
+	ParentID    uint64         `json:"parent_id" gorm:"default:0;comment:父级标签ID，0表示根节点"`
 	Path        string         `json:"path" gorm:"size:700;index;comment:物理路径 (Materialized Path) e.g. /1/5/10/"`
 	Level       int            `json:"level" gorm:"default:0;comment:层级深度"`
 	Color       string         `json:"color" gorm:"size:7;comment:标签颜色 (HEX)"`
