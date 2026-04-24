@@ -93,7 +93,7 @@ func TestImportService_ImportCSV(t *testing.T) {
 
 	svc := &DataImportService{db: model.DB}
 
-	count, err := svc.ImportData(csvPath)
+	count, err := svc.ImportData(csvPath, nil)
 	if err != nil {
 		t.Fatalf("ImportData (CSV) failed: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestImportService_ExportCSV(t *testing.T) {
 
 	svc := &DataImportService{db: model.DB}
 
-	_, err := svc.ImportData(csvPath)
+	_, err := svc.ImportData(csvPath, nil)
 	if err != nil {
 		t.Fatalf("ImportData failed: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestImportService_ExportExcel(t *testing.T) {
 
 	svc := &DataImportService{db: model.DB}
 
-	_, err := svc.ImportData(csvPath)
+	_, err := svc.ImportData(csvPath, nil)
 	if err != nil {
 		t.Fatalf("ImportData failed: %v", err)
 	}

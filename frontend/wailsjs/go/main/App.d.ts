@@ -5,6 +5,8 @@ import {taglogic} from '../models';
 import {config} from '../models';
 import {main} from '../models';
 
+export function AnalyzeDataFile():Promise<model.FileAnalysisResult>;
+
 export function ChatWithAI(arg1:string):Promise<string>;
 
 export function CreateTag(arg1:model.SysTag):Promise<void>;
@@ -31,7 +33,7 @@ export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:numbe
 
 export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
 
-export function ImportData(arg1:string):Promise<number>;
+export function ImportData(arg1:string,arg2:Array<string>):Promise<number>;
 
 export function RollbackTask(arg1:number):Promise<void>;
 

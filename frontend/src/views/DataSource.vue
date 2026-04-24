@@ -152,6 +152,34 @@
         />
       </div>
     </div>
+
+    <!-- Sheet 选择对话框 -->
+    <el-dialog
+      v-model="sheetDialogVisible"
+      title="选择要导入的工作表 (Sheet)"
+      width="400px"
+    >
+      <div style="margin-bottom: 10px;">请勾选需要导入的 Sheet：</div>
+      <el-checkbox-group v-model="selectedSheets" class="sheet-checkbox-group">
+        <el-checkbox 
+          v-for="sheet in availableSheets" 
+          :key="sheet" 
+          :value="sheet"
+          :label="sheet"
+          class="sheet-checkbox"
+        >
+          {{ sheet }}
+        </el-checkbox>
+      </el-checkbox-group>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="sheetDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="confirmImportSheets" :loading="isImporting">
+            确定导入
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -161,7 +189,7 @@ import { Upload, Download, Delete, Search, Filter, UploadFilled, RefreshRight, S
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings
-import { ImportData, GetRawDataList, ExportData, DeleteRawData } from '../../wailsjs/go/main/App'
+import { AnalyzeDataFile, ImportData, GetRawDataList, ExportData, DeleteRawData } from '../../wailsjs/go/main/App'
 
 const isLoading = ref(false)
 const isImporting = ref(false)
@@ -178,6 +206,13 @@ const currentPage = ref(1)
 const pageSize = ref(10)
 const totalRecords = ref(0)
 const currentFileName = ref('全部数据')
+
+// Sheet 选择相关的状态
+const sheetDialogVisible = ref(false)
+const availableSheets = ref<string[]>([])
+const selectedSheets = ref<string[]>([])
+const pendingImportFilePath = ref('')
+const pendingImportFileName = ref('')
 
 // 计算需要展示的列
 const visibleColumns = computed(() => {
@@ -235,18 +270,51 @@ const fetchTableData = async () => {
 const handleImportClick = async () => {
   isImporting.value = true
   try {
-    const count = await ImportData("") // 传入空字符串，Wails 后端会自动弹窗选择文件
+    const analysis = await AnalyzeDataFile()
+    if (!analysis) return
+
+    pendingImportFilePath.value = analysis.filePath
+    pendingImportFileName.value = analysis.fileName
+
+    if (analysis.fileType === 'excel' && analysis.sheetNames && analysis.sheetNames.length > 0) {
+      // 弹出多 Sheet 选择框
+      availableSheets.value = analysis.sheetNames
+      selectedSheets.value = [analysis.sheetNames[0]] // 默认选中第一个
+      sheetDialogVisible.value = true
+    } else {
+      // 如果是 CSV，或者解析不到 sheet，直接导入
+      await executeImport([])
+    }
+  } catch (error: any) {
+    if (error !== "cancelled") {
+      ElMessage.error('文件分析失败: ' + String(error))
+    }
+  } finally {
+    isImporting.value = false
+  }
+}
+
+const confirmImportSheets = async () => {
+  if (selectedSheets.value.length === 0) {
+    ElMessage.warning('请至少选择一个 Sheet')
+    return
+  }
+  await executeImport(selectedSheets.value)
+  sheetDialogVisible.value = false
+}
+
+const executeImport = async (sheets: string[]) => {
+  isImporting.value = true
+  try {
+    const count = await ImportData(pendingImportFilePath.value, sheets)
     if (count > 0) {
       ElMessage.success(`成功导入 ${count} 条数据`)
-      currentFileName.value = '最新导入数据'
+      currentFileName.value = pendingImportFileName.value
       currentPage.value = 1
       fetchTableData()
     }
   } catch (error: any) {
-    // 用户取消选择文件不报错
-    if (error !== "cancelled") {
-      ElMessage.error('导入失败: ' + String(error))
-    }
+    ElMessage.error('导入失败: ' + String(error))
   } finally {
     isImporting.value = false
   }

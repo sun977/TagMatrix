@@ -186,6 +186,24 @@ export namespace model {
 	        this.totalRules = source["totalRules"];
 	    }
 	}
+	export class FileAnalysisResult {
+	    filePath: string;
+	    fileName: string;
+	    fileType: string;
+	    sheetNames: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new FileAnalysisResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.filePath = source["filePath"];
+	        this.fileName = source["fileName"];
+	        this.fileType = source["fileType"];
+	        this.sheetNames = source["sheetNames"];
+	    }
+	}
 	export class TagDto {
 	    name: string;
 	    color: string;

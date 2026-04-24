@@ -140,9 +140,37 @@ func (s *DataImportService) exportToExcel(filePath string, headers []string, row
 	return f.SaveAs(filePath)
 }
 
+// AnalyzeFile 分析文件，返回基础信息和 Sheet 列表
+func (s *DataImportService) AnalyzeFile(filePath string) (*model.FileAnalysisResult, error) {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	fileName := filepath.Base(filePath)
+
+	result := &model.FileAnalysisResult{
+		FilePath: filePath,
+		FileName: fileName,
+	}
+
+	if ext == ".csv" {
+		result.FileType = "csv"
+		return result, nil
+	} else if ext == ".xlsx" || ext == ".xls" {
+		result.FileType = "excel"
+		f, err := excelize.OpenFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open excel file: %w", err)
+		}
+		defer f.Close()
+
+		result.SheetNames = f.GetSheetList()
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("unsupported file format: %s", ext)
+}
+
 // ImportData 导入 Excel 或 CSV 文件
 // 返回导入的记录数和错误
-func (s *DataImportService) ImportData(filePath string) (int, error) {
+func (s *DataImportService) ImportData(filePath string, selectedSheets []string) (int, error) {
 	if s.db == nil {
 		return 0, fmt.Errorf("database not initialized")
 	}
@@ -155,7 +183,7 @@ func (s *DataImportService) ImportData(filePath string) (int, error) {
 	case ".csv":
 		records, err = s.parseCSV(filePath)
 	case ".xlsx", ".xls":
-		records, err = s.parseExcel(filePath)
+		records, err = s.parseExcel(filePath, selectedSheets)
 	default:
 		return 0, fmt.Errorf("unsupported file format: %s", ext)
 	}
@@ -210,47 +238,59 @@ func (s *DataImportService) parseCSV(filePath string) ([]map[string]interface{},
 }
 
 // parseExcel 解析 Excel 文件
-func (s *DataImportService) parseExcel(filePath string) ([]map[string]interface{}, error) {
+func (s *DataImportService) parseExcel(filePath string, selectedSheets []string) ([]map[string]interface{}, error) {
 	f, err := excelize.OpenFile(filePath)
 	if err != nil {
 		return nil, err
 	}
 	defer f.Close()
 
-	// 获取第一个工作表
-	sheetName := f.GetSheetName(0)
-	if sheetName == "" {
-		return nil, fmt.Errorf("no sheet found in excel file")
+	sheetsToProcess := selectedSheets
+	// 如果前端没有传 sheet（比如直接导入模式或者默认情况），取第一个 sheet
+	if len(sheetsToProcess) == 0 {
+		sheetName := f.GetSheetName(0)
+		if sheetName == "" {
+			return nil, fmt.Errorf("no sheet found in excel file")
+		}
+		sheetsToProcess = append(sheetsToProcess, sheetName)
 	}
 
-	rows, err := f.GetRows(sheetName)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read rows from sheet %s: %w", sheetName, err)
-	}
+	var allRecords []map[string]interface{}
 
-	if len(rows) < 2 {
-		return nil, nil // 没有数据行
-	}
+	for _, sheetName := range sheetsToProcess {
+		rows, err := f.GetRows(sheetName)
+		if err != nil {
+			// 如果某个 sheet 读取失败，记录日志并继续，或者直接返回错误。这里选择返回错误以保证数据完整性
+			return nil, fmt.Errorf("failed to read rows from sheet %s: %w", sheetName, err)
+		}
 
-	headers := rows[0]
-	var records []map[string]interface{}
+		if len(rows) < 2 {
+			continue // 跳过没有数据行的 sheet
+		}
 
-	for i := 1; i < len(rows); i++ {
-		row := rows[i]
-		record := make(map[string]interface{})
-		for j, value := range row {
-			if j < len(headers) {
-				record[headers[j]] = value
+		headers := rows[0]
+
+		for i := 1; i < len(rows); i++ {
+			row := rows[i]
+			record := make(map[string]interface{})
+			for j, value := range row {
+				if j < len(headers) {
+					record[headers[j]] = value
+				}
 			}
+			// 补齐空列
+			for j := len(row); j < len(headers); j++ {
+				record[headers[j]] = ""
+			}
+
+			// 可以在记录中附加来源 sheet 名，方便追溯
+			record["_source_sheet"] = sheetName
+
+			allRecords = append(allRecords, record)
 		}
-		// 补齐空列
-		for j := len(row); j < len(headers); j++ {
-			record[headers[j]] = ""
-		}
-		records = append(records, record)
 	}
 
-	return records, nil
+	return allRecords, nil
 }
 
 // batchInsertRecords 批量将数据序列化并入库

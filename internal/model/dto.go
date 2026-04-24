@@ -28,3 +28,11 @@ type PagedTaggedData struct {
 	Total   int64             `json:"total"`
 	Records []TaggedRecordDto `json:"records"`
 }
+
+// FileAnalysisResult 用于文件分析后的返回结果
+type FileAnalysisResult struct {
+	FilePath   string   `json:"filePath"`
+	FileName   string   `json:"fileName"`
+	FileType   string   `json:"fileType"`   // csv 或 excel
+	SheetNames []string `json:"sheetNames"` // 只有 excel 有
+}

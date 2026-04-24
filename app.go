@@ -87,23 +87,26 @@ func (a *App) GetDashboardStats() (*model.DashboardStats, error) {
 
 // ----------------- Data Import/Export API -----------------
 
-func (a *App) ImportData(filePath string) (int, error) {
-	if filePath == "" {
-		file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-			Title: "选择要导入的数据文件",
-			Filters: []runtime.FileFilter{
-				{DisplayName: "表格文件", Pattern: "*.csv;*.xlsx"},
-			},
-		})
-		if err != nil {
-			return 0, err
-		}
-		if file == "" {
-			return 0, fmt.Errorf("cancelled")
-		}
-		filePath = file
+// AnalyzeDataFile 分析文件并返回表信息 (前端用来做多 Sheet 选择)
+func (a *App) AnalyzeDataFile() (*model.FileAnalysisResult, error) {
+	file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "选择要导入的数据文件",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "表格文件", Pattern: "*.csv;*.xlsx"},
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
-	return a.dataImport.ImportData(filePath)
+	if file == "" {
+		return nil, fmt.Errorf("cancelled")
+	}
+
+	return a.dataImport.AnalyzeFile(file)
+}
+
+func (a *App) ImportData(filePath string, selectedSheets []string) (int, error) {
+	return a.dataImport.ImportData(filePath, selectedSheets)
 }
 
 func (a *App) ExportData(batchID uint64, exportPath string) error {
