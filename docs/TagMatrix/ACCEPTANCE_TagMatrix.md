@@ -70,16 +70,16 @@
 ---
 
 ### [T6] AI 智能助手引擎 (AI Assistant Integration)
-*状态: 🟡 准备进行中 (Pending/Next)*
-- [ ] 引入 `sashabaranov/go-openai` SDK
-- [ ] 编写获取当前 SQLite Schema 的内部函数
-- [ ] 构造 AI 提示词 (System Prompt)，注入 Schema 上下文
-- [ ] 暴露 `ChatWithAI` 等接口支持自然语言生成 SQL 及对话
+*状态: ✅ 已完成 (Completed)*
+- [x] 引入 `sashabaranov/go-openai` SDK
+- [x] 编写获取当前 SQLite Schema 的内部函数
+- [x] 构造 AI 提示词 (System Prompt)，注入 Schema 上下文
+- [x] 暴露 `ChatWithAI` 等接口支持自然语言生成 SQL 及对话
 
 ---
 
 ### [T7] UI 集成与最终打磨 (UI Integration & Polish)
-*状态: ⚪ 未开始 (Not Started)*
+*状态: 🟡 准备进行中 (Pending/Next)*
 - [ ] 引入 Element Plus UI 框架和 Pinia
 - [ ] 开发前端页面：数据源管理、标签/规则配置、任务看板、AI 助手面板
 - [ ] 联调所有的 Wails IPC 接口
