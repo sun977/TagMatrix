@@ -35,7 +35,7 @@ const routes: Array<RouteRecordRaw> = [
         path: 'tagged-data',
         name: 'TaggedData',
         component: () => import('../views/TaggedData.vue'),
-        meta: { title: '打标结果', icon: 'DataBoard' }
+        meta: { title: '打标数据看板', icon: 'DataBoard' }
       }
     ]
   }
