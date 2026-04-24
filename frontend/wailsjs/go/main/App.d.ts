@@ -3,6 +3,7 @@
 import {model} from '../models';
 import {taglogic} from '../models';
 import {config} from '../models';
+import {main} from '../models';
 
 export function ChatWithAI(arg1:string):Promise<string>;
 
@@ -15,6 +16,8 @@ export function ExportData(arg1:number,arg2:string):Promise<void>;
 export function GetAllTags():Promise<Array<model.SysTag>>;
 
 export function GetAppConfig():Promise<config.AppConfig>;
+
+export function GetRawDataList(arg1:number,arg2:number):Promise<main.PagedData>;
 
 export function ImportData(arg1:string):Promise<number>;
 

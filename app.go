@@ -10,6 +10,7 @@ import (
 	"TagMatrix/internal/service/dataimport"
 	"TagMatrix/internal/service/taglogic"
 	"TagMatrix/internal/service/taskengine"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 // App struct
@@ -66,11 +67,67 @@ func (a *App) SaveAppConfig(newConfig config.AppConfig) error {
 // ----------------- Data Import/Export API -----------------
 
 func (a *App) ImportData(filePath string) (int, error) {
+	if filePath == "" {
+		file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+			Title: "选择要导入的数据文件",
+			Filters: []runtime.FileFilter{
+				{DisplayName: "表格文件", Pattern: "*.csv;*.xlsx"},
+			},
+		})
+		if err != nil {
+			return 0, err
+		}
+		if file == "" {
+			return 0, fmt.Errorf("cancelled")
+		}
+		filePath = file
+	}
 	return a.dataImport.ImportData(filePath)
 }
 
 func (a *App) ExportData(batchID uint64, exportPath string) error {
+	if exportPath == "" {
+		file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+			Title: "选择导出路径",
+			DefaultFilename: "export_data.csv",
+			Filters: []runtime.FileFilter{
+				{DisplayName: "CSV 文件", Pattern: "*.csv"},
+				{DisplayName: "Excel 文件", Pattern: "*.xlsx"},
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if file == "" {
+			return fmt.Errorf("cancelled")
+		}
+		exportPath = file
+	}
 	return a.dataImport.ExportData(batchID, exportPath)
+}
+
+type PagedData struct {
+	Total   int64
+	Records []model.RawDataRecord
+}
+
+func (a *App) GetRawDataList(page, pageSize int) (*PagedData, error) {
+	var records []model.RawDataRecord
+	var total int64
+
+	db := model.DB.Model(&model.RawDataRecord{})
+	db.Count(&total)
+
+	offset := (page - 1) * pageSize
+	err := db.Offset(offset).Limit(pageSize).Find(&records).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return &PagedData{
+		Total:   total,
+		Records: records,
+	}, nil
 }
 
 // ----------------- Tag & Rule Logic API -----------------

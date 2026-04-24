@@ -26,6 +26,10 @@ export function GetAppConfig() {
   return window['go']['main']['App']['GetAppConfig']();
 }
 
+export function GetRawDataList(arg1, arg2) {
+  return window['go']['main']['App']['GetRawDataList'](arg1, arg2);
+}
+
 export function ImportData(arg1) {
   return window['go']['main']['App']['ImportData'](arg1);
 }
