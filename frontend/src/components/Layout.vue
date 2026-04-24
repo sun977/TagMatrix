@@ -22,16 +22,17 @@
           <el-icon><component :is="route.meta?.icon" /></el-icon>
           <span v-if="!isCollapsed">{{ route.meta?.title }}</span>
         </router-link>
+      </nav>
 
+      <!-- 底部收起按钮及设置按钮 -->
+      <div class="sidebar-footer">
         <!-- 全局设置 -->
         <div class="menu-item setting-btn" @click="openSettings">
           <el-icon><Setting /></el-icon>
           <span v-if="!isCollapsed">全局设置</span>
         </div>
-      </nav>
-
-      <!-- 底部收起按钮 -->
-      <div class="sidebar-footer">
+        
+        <!-- 底部收起按钮 -->
         <div class="menu-item collapse-btn" @click="toggleCollapse">
           <el-icon><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
           <span v-if="!isCollapsed">收起侧边栏</span>
@@ -243,7 +244,7 @@ onUnmounted(() => {
   }
 
   .setting-btn {
-    margin-top: 24px;
+    margin-bottom: 8px;
   }
 
   .sidebar-footer {
@@ -251,6 +252,8 @@ onUnmounted(() => {
     padding-top: 16px;
     border-top: 1px solid var(--tm-border-color);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
 
   /* --- 拖拽调整宽度的把手 --- */
