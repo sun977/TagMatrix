@@ -11,7 +11,7 @@
         <router-link 
           v-for="route in menuRoutes" 
           :key="route.path"
-          :to="route.path" 
+          :to="'/' + route.path" 
           class="menu-item"
           active-class="is-active"
         >
@@ -49,7 +49,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { Grid, Setting, House, Files, PriceTag, List, Service } from '@element-plus/icons-vue'
+import { Grid, Setting, House, Files, PriceTag, List, Service, Coin, Finished } from '@element-plus/icons-vue'
 import SettingsDialog from './SettingsDialog.vue'
 
 const router = useRouter()
@@ -58,7 +58,8 @@ const isSettingsOpen = ref(false)
 
 // 过滤出要在菜单中显示的路由
 const menuRoutes = computed(() => {
-  return router.options.routes.filter(r => r.meta && r.meta.title)
+  const mainRoute = router.options.routes.find(r => r.path === '/')
+  return mainRoute?.children?.filter(r => r.meta && r.meta.title) || []
 })
 
 const openSettings = () => {
