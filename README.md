@@ -1,10 +1,16 @@
 # TagMatrix
 
-> 一个高性能、可视化、可拓展的数据打标桌面应用程序。
+> 一个高性能、可视化、可拓展的跨平台数据打标桌面应用程序。
 
 TagMatrix 是一个致力于解决海量结构化/半结构化数据打标签问题的通用系统。无论是单标签分类、多标签标记，还是主副标签的混合模式，TagMatrix 都能通过其内置的高性能无状态匹配引擎 (`matcher`) 和大语言模型 (AI) 提供极速且精准的自动化打标体验。
 
-本系统采用 **Wails** 构建，最终交付为跨平台的本地单体桌面应用程序（`.exe` 等二进制文件），在保证极佳的本地化和数据隐私的同时，能够流畅处理数百万级别的数据行。
+本系统采用 **Wails (Go + Vue3)** 构建，最终交付为开箱即用的跨平台本地单体桌面应用程序（支持 Windows `.exe`、macOS `.app` 以及 Linux 可执行文件）。相比传统的 Web B/S 架构，TagMatrix 具有以下显著优势：
+
+- 🌍 **跨平台与开箱即用**：无需额外部署服务器或配置复杂的数据库环境，直接双击运行，完美兼容三大主流操作系统。
+- 🌳 **无限极树状标签体系**：彻底打破传统扁平化标签的局限，支持创建多层级、树状结构的标签体系，精准映射复杂业务分类逻辑。
+- ⚙️ **强悍的多级规则匹配引擎**：内置高性能无状态匹配引擎，支持任意层级的逻辑组嵌套（AND/OR），提供高达 **19 种专业级匹配算子**（包含正则、包含、数值范围、特殊集集合等），轻松应对最严苛的打标条件。
+- 🔒 **绝对的数据隐私保护**：所有业务数据（如数百万行的敏感数据）全部通过 SQLite 集中存储在本地，物理隔离，彻底杜绝数据泄露风险（仅在用户主动授权时发起受控的 AI 模型接口请求）。
+- 🚀 **原生级性能与流畅体验**：得益于 Go 语言强大的并发处理能力，系统能极速支撑海量数据的流式读取与查询；结合 Vue3 与 Element Plus，提供媲美现代 Web 应用的丝滑 UI 交互。
 
 ---
 
@@ -38,13 +44,40 @@ TagMatrix 是一个致力于解决海量结构化/半结构化数据打标签问
 
 ## 📚 详细文档 (Documentation)
 
-项目的需求演进、架构设计及相关决策记录存放在 `docs/TagMatrix/` 目录下：
-*   [ALIGNMENT_TagMatrix.md](./docs/TagMatrix/ALIGNMENT_TagMatrix.md) - 需求对齐与功能边界文档。
-*   [EVOLUTION_TagMatrix.md](./docs/TagMatrix/EVOLUTION_TagMatrix.md) - 需求演进与架构决策追踪记录。
+项目的需求演进、架构设计及相关决策记录存放在 `docs/` 目录下：
+*   [EVOLUTION_TagMatrix.md](./docs/TagMatrix/EVOLUTION_TagMatrix.md) - 需求演进与架构决策追踪记录（涵盖 V1.0 至 V2.0 完整演进史）。
+*   [DESIGN_TagMatrix.md](./docs/TagMatrix/DESIGN_TagMatrix.md) - 系统核心架构设计方案。
+*   [CODING_STANDARDS.md](./docs/TagMatrix/CODING_STANDARDS.md) - 项目开发与代码规范。
 
 ## 🚀 快速开始 (Getting Started)
 
-*(待开发完成后补充 Wails 的环境配置与启动命令)*
+### 环境依赖
+*   [Go](https://golang.org/doc/install) 1.20+
+*   [Node.js](https://nodejs.org/en/download/) 16+
+*   [Wails](https://wails.io/docs/gettingstarted/installation) CLI v2
+
+### 本地开发与运行
+1. 克隆仓库至本地：
+   ```bash
+   git clone https://github.com/your-repo/TagMatrix.git
+   cd TagMatrix
+   ```
+2. 安装前端依赖：
+   ```bash
+   cd frontend
+   npm install
+   cd ..
+   ```
+3. 启动 Wails 开发者模式（支持前端热重载）：
+   ```bash
+   wails dev
+   ```
+
+### 编译打包
+在项目根目录运行以下命令，即可生成对应平台的单体桌面可执行文件（存放于 `build/bin/` 目录下）：
+```bash
+wails build
+```
 
 ## 🔮 未来演进规划 (Future Roadmap)
 
@@ -58,3 +91,14 @@ TagMatrix 是一个致力于解决海量结构化/半结构化数据打标签问
     *   支持自定义推导算法的插件化接入。
 *   **📊 标签体系运营与分析**
     *   提供标签质量分析视图（如标签覆盖率、孤儿标签、规则命中率分布等），指导规则与策略的持续优化。
+
+---
+
+## 👨‍💻 开发者信息 (Developer Information)
+
+- **Author**: Sun977
+- **Email**: jiuwei977@foxmail.com
+- **License**: [MIT](https://opensource.org/licenses/MIT)
+- **Copyright**: © 2026 Sun977. All rights reserved.
+
+欢迎提交 Issue 和 Pull Request，一起将 TagMatrix 打造得更好用！
