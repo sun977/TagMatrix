@@ -84,8 +84,12 @@ func (a *App) GetDashboardStats() (*model.DashboardStats, error) {
 	// 规则总数
 	model.DB.Model(&model.SysMatchRule{}).Count(&stats.TotalRules)
 
-	// 已打标数据量 (去重统计有多少 record_id 在 entity_tag 表中)
-	model.DB.Model(&model.SysEntityTag{}).Select("count(distinct(record_id))").Count(&stats.TaggedRecords)
+	// 已打标数据量 (去重统计有多少 distinct record_id 在 sys_entity_tags 表中，且关联的记录未被软删除)
+	model.DB.Model(&model.SysEntityTag{}).
+		Joins("JOIN raw_data_records ON raw_data_records.id = sys_entity_tags.record_id").
+		Where("raw_data_records.deleted_at IS NULL").
+		Distinct("sys_entity_tags.record_id").
+		Count(&stats.TaggedRecords)
 
 	return &stats, nil
 }
