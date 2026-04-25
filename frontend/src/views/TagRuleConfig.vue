@@ -61,42 +61,36 @@
           <!-- 标签信息详情卡片 -->
           <el-card class="tag-info-card" shadow="never" style="border-radius: 8px; border: 1px solid var(--tm-border-light);">
             <template #header>
-              <div class="card-header" style="display: flex; align-items: center;">
-                <span class="tag-color-dot large" :style="{ backgroundColor: selectedTag.color }"></span>
-                <h2 style="margin: 0 0 0 12px; font-size: 18px; font-weight: 600;">{{ selectedTag.name }}</h2>
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center;">
+                  <span class="tag-color-dot large" :style="{ backgroundColor: selectedTag.color }"></span>
+                  <h2 style="margin: 0 0 0 12px; font-size: 18px; font-weight: 600;">{{ selectedTag.name }}</h2>
+                </div>
+                <el-button type="primary" class="action-btn-green" @click="handleUpdateTag" :loading="updatingTag" size="small">更新标签</el-button>
               </div>
             </template>
             <div class="config-section" style="margin-bottom: 0;">
-              <el-row :gutter="24">
-                <el-col :span="8">
-                  <div class="form-item">
-                    <label>标签名称</label>
-                    <el-input v-model="selectedTag.name" />
+              <div style="display: flex; gap: 24px; align-items: center; flex-wrap: wrap;">
+                <div class="form-item inline" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0;">
+                  <label style="margin-bottom: 0; white-space: nowrap;">标签名称</label>
+                  <el-input v-model="selectedTag.name" style="width: 200px;" />
+                </div>
+                <div class="form-item inline" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0;">
+                  <label style="margin-bottom: 0; white-space: nowrap;">标签颜色</label>
+                  <div class="color-swatches">
+                    <div class="swatch" style="background: #f5a623" @click="selectedTag.color = '#f5a623'"></div>
+                    <div class="swatch" style="background: #f56c6c" @click="selectedTag.color = '#f56c6c'"></div>
+                    <div class="swatch" style="background: #e6a23c" @click="selectedTag.color = '#e6a23c'"></div>
+                    <div class="swatch" style="background: #52c48f" @click="selectedTag.color = '#52c48f'"></div>
+                    <div class="swatch" style="background: #409eff" @click="selectedTag.color = '#409eff'"></div>
+                    <div class="swatch" style="background: #7b61ff" @click="selectedTag.color = '#7b61ff'"></div>
+                    <div class="swatch" style="background: #e056fd" @click="selectedTag.color = '#e056fd'"></div>
                   </div>
-                </el-col>
-                <el-col :span="8">
-                  <div class="form-item">
-                    <label>标签颜色</label>
-                    <div class="color-swatches">
-                      <div class="swatch" style="background: #f5a623" @click="selectedTag.color = '#f5a623'"></div>
-                      <div class="swatch" style="background: #f56c6c" @click="selectedTag.color = '#f56c6c'"></div>
-                      <div class="swatch" style="background: #e6a23c" @click="selectedTag.color = '#e6a23c'"></div>
-                      <div class="swatch" style="background: #52c48f" @click="selectedTag.color = '#52c48f'"></div>
-                      <div class="swatch" style="background: #409eff" @click="selectedTag.color = '#409eff'"></div>
-                      <div class="swatch" style="background: #7b61ff" @click="selectedTag.color = '#7b61ff'"></div>
-                      <div class="swatch" style="background: #e056fd" @click="selectedTag.color = '#e056fd'"></div>
-                    </div>
-                  </div>
-                </el-col>
-                <el-col :span="8">
-                  <div class="form-item">
-                    <label>标签描述</label>
-                    <el-input v-model="selectedTag.description" type="textarea" :rows="2" placeholder="输入标签描述..." />
-                  </div>
-                </el-col>
-              </el-row>
-              <div style="text-align: right; margin-top: 16px;">
-                <el-button type="primary" class="action-btn-green" @click="handleUpdateTag" :loading="updatingTag">更新标签</el-button>
+                </div>
+                <div class="form-item inline" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0; flex: 1; min-width: 200px;">
+                  <label style="margin-bottom: 0; white-space: nowrap;">标签描述</label>
+                  <el-input v-model="selectedTag.description" placeholder="输入标签描述..." />
+                </div>
               </div>
             </div>
           </el-card>
@@ -104,24 +98,28 @@
           <!-- 标签对应的规则详情卡片 -->
           <el-card class="rule-info-card" shadow="never" style="flex: 1; display: flex; flex-direction: column; border-radius: 8px; border: 1px solid var(--tm-border-light);">
             <template #header>
-              <div class="card-header section-header-flex" style="margin-bottom: 0;">
+              <div class="card-header" style="margin-bottom: 0;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">规则配置</h3>
+              </div>
+            </template>
+
+            <div class="scroll-content" style="flex: 1; overflow-y: auto;">
+              <div class="section-header-flex" style="margin-bottom: 24px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <h3 style="margin: 0; font-size: 16px;">匹配规则</h3>
+                  <h3 style="margin: 0; font-size: 15px; font-weight: 600;">匹配规则</h3>
                   <el-tooltip content="点击查看匹配算子说明" placement="top">
-                    <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer;"><QuestionFilled /></el-icon>
+                    <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399;"><QuestionFilled /></el-icon>
                   </el-tooltip>
                 </div>
                 <el-button size="small" type="info" plain @click="previewRuleJson">
                   预览 JSON
                 </el-button>
               </div>
-            </template>
 
-            <div class="scroll-content" style="flex: 1; overflow-y: auto;">
               <div class="config-section">
-                <div class="form-item" style="margin-bottom: 20px; width: 50%;">
-                  <label>规则名称</label>
-                  <el-input v-model="ruleName" :placeholder="selectedTag.name + '-Rule'" />
+                <div class="form-item inline" style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+                  <label style="margin-bottom: 0; white-space: nowrap; font-weight: 500;">规则名称</label>
+                  <el-input v-model="ruleName" :placeholder="selectedTag.name + '-Rule'" style="width: 300px;" />
                 </div>
                 <div class="rules-list">
                   <RuleGroup v-model="ruleState" :is-root="true" />
