@@ -17,6 +17,8 @@ export function DeleteRawData(arg1:Array<number>):Promise<void>;
 
 export function DeleteTag(arg1:number):Promise<void>;
 
+export function DeleteTaskBatches(arg1:Array<number>):Promise<void>;
+
 export function DryRunRule(arg1:string,arg2:number):Promise<Array<taglogic.DryRunResult>>;
 
 export function ExportData(arg1:number,arg2:string):Promise<void>;

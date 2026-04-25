@@ -369,3 +369,30 @@ func (s *TaskEngineService) GetTaskLogs(batchID uint64) ([]model.TagTaskLogDto, 
 
 	return dtos, nil
 }
+
+// DeleteTaskBatches 硬删除指定的打标批次及其关联的日志和标签
+func (s *TaskEngineService) DeleteTaskBatches(ctx context.Context, batchIDs []uint64) error {
+	if len(batchIDs) == 0 {
+		return nil
+	}
+
+	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 1. 删除批次产生的标签关联记录
+		if err := tx.Unscoped().Where("batch_id IN ?", batchIDs).Delete(&model.SysEntityTag{}).Error; err != nil {
+			return fmt.Errorf("failed to hard delete entity tags: %w", err)
+		}
+
+		// 2. 删除批次日志
+		if err := tx.Unscoped().Where("batch_id IN ?", batchIDs).Delete(&model.TagTaskLog{}).Error; err != nil {
+			return fmt.Errorf("failed to hard delete task logs: %w", err)
+		}
+
+		// 3. 删除批次记录本身
+		if err := tx.Unscoped().Where("id IN ?", batchIDs).Delete(&model.TagTaskBatch{}).Error; err != nil {
+			return fmt.Errorf("failed to hard delete task batches: %w", err)
+		}
+
+		log.Printf("[TaskEngine] Hard deleted batches: %v", batchIDs)
+		return nil
+	})
+}

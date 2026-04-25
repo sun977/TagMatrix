@@ -88,7 +88,17 @@
     <!-- 任务历史区域 -->
     <div class="history-section">
       <div class="section-header">
-        <h3 class="section-title">任务历史</h3>
+        <div class="section-title-wrapper" style="display: flex; align-items: center; gap: 16px;">
+          <h3 class="section-title" style="margin-bottom: 0;">任务历史</h3>
+          <el-button 
+            v-if="selectedTaskIds.length > 0" 
+            type="danger" 
+            size="small" 
+            @click="handleBatchDelete"
+          >
+            批量删除 ({{ selectedTaskIds.length }})
+          </el-button>
+        </div>
         <div class="header-filters">
           <el-select v-model="filterStatus" class="filter-select">
             <el-option label="全部状态" value="all" />
@@ -107,7 +117,14 @@
         </div>
       </div>
 
-      <el-table :data="paginatedTaskHistory" style="width: 100%" class="custom-table" v-loading="loadingBatches">
+      <el-table 
+        :data="paginatedTaskHistory" 
+        style="width: 100%" 
+        class="custom-table" 
+        v-loading="loadingBatches"
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="55" />
         <el-table-column prop="name" label="任务名称" min-width="180" />
         <el-table-column prop="status" label="状态" width="120">
           <template #default="scope">
@@ -144,19 +161,22 @@
               <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
               <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
               <el-button type="danger" link size="small" @click="handleRollback(scope.row.id)">回退</el-button>
+              <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)">删除</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'failed'">
               <el-button type="danger" link size="small">查看错误日志</el-button>
               <el-button type="success" size="small" class="action-btn retry-btn">重试</el-button>
+              <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)">删除</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'rolled_back'">
               <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
               <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
+              <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)">删除</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'pending'">
               <el-button size="small" class="action-btn">编辑</el-button>
               <el-button type="success" size="small" class="action-btn retry-btn">立即执行</el-button>
-              <el-button type="danger" link size="small">删除</el-button>
+              <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)">删除</el-button>
             </template>
           </template>
         </el-table-column>
@@ -204,8 +224,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV } from '../../wailsjs/go/main/App'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -276,6 +296,66 @@ watch([filterStatus, filterTime], () => {
 const logDialogVisible = ref(false)
 const loadingLogs = ref(false)
 const taskLogs = ref<model.TagTaskLogDto[]>([])
+
+// 批量删除相关
+const selectedTaskIds = ref<number[]>([])
+
+const handleSelectionChange = (selection: any[]) => {
+  selectedTaskIds.value = selection.map(item => item.id)
+}
+
+const handleBatchDelete = async () => {
+  if (selectedTaskIds.value.length === 0) return
+
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除选中的 ${selectedTaskIds.value.length} 个打标任务吗？相关的日志和打标记录将被彻底清除，该操作不可恢复！`,
+      '批量删除任务',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    loadingBatches.value = true
+    await DeleteTaskBatches(selectedTaskIds.value)
+    ElMessage.success('批量删除成功')
+    selectedTaskIds.value = []
+    await fetchBatches()
+  } catch (e: any) {
+    if (e !== 'cancel') {
+      ElMessage.error('批量删除失败: ' + String(e))
+    }
+  } finally {
+    loadingBatches.value = false
+  }
+}
+
+const handleSingleDelete = async (id: number) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除该打标任务吗？相关的日志和打标记录将被彻底清除，该操作不可恢复！`,
+      '删除任务',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    
+    loadingBatches.value = true
+    await DeleteTaskBatches([id])
+    ElMessage.success('删除成功')
+    await fetchBatches()
+  } catch (e: any) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败: ' + String(e))
+    }
+  } finally {
+    loadingBatches.value = false
+  }
+}
 
 const viewLogs = async (batchId: number) => {
   logDialogVisible.value = true

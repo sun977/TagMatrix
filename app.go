@@ -370,6 +370,10 @@ func (a *App) RollbackTask(batchID uint64) error {
 	return a.taskEngine.RollbackTask(a.ctx, batchID)
 }
 
+func (a *App) DeleteTaskBatches(batchIDs []uint64) error {
+	return a.taskEngine.DeleteTaskBatches(a.ctx, batchIDs)
+}
+
 func (a *App) GetTaskBatches() ([]model.TagTaskBatch, error) {
 	var batches []model.TagTaskBatch
 	err := model.DB.Order("id desc").Find(&batches).Error

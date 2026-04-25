@@ -26,6 +26,10 @@ export function DeleteTag(arg1) {
   return window['go']['main']['App']['DeleteTag'](arg1);
 }
 
+export function DeleteTaskBatches(arg1) {
+  return window['go']['main']['App']['DeleteTaskBatches'](arg1);
+}
+
 export function DryRunRule(arg1, arg2) {
   return window['go']['main']['App']['DryRunRule'](arg1, arg2);
 }
