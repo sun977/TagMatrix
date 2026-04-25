@@ -178,10 +178,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { Search, Download, RefreshRight } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { Search, Download, RefreshRight, Setting, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { GetTaggedDataList, ExportData, GetAllTags, GetTaskBatches, GetAvailableDataSources } from '../../wailsjs/go/main/App'
+import { GetTaggedDataList, ExportTaggedDataList, GetAllTags, GetTaskBatches, GetAvailableDataSources } from '../../wailsjs/go/main/App'
 
 const loading = ref(false)
 
@@ -199,6 +199,25 @@ const filterForm = reactive({
 
 // 动态列名
 const dynamicColumns = ref<string[]>([])
+const hiddenColumns = ref<string[]>([])
+
+// 查看详情相关的状态
+const detailDialogVisible = ref(false)
+const formattedDetailJson = ref('')
+
+// 计算需要展示的列
+const visibleColumns = computed(() => {
+  return dynamicColumns.value.filter(col => !hiddenColumns.value.includes(col))
+})
+
+const toggleColumn = (col: string) => {
+  const idx = hiddenColumns.value.indexOf(col)
+  if (idx > -1) {
+    hiddenColumns.value.splice(idx, 1)
+  } else {
+    hiddenColumns.value.push(col)
+  }
+}
 
 const formatTagMode = (mode: string) => {
   switch (mode) {
@@ -304,8 +323,17 @@ const resetFilter = () => {
 
 const handleExport = async () => {
   try {
-    const batchId = filterForm.batch ? parseInt(filterForm.batch) : 0
-    await ExportData(batchId, '')
+    await ExportTaggedDataList(
+      filterForm.keyword, 
+      filterForm.tag, 
+      filterForm.batch, 
+      filterForm.searchCol, 
+      filterForm.dataSource,
+      filterForm.tagMode,
+      filterForm.status,
+      filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[0] : '',
+      filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[1] : ''
+    )
     ElMessage.success('导出成功')
   } catch (e: any) {
     if (e !== 'cancelled') {

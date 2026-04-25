@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
@@ -317,6 +318,208 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagM
 		Total:   total,
 		Records: dtos,
 	}, nil
+}
+
+// ExportTaggedDataList 按筛选条件导出打标数据，包含动态字段和系统处理字段，不包含 ID 和打标时间
+func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagMode, status, startDate, endDate string) error {
+	// 构建查询条件
+	db := model.DB.Model(&model.RawDataRecord{})
+
+	if keyword != "" {
+		if searchCol != "" {
+			db = db.Where("json_extract(raw_data_records.data, '$."+searchCol+"') LIKE ?", "%"+keyword+"%")
+		} else {
+			db = db.Where("raw_data_records.data LIKE ?", "%"+keyword+"%")
+		}
+	}
+
+	if dataSource != "" {
+		db = db.Where("json_extract(raw_data_records.data, '$.\"数据来源\"') = ?", dataSource)
+	}
+
+	if startDate != "" {
+		db = db.Where("raw_data_records.updated_at >= ?", startDate+" 00:00:00")
+	}
+	if endDate != "" {
+		db = db.Where("raw_data_records.updated_at <= ?", endDate+" 23:59:59")
+	}
+
+	if tag != "" || batch != "" || tagMode != "" || status != "" {
+		subQuery := model.DB.Table("sys_entity_tags").Select("record_id")
+
+		if tag != "" {
+			subQuery = subQuery.Where("tag_id = ?", tag)
+		}
+
+		if batch != "" {
+			subQuery = subQuery.Where("batch_id = ?", batch)
+		}
+
+		if tagMode != "" {
+			subQuery = subQuery.Joins("JOIN tag_task_batches ON tag_task_batches.id = sys_entity_tags.batch_id").
+				Where("tag_task_batches.tag_mode = ?", tagMode)
+		}
+
+		if status == "success" {
+			db = db.Where("raw_data_records.id IN (?)", subQuery)
+		} else if status == "unmatched" {
+			db = db.Where("raw_data_records.id NOT IN (?)", subQuery)
+		} else {
+			db = db.Where("raw_data_records.id IN (?)", subQuery)
+		}
+	}
+
+	// 查出所有符合条件的原始记录
+	var records []model.RawDataRecord
+	err := db.Select("raw_data_records.*").Order("raw_data_records.id desc").Find(&records).Error
+	if err != nil {
+		return err
+	}
+
+	if len(records) == 0 {
+		return fmt.Errorf("没有找到符合条件的数据可供导出")
+	}
+
+	// 弹窗让用户选择保存位置
+	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		Title:           "选择导出路径",
+		DefaultFilename: "tagged_data_export.csv",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "CSV 文件", Pattern: "*.csv"},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	if filePath == "" {
+		return fmt.Errorf("cancelled")
+	}
+
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// 写入 UTF-8 BOM，防止 Excel 乱码
+	file.Write([]byte("\xEF\xBB\xBF"))
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// 准备提取所有的动态列
+	var dynamicCols []string
+	colSet := make(map[string]bool)
+
+	// 先遍历一次所有数据，收集所有的键
+	parsedDataMap := make([]map[string]interface{}, len(records))
+	for i, r := range records {
+		var dMap map[string]interface{}
+		json.Unmarshal([]byte(r.Data), &dMap)
+		parsedDataMap[i] = dMap
+		for k := range dMap {
+			// 跳过 id 和 数据来源（数据来源放在最后固定位置）
+			if !colSet[k] && k != "id" && k != "数据来源" {
+				colSet[k] = true
+				dynamicCols = append(dynamicCols, k)
+			}
+		}
+	}
+
+	// 构建表头 (不要系统 ID 和打标时间)
+	headers := append([]string{}, dynamicCols...)
+	headers = append(headers, "打标模式", "命中标签", "命中主标签", "任务批次", "数据来源", "状态")
+
+	if err := writer.Write(headers); err != nil {
+		return err
+	}
+
+	// 处理并写入每行数据
+	for i, r := range records {
+		dMap := parsedDataMap[i]
+
+		// 查询关联信息
+		var entityTags []model.SysEntityTag
+		model.DB.Where("record_id = ?", r.ID).Find(&entityTags)
+
+		statusVal := "未命中"
+		batchName := "-"
+		tagModeVal := "-"
+		tagsStr := "-"
+		primaryTagStr := "-"
+
+		if len(entityTags) > 0 {
+			statusVal = "已打标"
+			lastBatchID := entityTags[len(entityTags)-1].BatchID
+			if lastBatchID > 0 {
+				var b model.TagTaskBatch
+				if err := model.DB.First(&b, lastBatchID).Error; err == nil {
+					batchName = b.Name
+					tagModeVal = b.TagMode
+				}
+			}
+
+			var tagIDs []uint64
+			primaryMap := make(map[uint64]bool)
+			for _, et := range entityTags {
+				tagIDs = append(tagIDs, et.TagID)
+				if et.IsPrimary {
+					primaryMap[et.TagID] = true
+				}
+			}
+
+			if len(tagIDs) > 0 {
+				var tags []model.SysTag
+				model.DB.Where("id IN ?", tagIDs).Find(&tags)
+
+				var tNames []string
+				for _, t := range tags {
+					tNames = append(tNames, t.Name)
+					if primaryMap[t.ID] {
+						primaryTagStr = t.Name
+					}
+				}
+				if len(tNames) > 0 {
+					tagsStr = strings.Join(tNames, ", ")
+				}
+			}
+		}
+
+		// 格式化打标模式
+		if tagModeVal == "single" {
+			tagModeVal = "单标签"
+		} else if tagModeVal == "multiple" {
+			tagModeVal = "多标签"
+		} else if tagModeVal == "mixed" {
+			tagModeVal = "混合模式"
+		} else if tagModeVal == "" {
+			tagModeVal = "-"
+		}
+
+		// 数据来源
+		dataSourceStr := "-"
+		if ds, ok := dMap["数据来源"].(string); ok {
+			dataSourceStr = ds
+		}
+
+		// 构建单行数组
+		row := make([]string, 0, len(headers))
+		// 动态列值
+		for _, k := range dynamicCols {
+			if val, ok := dMap[k]; ok {
+				row = append(row, fmt.Sprintf("%v", val))
+			} else {
+				row = append(row, "")
+			}
+		}
+		// 追加系统处理字段
+		row = append(row, tagModeVal, tagsStr, primaryTagStr, batchName, dataSourceStr, statusVal)
+
+		if err := writer.Write(row); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ----------------- Tag & Rule Logic API -----------------
