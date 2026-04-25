@@ -26,8 +26,8 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="打标批次">
-          <el-select v-model="filterForm.batch" placeholder="全部批次" clearable class="w-150">
+        <el-form-item label="任务名称">
+          <el-select v-model="filterForm.batch" placeholder="全部任务" clearable class="w-150">
             <el-option v-for="batch in batchOptions" :key="batch.id" :label="batch.name" :value="String(batch.id)" />
           </el-select>
         </el-form-item>
@@ -81,8 +81,8 @@
       <!-- 分页器 -->
       <div class="pagination-wrapper">
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
+          :current-page="currentPage"
+          :page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
           layout="total, sizes, prev, pager, next, jumper"
           :total="totalItems"

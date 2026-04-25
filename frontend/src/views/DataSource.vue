@@ -141,8 +141,8 @@
       <div class="pagination-wrapper" v-if="totalRecords > 0">
         <span class="pagination-info">显示 {{ (currentPage - 1) * pageSize + 1 }} 到 {{ Math.min(currentPage * pageSize, totalRecords) }} 条，共 {{ totalRecords }} 条记录</span>
         <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
+          :current-page="currentPage"
+          :page-size="pageSize"
           :page-sizes="[10, 20, 50, 100]"
           layout="prev, pager, next, jumper"
           :total="totalRecords"
