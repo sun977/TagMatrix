@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -21,6 +22,11 @@ type TaskEngineService struct {
 	ctx context.Context
 }
 
+type contextKey string
+
+// CtxKeyIsTest 用于在测试时禁用 Wails 事件推送
+const CtxKeyIsTest contextKey = "isTest"
+
 // NewTaskEngineService 创建 TaskEngineService 实例
 func NewTaskEngineService(ctx context.Context) *TaskEngineService {
 	return &TaskEngineService{
@@ -29,20 +35,37 @@ func NewTaskEngineService(ctx context.Context) *TaskEngineService {
 	}
 }
 
+// emitProgress 封装进度推送逻辑，便于统一管理和测试环境规避
+func (s *TaskEngineService) emitProgress(batchID uint64, progress int, processed int, total int64, status string) {
+	// 如果是测试环境 (ctx 中包含 CtxKeyIsTest) 或 ctx 无效，则跳过推送
+	if s.ctx == nil || s.ctx.Err() != nil || s.ctx.Value(CtxKeyIsTest) != nil {
+		return
+	}
+	runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
+		"batchID":   batchID,
+		"progress":  progress,
+		"processed": processed,
+		"total":     total,
+		"status":    status,
+	})
+}
+
 // tagTaskContext 用于在 Goroutine 中传递任务上下文
 type tagTaskContext struct {
-	BatchID   uint64
-	Rule      *model.SysMatchRule
-	MRule     matcher.MatchRule
-	Records   []model.RawDataRecord
-	IsPrimary bool // 是否为主标签（针对混合模式）
+	BatchID     uint64
+	Rule        *model.SysMatchRule
+	MRule       matcher.MatchRule
+	Records     []model.RawDataRecord
+	IsOverwrite bool   // 是否为覆盖模式
+	TagMode     string // 打标模式：single, multiple, mixed
 }
 
 // RunTaggingTask 异步执行规则打标任务
 // ruleIDs: 需要执行的规则ID列表
 // batchName: 此次打标任务的自定义名称
-// isPrimary: 是否将这些规则命中的标签设为主标签
-func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, isPrimary bool) (uint64, error) {
+// isOverwrite: 是否为覆盖模式（清除原有标签）
+// tagMode: 打标模式（single: 单标签, multiple: 多标签, mixed: 混合模式）
+func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string) (uint64, error) {
 	if len(ruleIDs) == 0 {
 		return 0, fmt.Errorf("no rules provided")
 	}
@@ -72,7 +95,7 @@ func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, i
 	}
 
 	// 3. 异步启动打标引擎
-	go s.executeTask(batchID, rules, isPrimary)
+	go s.executeTask(batchID, rules, isOverwrite, tagMode)
 
 	return batchID, nil
 }
@@ -84,7 +107,7 @@ type parsedRule struct {
 }
 
 // executeTask 核心调度引擎，使用 Worker Pool 模式流式处理海量数据
-func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRule, isPrimary bool) {
+func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string) {
 	log.Printf("[TaskEngine] Starting batch %d", batchID)
 
 	// 预解析规则
@@ -111,15 +134,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 	s.db.Model(&model.RawDataRecord{}).Count(&totalRecords)
 
 	// 发送初始进度事件
-	if s.ctx != nil && s.ctx.Err() == nil {
-		runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
-			"batchID":   batchID,
-			"progress":  0,
-			"processed": 0,
-			"total":     totalRecords,
-			"status":    "running",
-		})
-	}
+	s.emitProgress(batchID, 0, 0, totalRecords, "running")
 
 	// 启动 Workers
 	for i := 0; i < workerCount; i++ {
@@ -127,7 +142,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 		go func() {
 			defer wg.Done()
 			for records := range jobsChan {
-				s.processRecords(batchID, records, pRules, isPrimary)
+				s.processRecords(batchID, records, pRules, isOverwrite, tagMode)
 
 				mu.Lock()
 				totalProcessed += len(records)
@@ -135,18 +150,12 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 				mu.Unlock()
 
 				// 计算并推送进度
-				if totalRecords > 0 && s.ctx != nil && s.ctx.Err() == nil {
+				if totalRecords > 0 {
 					progress := float64(currentProcessed) / float64(totalRecords) * 100.0
 					if progress > 100 {
 						progress = 100
 					}
-					runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
-						"batchID":   batchID,
-						"progress":  int(progress),
-						"processed": currentProcessed,
-						"total":     totalRecords,
-						"status":    "running",
-					})
+					s.emitProgress(batchID, int(progress), currentProcessed, totalRecords, "running")
 				}
 			}
 		}()
@@ -180,25 +189,17 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 		"finished_at":     &now,
 	})
 
-	if s.ctx != nil && s.ctx.Err() == nil {
-		progress := 100
-		if status == "failed" {
-			progress = 0 // 或者保持原有进度，或者根据需要设置
-		}
-		runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
-			"batchID":   batchID,
-			"progress":  progress,
-			"processed": totalProcessed,
-			"total":     totalRecords,
-			"status":    status,
-		})
+	progress := 100
+	if status == "failed" {
+		progress = 0 // 或者保持原有进度，或者根据需要设置
 	}
+	s.emitProgress(batchID, progress, totalProcessed, totalRecords, status)
 
 	log.Printf("[TaskEngine] Finished batch %d. Processed: %d", batchID, totalProcessed)
 }
 
 // processRecords 处理一小批数据（由 Worker 执行）
-func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDataRecord, pRules []parsedRule, isPrimary bool) {
+func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDataRecord, pRules []parsedRule, isOverwrite bool, tagMode string) {
 	var logs []model.TagTaskLog
 	var tags []model.SysEntityTag
 	var recordIDsToClear []uint64 // 记录需要清除原有 auto_rule 标签的 recordID
@@ -209,13 +210,46 @@ func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDa
 			continue
 		}
 
-		matchedAtLeastOne := false
+		// 收集该条记录命中的所有规则
+		var matchedRules []parsedRule
 
 		// 对这行数据应用所有规则
 		for _, pr := range pRules {
 			matched, err := matcher.Match(dataMap, pr.mRule)
 			if err == nil && matched {
-				matchedAtLeastOne = true
+				matchedRules = append(matchedRules, pr)
+			}
+		}
+
+		if len(matchedRules) > 0 {
+			// 如果是覆盖模式，则将该记录ID加入待清理列表
+			if isOverwrite {
+				recordIDsToClear = append(recordIDsToClear, record.ID)
+			}
+
+			// 按规则优先级降序排序 (Priority 越大越优先)
+			// 当优先级相同时，使用规则 ID 降序作为兜底（后创建的规则优先）
+			sort.SliceStable(matchedRules, func(i, j int) bool {
+				if matchedRules[i].model.Priority != matchedRules[j].model.Priority {
+					return matchedRules[i].model.Priority > matchedRules[j].model.Priority
+				}
+				// 优先级相同时，ID 较大的排在前面
+				return matchedRules[i].model.ID > matchedRules[j].model.ID
+			})
+
+			// 根据打标模式 (tagMode) 处理命中的规则
+			if tagMode == "single" {
+				// 单标签模式：只取优先级最高的第一个
+				matchedRules = matchedRules[:1]
+			}
+
+			for i, pr := range matchedRules {
+				isPrimary := false
+				if tagMode == "mixed" && i == 0 {
+					// 混合模式：优先级最高的第一个作为主标签
+					isPrimary = true
+				}
+
 				// 命中规则，生成结果与日志
 				tags = append(tags, model.SysEntityTag{
 					RecordID:  record.ID,
@@ -232,14 +266,9 @@ func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDa
 					TagID:    pr.model.TagID,
 					RuleID:   pr.model.ID,
 					Action:   "add",
-					Reason:   fmt.Sprintf("Matched rule: %s", pr.model.Name),
+					Reason:   fmt.Sprintf("Matched rule: %s (Priority: %d)", pr.model.Name, pr.model.Priority),
 				})
 			}
-		}
-
-		// 如果是覆盖模式，且至少命中了一个规则，则将该记录ID加入待清理列表
-		if isPrimary && matchedAtLeastOne {
-			recordIDsToClear = append(recordIDsToClear, record.ID)
 		}
 	}
 
@@ -282,15 +311,7 @@ func (s *TaskEngineService) RollbackTask(ctx context.Context, batchID uint64) er
 			return fmt.Errorf("failed to update batch status: %w", err)
 		}
 
-		if s.ctx != nil && s.ctx.Err() == nil {
-			runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
-				"batchID":   batchID,
-				"progress":  100, // 回退完成
-				"processed": batch.TotalProcessed,
-				"total":     batch.TotalProcessed,
-				"status":    "rolled_back",
-			})
-		}
+		s.emitProgress(batchID, 100, batch.TotalProcessed, int64(batch.TotalProcessed), "rolled_back")
 
 		log.Printf("[TaskEngine] Rolled back batch %d", batchID)
 		return nil

@@ -359,8 +359,8 @@ func (a *App) DryRunRule(ruleJSON string, limit int) ([]taglogic.DryRunResult, e
 }
 
 // ----------------- Task Engine API -----------------
-func (a *App) RunTaggingTask(ruleIDs []uint64, batchName string, isPrimary bool) (uint64, error) {
-	return a.taskEngine.RunTaggingTask(ruleIDs, batchName, isPrimary)
+func (a *App) RunTaggingTask(ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string) (uint64, error) {
+	return a.taskEngine.RunTaggingTask(ruleIDs, batchName, isOverwrite, tagMode)
 }
 
 func (a *App) RollbackTask(batchID uint64) error {

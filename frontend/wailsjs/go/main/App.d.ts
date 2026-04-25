@@ -47,7 +47,7 @@ export function ImportTags(arg1:string):Promise<void>;
 
 export function RollbackTask(arg1:number):Promise<void>;
 
-export function RunTaggingTask(arg1:Array<number>,arg2:string,arg3:boolean):Promise<number>;
+export function RunTaggingTask(arg1:Array<number>,arg2:string,arg3:boolean,arg4:string):Promise<number>;
 
 export function SaveAppConfig(arg1:config.AppConfig):Promise<void>;
 

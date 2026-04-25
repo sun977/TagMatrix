@@ -38,14 +38,24 @@
           </el-col>
           <el-col :span="4">
             <div class="form-item">
-              <label>打标模式</label>
-              <el-select v-model="taskForm.tagMode" class="w-100">
+              <label>执行策略</label>
+              <el-select v-model="taskForm.execStrategy" class="w-100">
                 <el-option label="追加模式 (保留原有标签)" value="append" />
                 <el-option label="覆盖模式 (清除原有标签)" value="overwrite" />
               </el-select>
             </div>
           </el-col>
           <el-col :span="4">
+            <div class="form-item">
+              <label>打标模式</label>
+              <el-select v-model="taskForm.tagMode" class="w-100">
+                <el-option label="多标签模式 (允许多个标签)" value="multiple" />
+                <el-option label="单标签模式 (仅取最高优先级)" value="single" />
+                <el-option label="混合模式 (最高优先级为主标签)" value="mixed" />
+              </el-select>
+            </div>
+          </el-col>
+          <el-col :span="6">
             <div class="form-item">
               <label>任务描述 (选填)</label>
               <el-input v-model="taskForm.desc" placeholder="输入任务描述" />
@@ -166,7 +176,8 @@ const taskForm = ref({
   batchName: '',
   dataSource: 'ds1',
   rules: 'all',
-  tagMode: 'append',
+  execStrategy: 'append',
+  tagMode: 'multiple',
   desc: ''
 })
 
@@ -237,9 +248,9 @@ const submitTask = async () => {
       ruleIDs = [parseInt(taskForm.value.rules)]
     }
 
-    const isPrimary = taskForm.value.tagMode === 'overwrite'
+    const isOverwrite = taskForm.value.execStrategy === 'overwrite'
 
-    await RunTaggingTask(ruleIDs, taskForm.value.batchName, isPrimary)
+    await RunTaggingTask(ruleIDs, taskForm.value.batchName, isOverwrite, taskForm.value.tagMode)
     ElMessage.success(`任务提交成功`)
     
     taskForm.value.batchName = ''

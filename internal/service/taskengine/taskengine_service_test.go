@@ -30,7 +30,8 @@ func TestTaskEngine_RunAndRollback(t *testing.T) {
 	dbPath := setupTestDB(t, "test_taskengine.db")
 	defer teardownTestEnv(dbPath)
 
-	svc := NewTaskEngineService(context.Background())
+	ctx := context.WithValue(context.Background(), CtxKeyIsTest, true)
+	svc := NewTaskEngineService(ctx)
 
 	// 1. 准备测试数据 (3条)
 	records := []map[string]interface{}{
@@ -53,7 +54,7 @@ func TestTaskEngine_RunAndRollback(t *testing.T) {
 	model.DB.Create(&rule)
 
 	// 3. 执行打标任务 (异步)
-	batchID, err := svc.RunTaggingTask([]uint64{rule.ID}, "TestBatch", true)
+	batchID, err := svc.RunTaggingTask([]uint64{rule.ID}, "TestBatch", true, "multiple")
 	if err != nil {
 		t.Fatalf("RunTaggingTask failed: %v", err)
 	}
