@@ -98,11 +98,16 @@
           <!-- 标签对应的规则详情卡片 -->
           <el-card class="rule-info-card" shadow="never" style="flex: 1; display: flex; flex-direction: column; border-radius: 8px; border: 1px solid var(--tm-border-light);">
             <template #header>
-              <div class="card-header" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
-                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">规则配置</h3>
-                <el-tooltip content="点击查看匹配算子说明" placement="top">
-                  <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399;"><QuestionFilled /></el-icon>
-                </el-tooltip>
+              <div class="card-header" style="margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <h3 style="margin: 0; font-size: 16px; font-weight: 600;">规则配置</h3>
+                  <el-tooltip content="点击查看匹配算子说明" placement="top">
+                    <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399;"><QuestionFilled /></el-icon>
+                  </el-tooltip>
+                </div>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                  <el-button type="primary" class="action-btn-green" @click="handleSaveRule" :loading="savingRule" size="small">保存配置</el-button>
+                </div>
               </div>
             </template>
 
@@ -171,12 +176,6 @@
                   </el-table>
                 </div>
               </div>
-            </div>
-
-            <!-- 底部保存条 -->
-            <div class="pane-footer" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--tm-border-light); justify-content: flex-end; display: flex;">
-              <el-button>取消</el-button>
-              <el-button type="primary" class="action-btn-green" @click="handleSaveRule" :loading="savingRule">保存配置</el-button>
             </div>
           </el-card>
         </template>
