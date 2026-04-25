@@ -29,13 +29,18 @@
         <!-- 全局设置 -->
         <div class="menu-item setting-btn" @click="openSettings">
           <el-icon><Setting /></el-icon>
-          <span v-if="!isCollapsed">全局设置</span>
+          <span v-if="!isCollapsed">设置</span>
         </div>
         
         <!-- 底部收起按钮 -->
         <div class="menu-item collapse-btn" @click="toggleCollapse">
           <el-icon><Fold v-if="!isCollapsed" /><Expand v-else /></el-icon>
-          <span v-if="!isCollapsed">收起侧边栏</span>
+          <span v-if="!isCollapsed">收起</span>
+        </div>
+
+        <!-- 软件版本信息 -->
+        <div class="version-info" v-if="!isCollapsed">
+          © 2026 Sun977 | v2.0.0
         </div>
       </div>
 
@@ -65,7 +70,7 @@
 <script setup lang="ts">
 import { computed, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Grid, Setting, House, Files, PriceTag, List, Service, Coin, Finished, Fold, Expand, DataBoard } from '@element-plus/icons-vue'
+// @ts-ignore: Vetur / TS plugin issue with script setup
 import SettingsDialog from './SettingsDialog.vue'
 
 const router = useRouter()
@@ -254,6 +259,17 @@ onUnmounted(() => {
     overflow: hidden;
     display: flex;
     flex-direction: column;
+
+    .version-info {
+      font-size: 12px;
+      color: var(--tm-text-secondary);
+      text-align: center;
+      margin-top: 16px;
+      padding-bottom: 4px;
+      opacity: 0.6;
+      white-space: nowrap;
+      user-select: none;
+    }
   }
 
   /* --- 拖拽调整宽度的把手 --- */

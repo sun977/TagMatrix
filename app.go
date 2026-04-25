@@ -227,11 +227,12 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagM
 				Where("tag_task_batches.tag_mode = ?", tagMode)
 		}
 
-		if status == "success" {
+		switch status {
+		case "success":
 			db = db.Where("raw_data_records.id IN (?)", subQuery)
-		} else if status == "unmatched" {
+		case "unmatched":
 			db = db.Where("raw_data_records.id NOT IN (?)", subQuery)
-		} else {
+		default:
 			db = db.Where("raw_data_records.id IN (?)", subQuery)
 		}
 	}
@@ -257,7 +258,7 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagM
 		}
 
 		// 解析数据来源
-		var dataMap map[string]interface{}
+		var dataMap map[string]any
 		if err := json.Unmarshal([]byte(r.Data), &dataMap); err == nil {
 			if src, ok := dataMap["数据来源"].(string); ok {
 				dto.DataSource = src
@@ -360,11 +361,12 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, t
 				Where("tag_task_batches.tag_mode = ?", tagMode)
 		}
 
-		if status == "success" {
+		switch status {
+		case "success":
 			db = db.Where("raw_data_records.id IN (?)", subQuery)
-		} else if status == "unmatched" {
+		case "unmatched":
 			db = db.Where("raw_data_records.id NOT IN (?)", subQuery)
-		} else {
+		default:
 			db = db.Where("raw_data_records.id IN (?)", subQuery)
 		}
 	}
@@ -411,9 +413,9 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, t
 	colSet := make(map[string]bool)
 
 	// 先遍历一次所有数据，收集所有的键
-	parsedDataMap := make([]map[string]interface{}, len(records))
+	parsedDataMap := make([]map[string]any, len(records))
 	for i, r := range records {
-		var dMap map[string]interface{}
+		var dMap map[string]any
 		json.Unmarshal([]byte(r.Data), &dMap)
 		parsedDataMap[i] = dMap
 		for k := range dMap {
@@ -485,13 +487,14 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, t
 		}
 
 		// 格式化打标模式
-		if tagModeVal == "single" {
+		switch tagModeVal {
+		case "single":
 			tagModeVal = "单标签"
-		} else if tagModeVal == "multiple" {
+		case "multiple":
 			tagModeVal = "多标签"
-		} else if tagModeVal == "mixed" {
+		case "mixed":
 			tagModeVal = "混合模式"
-		} else if tagModeVal == "" {
+		case "":
 			tagModeVal = "-"
 		}
 
