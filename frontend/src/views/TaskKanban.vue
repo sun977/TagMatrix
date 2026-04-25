@@ -141,7 +141,7 @@
             </template>
             <template v-else-if="scope.row.statusType === 'completed'">
               <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
-              <el-button size="small" class="action-btn">导出</el-button>
+              <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
               <el-button type="danger" link size="small" @click="handleRollback(scope.row.id)">回退</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'failed'">
@@ -150,6 +150,7 @@
             </template>
             <template v-else-if="scope.row.statusType === 'rolled_back'">
               <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
+              <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'pending'">
               <el-button size="small" class="action-btn">编辑</el-button>
@@ -201,7 +202,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -241,6 +242,17 @@ const viewLogs = async (batchId: number) => {
     ElMessage.error('获取日志失败: ' + String(e))
   } finally {
     loadingLogs.value = false
+  }
+}
+
+const exportLogs = async (batchId: number) => {
+  try {
+    const filepath = await ExportTaskLogsCSV(batchId)
+    if (filepath) {
+      ElMessage.success(`导出成功: ${filepath}`)
+    }
+  } catch (e: any) {
+    ElMessage.error('导出日志失败: ' + String(e))
   }
 }
 

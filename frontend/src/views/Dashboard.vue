@@ -125,7 +125,7 @@
             <el-button v-if="scope.row.statusType === 'running'" size="small" class="action-btn">查看详情</el-button>
             <template v-else-if="scope.row.statusType === 'completed' || scope.row.statusType === 'rolled_back'">
               <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
-              <el-button size="small" class="action-btn">导出</el-button>
+              <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'failed'">
               <el-button type="danger" link size="small">查看错误日志</el-button>
@@ -202,7 +202,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { Loading, Setting, Coin, PriceTag, Collection, Document, UploadFilled, ArrowRight } from '@element-plus/icons-vue'
-import { GetDashboardStats, GetTaskBatches, GetAllTags, GetAllRules, GetTaskLogs } from '../../wailsjs/go/main/App'
+import { GetDashboardStats, GetTaskBatches, GetAllTags, GetAllRules, GetTaskLogs, ExportTaskLogsCSV } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { ElMessage } from 'element-plus'
 
@@ -286,6 +286,17 @@ const viewLogs = async (batchId: number) => {
     ElMessage.error('获取日志失败: ' + String(e))
   } finally {
     loadingLogs.value = false
+  }
+}
+
+const exportLogs = async (batchId: number) => {
+  try {
+    const filepath = await ExportTaskLogsCSV(batchId)
+    if (filepath) {
+      ElMessage.success(`导出成功: ${filepath}`)
+    }
+  } catch (e: any) {
+    ElMessage.error('导出日志失败: ' + String(e))
   }
 }
 

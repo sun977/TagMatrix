@@ -23,6 +23,8 @@ export function ExportData(arg1:number,arg2:string):Promise<void>;
 
 export function ExportTags(arg1:string):Promise<void>;
 
+export function ExportTaskLogsCSV(arg1:number):Promise<string>;
+
 export function GetAllRules():Promise<Array<model.SysMatchRule>>;
 
 export function GetAllTags():Promise<Array<model.SysTag>>;

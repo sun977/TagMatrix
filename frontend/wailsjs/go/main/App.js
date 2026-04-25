@@ -38,6 +38,10 @@ export function ExportTags(arg1) {
   return window['go']['main']['App']['ExportTags'](arg1);
 }
 
+export function ExportTaskLogsCSV(arg1) {
+  return window['go']['main']['App']['ExportTaskLogsCSV'](arg1);
+}
+
 export function GetAllRules() {
   return window['go']['main']['App']['GetAllRules']();
 }

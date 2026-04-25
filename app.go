@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"fmt"
+	"os"
+	"strconv"
 
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
@@ -375,6 +378,75 @@ func (a *App) GetTaskBatches() ([]model.TagTaskBatch, error) {
 
 func (a *App) GetTaskLogs(batchID uint64) ([]model.TagTaskLogDto, error) {
 	return a.taskEngine.GetTaskLogs(batchID)
+}
+
+// ExportTaskLogsCSV exports task logs to a CSV file selected by the user
+func (a *App) ExportTaskLogsCSV(batchID uint64) (string, error) {
+	// 1. Fetch logs
+	logs, err := a.taskEngine.GetTaskLogs(batchID)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch task logs: %v", err)
+	}
+
+	// 2. Ask user for file path
+	defaultFilename := fmt.Sprintf("task_logs_%d.csv", batchID)
+	filepath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Title:           "导出打标日志",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "CSV Files (*.csv)",
+				Pattern:     "*.csv",
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to open save dialog: %v", err)
+	}
+	if filepath == "" {
+		// User cancelled
+		return "", nil
+	}
+
+	// 3. Create file
+	file, err := os.Create(filepath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create file: %v", err)
+	}
+	defer file.Close()
+
+	// 4. Write CSV (Adding BOM for Excel compatibility)
+	file.WriteString("\xEF\xBB\xBF") // UTF-8 BOM
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write header
+	header := []string{"数据ID", "标签名称", "命中规则", "操作", "匹配原因", "时间"}
+	if err := writer.Write(header); err != nil {
+		return "", fmt.Errorf("failed to write csv header: %v", err)
+	}
+
+	// Write rows
+	for _, log := range logs {
+		action := "移除"
+		if log.Action == "add" {
+			action = "添加"
+		}
+
+		row := []string{
+			strconv.FormatUint(log.RecordID, 10),
+			log.TagName,
+			log.RuleName,
+			action,
+			log.Reason,
+			log.CreatedAt,
+		}
+		if err := writer.Write(row); err != nil {
+			return "", fmt.Errorf("failed to write csv row: %v", err)
+		}
+	}
+
+	return filepath, nil
 }
 
 // ----------------- AI Engine API -----------------
