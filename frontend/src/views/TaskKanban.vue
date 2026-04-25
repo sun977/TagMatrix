@@ -47,7 +47,22 @@
           </el-col>
           <el-col :span="4">
             <div class="form-item">
-              <label>打标模式</label>
+              <label style="display: flex; align-items: center; gap: 4px;">
+                打标模式
+                <el-tooltip effect="dark" placement="top" :hide-after="0" popper-class="tag-mode-tooltip">
+                  <template #content>
+                    <div style="line-height: 1.6; max-width: 320px;">
+                      <div style="margin-bottom: 4px;"><b>多标签模式</b>：数据命中几条规则，就打上几个平级的标签。</div>
+                      <div style="margin-bottom: 4px;"><b>单标签模式</b>：命中多条规则时，仅取优先级最高的一个标签。</div>
+                      <div style="margin-bottom: 4px;"><b>混合模式</b>：命中的所有标签均入库，但优先级最高的一个设为主标签。</div>
+                      <div style="margin-top: 8px; color: #a0cfff;">
+                        <i>* 注：后续将引入智能“主标签推导策略”（如基于业务线权重、ML打分）来更精准地推导和选取主/单标签。</i>
+                      </div>
+                    </div>
+                  </template>
+                  <el-icon style="cursor: pointer; color: var(--el-text-color-secondary);"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </label>
               <el-select v-model="taskForm.tagMode" class="w-100">
                 <el-option label="多标签模式 (允许多个标签)" value="multiple" />
                 <el-option label="单标签模式 (仅取最高优先级)" value="single" />
@@ -161,7 +176,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
-import { VideoPlay, RefreshRight } from '@element-plus/icons-vue'
+import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
