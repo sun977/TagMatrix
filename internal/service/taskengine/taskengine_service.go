@@ -201,6 +201,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDataRecord, pRules []parsedRule, isPrimary bool) {
 	var logs []model.TagTaskLog
 	var tags []model.SysEntityTag
+	var recordIDsToClear []uint64 // 记录需要清除原有 auto_rule 标签的 recordID
 
 	for _, record := range records {
 		var dataMap map[string]interface{}
@@ -208,10 +209,13 @@ func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDa
 			continue
 		}
 
+		matchedAtLeastOne := false
+
 		// 对这行数据应用所有规则
 		for _, pr := range pRules {
 			matched, err := matcher.Match(dataMap, pr.mRule)
 			if err == nil && matched {
+				matchedAtLeastOne = true
 				// 命中规则，生成结果与日志
 				tags = append(tags, model.SysEntityTag{
 					RecordID:  record.ID,
@@ -232,9 +236,18 @@ func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDa
 				})
 			}
 		}
+
+		// 如果是覆盖模式，且至少命中了一个规则，则将该记录ID加入待清理列表
+		if isPrimary && matchedAtLeastOne {
+			recordIDsToClear = append(recordIDsToClear, record.ID)
+		}
 	}
 
 	// 批量插入数据库
+	if len(recordIDsToClear) > 0 {
+		// 在覆盖模式下，清除这些记录之前打上的自动规则标签
+		s.db.Where("record_id IN ? AND source = 'auto_rule'", recordIDsToClear).Delete(&model.SysEntityTag{})
+	}
 	if len(tags) > 0 {
 		// 为了防止主键冲突，可以使用事务或 OnConflict
 		s.db.Create(&tags)
