@@ -98,28 +98,24 @@
           <!-- 标签对应的规则详情卡片 -->
           <el-card class="rule-info-card" shadow="never" style="flex: 1; display: flex; flex-direction: column; border-radius: 8px; border: 1px solid var(--tm-border-light);">
             <template #header>
-              <div class="card-header" style="margin-bottom: 0;">
+              <div class="card-header" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
                 <h3 style="margin: 0; font-size: 16px; font-weight: 600;">规则配置</h3>
+                <el-tooltip content="点击查看匹配算子说明" placement="top">
+                  <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399;"><QuestionFilled /></el-icon>
+                </el-tooltip>
               </div>
             </template>
 
             <div class="scroll-content" style="flex: 1; overflow-y: auto;">
-              <div class="section-header-flex" style="margin-bottom: 24px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                  <h3 style="margin: 0; font-size: 15px; font-weight: 600;">匹配规则</h3>
-                  <el-tooltip content="点击查看匹配算子说明" placement="top">
-                    <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399;"><QuestionFilled /></el-icon>
-                  </el-tooltip>
-                </div>
-                <el-button size="small" type="info" plain @click="previewRuleJson">
-                  预览 JSON
-                </el-button>
-              </div>
-
               <div class="config-section">
-                <div class="form-item inline" style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
-                  <label style="margin-bottom: 0; white-space: nowrap; font-weight: 500;">规则名称</label>
-                  <el-input v-model="ruleName" :placeholder="selectedTag.name + '-Rule'" style="width: 300px;" />
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                  <div class="form-item inline" style="display: flex; align-items: center; gap: 12px; margin-bottom: 0;">
+                    <label style="margin-bottom: 0; white-space: nowrap; font-weight: 500;">规则名称</label>
+                    <el-input v-model="ruleName" :placeholder="selectedTag.name + '-Rule'" style="width: 300px;" />
+                  </div>
+                  <el-button size="small" type="info" plain @click="previewRuleJson">
+                    预览 JSON
+                  </el-button>
                 </div>
                 <div class="rules-list">
                   <RuleGroup v-model="ruleState" :is-root="true" />
