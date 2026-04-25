@@ -236,7 +236,10 @@ export namespace model {
 	    id: number;
 	    content: string;
 	    tags: TagDto[];
+	    primaryTag?: TagDto;
 	    batchName: string;
+	    tagMode: string;
+	    dataSource: string;
 	    updateTime: string;
 	    status: string;
 	
@@ -249,7 +252,10 @@ export namespace model {
 	        this.id = source["id"];
 	        this.content = source["content"];
 	        this.tags = this.convertValues(source["tags"], TagDto);
+	        this.primaryTag = this.convertValues(source["primaryTag"], TagDto);
 	        this.batchName = source["batchName"];
+	        this.tagMode = source["tagMode"];
+	        this.dataSource = source["dataSource"];
 	        this.updateTime = source["updateTime"];
 	        this.status = source["status"];
 	    }
@@ -448,6 +454,8 @@ export namespace model {
 	    name: string;
 	    status: string;
 	    total_processed: number;
+	    tag_mode: string;
+	    data_source: string;
 	    // Go type: time
 	    finished_at?: any;
 	
@@ -463,6 +471,8 @@ export namespace model {
 	        this.name = source["name"];
 	        this.status = source["status"];
 	        this.total_processed = source["total_processed"];
+	        this.tag_mode = source["tag_mode"];
+	        this.data_source = source["data_source"];
 	        this.finished_at = this.convertValues(source["finished_at"], null);
 	    }
 	

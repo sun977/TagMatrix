@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -177,39 +178,65 @@ func (a *App) DeleteRawData(ids []uint64) error {
 	return model.DB.Delete(&model.RawDataRecord{}, ids).Error
 }
 
-func (a *App) GetTaggedDataList(keyword, tag, batch string, page, pageSize int) (*model.PagedTaggedData, error) {
+func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagMode, status, startDate, endDate string, page, pageSize int) (*model.PagedTaggedData, error) {
 	var total int64
 	var dtos []model.TaggedRecordDto
 
 	// 1. 构建查询构造器
 	db := model.DB.Model(&model.RawDataRecord{})
 
-	// 如果有 tag 或者 batch 过滤，我们需要 JOIN sys_entity_tag 表
-	if tag != "" || batch != "" {
-		db = db.Joins("JOIN sys_entity_tags ON sys_entity_tags.record_id = raw_data_records.id")
-		if tag != "" {
-			// 根据 tag_id 过滤
-			db = db.Where("sys_entity_tags.tag_id = ?", tag)
-		}
-		if batch != "" {
-			// 根据 batch_id 过滤
-			db = db.Where("sys_entity_tags.batch_id = ?", batch)
-		}
-		// 因为 join 可能会产生重复记录，我们需要 group by 原始记录 ID
-		db = db.Group("raw_data_records.id")
-	}
-
 	if keyword != "" {
-		db = db.Where("raw_data_records.data LIKE ?", "%"+keyword+"%")
+		if searchCol != "" {
+			// 根据指定列搜索
+			db = db.Where("json_extract(raw_data_records.data, '$."+searchCol+"') LIKE ?", "%"+keyword+"%")
+		} else {
+			// 全局搜索
+			db = db.Where("raw_data_records.data LIKE ?", "%"+keyword+"%")
+		}
 	}
 
-	// 2. 统计总数 (需要考虑 GROUP BY 的情况)
-	if tag != "" || batch != "" {
-		// 使用子查询统计总数
-		model.DB.Table("(?) as u", db.Select("raw_data_records.id")).Count(&total)
-	} else {
-		db.Count(&total)
+	if dataSource != "" {
+		db = db.Where("json_extract(raw_data_records.data, '$.\"数据来源\"') = ?", dataSource)
 	}
+
+	if startDate != "" {
+		db = db.Where("raw_data_records.updated_at >= ?", startDate+" 00:00:00")
+	}
+	if endDate != "" {
+		db = db.Where("raw_data_records.updated_at <= ?", endDate+" 23:59:59")
+	}
+
+	// 其他关联过滤条件需要在连接表上操作，因为我们需要分页
+	// 由于 Tag, Batch, TagMode, Status 是多对多或根据计算得出的，我们最好使用 Join 或者子查询
+
+	if tag != "" || batch != "" || tagMode != "" || status != "" {
+		subQuery := model.DB.Table("sys_entity_tags").Select("record_id")
+
+		if tag != "" {
+			subQuery = subQuery.Where("tag_id = ?", tag)
+		}
+
+		if batch != "" {
+			subQuery = subQuery.Where("batch_id = ?", batch)
+		}
+
+		if tagMode != "" {
+			// batch 表关联
+			subQuery = subQuery.Joins("JOIN tag_task_batches ON tag_task_batches.id = sys_entity_tags.batch_id").
+				Where("tag_task_batches.tag_mode = ?", tagMode)
+		}
+
+		if status == "success" {
+			db = db.Where("raw_data_records.id IN (?)", subQuery)
+		} else if status == "unmatched" {
+			db = db.Where("raw_data_records.id NOT IN (?)", subQuery)
+		} else {
+			db = db.Where("raw_data_records.id IN (?)", subQuery)
+		}
+	}
+
+	// 2. 统计总数
+	db.Count(&total)
 
 	// 3. 分页查询原始记录
 	var records []model.RawDataRecord
@@ -228,6 +255,14 @@ func (a *App) GetTaggedDataList(keyword, tag, batch string, page, pageSize int) 
 			Tags:       []model.TagDto{},
 		}
 
+		// 解析数据来源
+		var dataMap map[string]interface{}
+		if err := json.Unmarshal([]byte(r.Data), &dataMap); err == nil {
+			if src, ok := dataMap["数据来源"].(string); ok {
+				dto.DataSource = src
+			}
+		}
+
 		// 查询这条记录的所有标签
 		var entityTags []model.SysEntityTag
 		model.DB.Where("record_id = ?", r.ID).Find(&entityTags)
@@ -240,23 +275,34 @@ func (a *App) GetTaggedDataList(keyword, tag, batch string, page, pageSize int) 
 				var b model.TagTaskBatch
 				if err := model.DB.First(&b, lastBatchID).Error; err == nil {
 					dto.BatchName = b.Name
+					dto.TagMode = b.TagMode
 				}
 			}
 
-			// 查询具体的 Tag 详情
+			// 构建 TagID 到 IsPrimary 的映射
+			primaryTagMap := make(map[uint64]bool)
 			var tagIDs []uint64
 			for _, et := range entityTags {
 				tagIDs = append(tagIDs, et.TagID)
+				if et.IsPrimary {
+					primaryTagMap[et.TagID] = true
+				}
 			}
 
 			if len(tagIDs) > 0 {
 				var tags []model.SysTag
 				model.DB.Where("id IN ?", tagIDs).Find(&tags)
 				for _, t := range tags {
-					dto.Tags = append(dto.Tags, model.TagDto{
+					tagDto := model.TagDto{
 						Name:  t.Name,
 						Color: t.Color,
-					})
+					}
+					dto.Tags = append(dto.Tags, tagDto)
+
+					// 如果是主标签
+					if primaryTagMap[t.ID] {
+						dto.PrimaryTag = &tagDto
+					}
 				}
 			}
 		} else {

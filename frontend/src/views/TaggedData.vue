@@ -15,9 +15,19 @@
           <el-input 
             v-model="filterForm.keyword" 
             placeholder="搜索文本内容" 
-            :prefix-icon="Search"
             clearable
-          />
+            class="input-with-select"
+          >
+            <template #prepend>
+              <el-select v-model="filterForm.searchCol" placeholder="全部字段" style="width: 120px" clearable>
+                <el-option label="全部字段" value="" />
+                <el-option v-for="col in dynamicColumns" :key="col" :label="col" :value="col" />
+              </el-select>
+            </template>
+            <template #append>
+              <el-button :icon="Search" @click="handleSearch" />
+            </template>
+          </el-input>
         </el-form-item>
         
         <el-form-item label="标签分类">
@@ -30,6 +40,40 @@
           <el-select v-model="filterForm.batch" placeholder="全部任务" clearable class="w-150">
             <el-option v-for="batch in batchOptions" :key="batch.id" :label="batch.name" :value="String(batch.id)" />
           </el-select>
+        </el-form-item>
+
+        <el-form-item label="数据来源">
+          <el-select v-model="filterForm.dataSource" placeholder="全部来源" clearable class="w-150">
+            <el-option v-for="ds in dataSourceOptions" :key="ds.source_name" :label="ds.source_name" :value="ds.source_name" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="打标模式">
+          <el-select v-model="filterForm.tagMode" placeholder="全部模式" clearable class="w-150">
+            <el-option label="单标签" value="single" />
+            <el-option label="多标签" value="multiple" />
+            <el-option label="混合模式" value="mixed" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="状态">
+          <el-select v-model="filterForm.status" placeholder="全部状态" clearable class="w-150">
+            <el-option label="已打标" value="success" />
+            <el-option label="未命中" value="unmatched" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="打标时间">
+          <el-date-picker
+            v-model="filterForm.dateRange"
+            type="daterange"
+            range-separator="至"
+            start-placeholder="开始日期"
+            end-placeholder="结束日期"
+            value-format="YYYY-MM-DD"
+            clearable
+            style="width: 240px"
+          />
         </el-form-item>
 
         <el-form-item>
@@ -47,8 +91,27 @@
         v-loading="loading"
         class="custom-table"
       >
-        <el-table-column prop="id" label="数据 ID" width="100" />
-        <el-table-column prop="content" label="原始数据内容" min-width="300" show-overflow-tooltip />
+        <el-table-column prop="id" label="数据 ID" width="100" fixed="left" />
+        
+        <!-- 动态列 (原始数据的所有字段) -->
+        <el-table-column 
+          v-for="col in dynamicColumns" 
+          :key="col" 
+          :prop="col" 
+          :label="col" 
+          min-width="150" 
+          show-overflow-tooltip 
+        />
+
+        <!-- 系统处理字段 -->
+        <el-table-column label="打标模式" width="120">
+          <template #default="scope">
+            <el-tag size="small" type="info">
+              {{ formatTagMode(scope.row.tagMode) }}
+            </el-tag>
+          </template>
+        </el-table-column>
+
         <el-table-column label="命中标签" min-width="200">
           <template #default="scope">
             <div class="tags-wrapper">
@@ -67,9 +130,29 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="batchName" label="来源批次" min-width="180" show-overflow-tooltip />
+
+        <el-table-column label="命中主标签" min-width="120">
+          <template #default="scope">
+            <div v-if="scope.row.tagMode === 'mixed' && scope.row.primaryTag">
+              <el-tag 
+                :color="scope.row.primaryTag.color + '20'"
+                :style="{ color: scope.row.primaryTag.color, borderColor: scope.row.primaryTag.color + '40' }"
+                size="small"
+                class="custom-tag"
+                disable-transitions
+              >
+                {{ scope.row.primaryTag.name }}
+              </el-tag>
+            </div>
+            <span v-else class="no-tag">-</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="batchName" label="任务批次" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="dataSource" label="数据来源" min-width="120" show-overflow-tooltip />
         <el-table-column prop="updateTime" label="打标时间" width="160" />
-        <el-table-column label="状态" width="100">
+        
+        <el-table-column label="状态" width="100" fixed="right">
           <template #default="scope">
             <el-tag :type="scope.row.status === 'success' ? 'success' : 'info'" size="small">
               {{ scope.row.status === 'success' ? '已打标' : '未命中' }}
@@ -98,20 +181,38 @@
 import { ref, reactive, onMounted } from 'vue'
 import { Search, Download, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { GetTaggedDataList, ExportData, GetAllTags, GetTaskBatches } from '../../wailsjs/go/main/App'
+import { GetTaggedDataList, ExportData, GetAllTags, GetTaskBatches, GetAvailableDataSources } from '../../wailsjs/go/main/App'
 
 const loading = ref(false)
 
 // 过滤表单状态
 const filterForm = reactive({
   keyword: '',
+  searchCol: '',
   tag: '',
-  batch: ''
+  batch: '',
+  dataSource: '',
+  tagMode: '',
+  status: '',
+  dateRange: null as string[] | null
 })
+
+// 动态列名
+const dynamicColumns = ref<string[]>([])
+
+const formatTagMode = (mode: string) => {
+  switch (mode) {
+    case 'single': return '单标签'
+    case 'multiple': return '多标签'
+    case 'mixed': return '混合模式'
+    default: return '未知'
+  }
+}
 
 // 下拉选项数据
 const tagOptions = ref<any[]>([])
 const batchOptions = ref<any[]>([])
+const dataSourceOptions = ref<any[]>([])
 
 // 分页状态
 const currentPage = ref(1)
@@ -124,9 +225,61 @@ const tableData = ref<any[]>([])
 const handleSearch = async () => {
   loading.value = true
   try {
-    const res = await GetTaggedDataList(filterForm.keyword, filterForm.tag, filterForm.batch, currentPage.value, pageSize.value)
+    const res = await GetTaggedDataList(
+      filterForm.keyword, 
+      filterForm.tag, 
+      filterForm.batch, 
+      filterForm.searchCol, 
+      filterForm.dataSource,
+      filterForm.tagMode,
+      filterForm.status,
+      filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[0] : '',
+      filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[1] : '',
+      currentPage.value, 
+      pageSize.value
+    )
     if (res) {
-      tableData.value = res.records || []
+      // 解析 JSON 数据并展平
+      const parsedData = (res.records || []).map((r: any) => {
+        let dataObj = {}
+        try {
+          if (r.content) {
+            dataObj = JSON.parse(r.content)
+          }
+        } catch (e) {
+          console.warn('Failed to parse record content:', r.content)
+        }
+        return {
+          ...r,
+          ...dataObj
+        }
+      })
+
+      // 提取动态列头
+      if (parsedData.length > 0) {
+        const colSet = new Set<string>()
+        parsedData.forEach((row: any) => {
+          // 只把 JSON 内解析出来的 key 作为动态列
+          let keys: string[] = []
+          try {
+            if (row.content) {
+              keys = Object.keys(JSON.parse(row.content))
+            }
+          } catch(e) {}
+          
+          keys.forEach(k => {
+            if (k !== 'id' && k !== '数据来源') {
+              colSet.add(k)
+            }
+          })
+        })
+        let cols = Array.from(colSet)
+        dynamicColumns.value = cols
+      } else {
+        dynamicColumns.value = []
+      }
+
+      tableData.value = parsedData
       totalItems.value = res.total || 0
     }
   } catch (e) {
@@ -138,8 +291,13 @@ const handleSearch = async () => {
 
 const resetFilter = () => {
   filterForm.keyword = ''
+  filterForm.searchCol = ''
   filterForm.tag = ''
   filterForm.batch = ''
+  filterForm.dataSource = ''
+  filterForm.tagMode = ''
+  filterForm.status = ''
+  filterForm.dateRange = null
   currentPage.value = 1
   handleSearch()
 }
@@ -173,6 +331,9 @@ const loadOptions = async () => {
 
     const batches = await GetTaskBatches()
     if (batches) batchOptions.value = batches
+
+    const ds = await GetAvailableDataSources()
+    if (ds) dataSourceOptions.value = ds
   } catch (e) {
     console.error('加载选项失败', e)
   }

@@ -43,7 +43,7 @@ export function GetRuleByTag(arg1:number):Promise<model.SysMatchRule>;
 
 export function GetTagTree():Promise<Array<model.TagTreeNode>>;
 
-export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:number,arg5:number):Promise<model.PagedTaggedData>;
+export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string,arg9:string,arg10:number,arg11:number):Promise<model.PagedTaggedData>;
 
 export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
 

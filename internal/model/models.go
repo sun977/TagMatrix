@@ -50,6 +50,8 @@ type TagTaskBatch struct {
 	Name           string         `json:"name" gorm:"size:100;comment:任务名称，比如 20240101-打标任务"`
 	Status         string         `json:"status" gorm:"size:20;index;comment:状态：running, completed, failed, rolled_back"`
 	TotalProcessed int            `json:"total_processed" gorm:"default:0;comment:总处理条数"`
+	TagMode        string         `json:"tag_mode" gorm:"size:20;comment:打标模式：single, multiple, mixed"`
+	DataSource     string         `json:"data_source" gorm:"size:255;comment:数据来源过滤条件"`
 	FinishedAt     *time.Time     `json:"finished_at" gorm:"comment:任务完成时间"`
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index;comment:软删除时间"`
 }

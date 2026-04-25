@@ -86,9 +86,11 @@ func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, i
 	}
 
 	batch := model.TagTaskBatch{
-		BaseModel: model.BaseModel{ID: batchID},
-		Name:      batchName,
-		Status:    "running",
+		BaseModel:  model.BaseModel{ID: batchID},
+		Name:       batchName,
+		Status:     "running",
+		TagMode:    tagMode,
+		DataSource: dataSource,
 	}
 	if err := s.db.Create(&batch).Error; err != nil {
 		return 0, fmt.Errorf("failed to create task batch: %w", err)
