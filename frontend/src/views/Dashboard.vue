@@ -152,7 +152,7 @@
     </el-dialog>
 
     <!-- 规则列表弹窗 -->
-    <el-dialog v-model="rulesDialogVisible" title="已生效规则列表" width="900px">
+    <el-dialog v-model="rulesDialogVisible" title="规则列表" width="900px">
       <el-table :data="rulesList" style="width: 100%" height="400" v-loading="loadingRules" class="custom-table">
         <el-table-column prop="name" label="规则名称" min-width="180" />
         <el-table-column prop="tagName" label="关联标签" width="150">
@@ -161,11 +161,6 @@
               <span class="tag-color-dot" :style="{ backgroundColor: row.tagColor || 'var(--tm-accent-primary)' }"></span>
               <span>{{ row.tagName }}</span>
             </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="entity_type" label="实体类型" width="120">
-          <template #default="{ row }">
-            <el-tag size="small" type="info">{{ row.entity_type }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="priority" label="优先级" width="100" align="center" />
