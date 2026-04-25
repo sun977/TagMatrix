@@ -140,7 +140,7 @@
               <el-button type="danger" link size="small">终止</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'completed'">
-              <el-button size="small" class="action-btn">查看日志</el-button>
+              <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
               <el-button size="small" class="action-btn">导出</el-button>
               <el-button type="danger" link size="small" @click="handleRollback(scope.row.id)">回退</el-button>
             </template>
@@ -149,7 +149,7 @@
               <el-button type="success" size="small" class="action-btn retry-btn">重试</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'rolled_back'">
-              <el-button size="small" class="action-btn">查看日志</el-button>
+              <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'pending'">
               <el-button size="small" class="action-btn">编辑</el-button>
@@ -171,6 +171,29 @@
         />
       </div>
     </div>
+
+    <!-- 查看日志弹窗 -->
+    <el-dialog
+      v-model="logDialogVisible"
+      title="打标任务日志"
+      width="70%"
+      destroy-on-close
+    >
+      <el-table :data="taskLogs" style="width: 100%" max-height="500px" v-loading="loadingLogs">
+        <el-table-column prop="recordId" label="数据ID" width="100" />
+        <el-table-column prop="tagName" label="标签名称" width="150" />
+        <el-table-column prop="ruleName" label="命中规则" width="180" />
+        <el-table-column prop="action" label="操作" width="100">
+          <template #default="scope">
+            <el-tag :type="scope.row.action === 'add' ? 'success' : 'danger'" size="small">
+              {{ scope.row.action === 'add' ? '添加' : '移除' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="reason" label="匹配原因" min-width="250" />
+        <el-table-column prop="createdAt" label="时间" width="180" />
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -178,7 +201,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -202,6 +225,24 @@ const isSubmitting = ref(false)
 
 // 真实任务历史数据
 const taskHistory = ref<any[]>([])
+
+// 日志弹窗相关状态
+const logDialogVisible = ref(false)
+const loadingLogs = ref(false)
+const taskLogs = ref<model.TagTaskLogDto[]>([])
+
+const viewLogs = async (batchId: number) => {
+  logDialogVisible.value = true
+  loadingLogs.value = true
+  try {
+    const logs = await GetTaskLogs(batchId)
+    taskLogs.value = logs || []
+  } catch (e: any) {
+    ElMessage.error('获取日志失败: ' + String(e))
+  } finally {
+    loadingLogs.value = false
+  }
+}
 
 const loadData = async () => {
   try {

@@ -470,6 +470,30 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class TagTaskLogDto {
+	    id: number;
+	    recordId: number;
+	    tagName: string;
+	    ruleName: string;
+	    action: string;
+	    reason: string;
+	    createdAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new TagTaskLogDto(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.recordId = source["recordId"];
+	        this.tagName = source["tagName"];
+	        this.ruleName = source["ruleName"];
+	        this.action = source["action"];
+	        this.reason = source["reason"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
 	export class TagTreeNode {
 	    id: number;
 	    // Go type: time

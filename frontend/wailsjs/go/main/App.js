@@ -74,6 +74,10 @@ export function GetTaskBatches() {
   return window['go']['main']['App']['GetTaskBatches']();
 }
 
+export function GetTaskLogs(arg1) {
+  return window['go']['main']['App']['GetTaskLogs'](arg1);
+}
+
 export function ImportData(arg1, arg2) {
   return window['go']['main']['App']['ImportData'](arg1, arg2);
 }

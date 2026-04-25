@@ -44,6 +44,17 @@ type TagTreeNode struct {
 	Children []TagTreeNode `json:"children"`
 }
 
+// TagTaskLogDto 打标日志前端展示
+type TagTaskLogDto struct {
+	ID        uint64 `json:"id"`
+	RecordID  uint64 `json:"recordId"`
+	TagName   string `json:"tagName"`
+	RuleName  string `json:"ruleName"`
+	Action    string `json:"action"`
+	Reason    string `json:"reason"`
+	CreatedAt string `json:"createdAt"`
+}
+
 // ExportTagNode 用于导出为 JSON 的精简结构，去除了数据库 ID 和时间戳等无用信息
 type ExportTagNode struct {
 	Name        string          `json:"name"`

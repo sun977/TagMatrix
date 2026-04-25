@@ -41,6 +41,8 @@ export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:numbe
 
 export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
 
+export function GetTaskLogs(arg1:number):Promise<Array<model.TagTaskLogDto>>;
+
 export function ImportData(arg1:string,arg2:Array<string>):Promise<number>;
 
 export function ImportTags(arg1:string):Promise<void>;

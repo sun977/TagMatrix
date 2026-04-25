@@ -373,6 +373,10 @@ func (a *App) GetTaskBatches() ([]model.TagTaskBatch, error) {
 	return batches, err
 }
 
+func (a *App) GetTaskLogs(batchID uint64) ([]model.TagTaskLogDto, error) {
+	return a.taskEngine.GetTaskLogs(batchID)
+}
+
 // ----------------- AI Engine API -----------------
 
 func (a *App) ChatWithAI(message string) (string, error) {
