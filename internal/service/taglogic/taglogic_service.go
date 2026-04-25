@@ -113,6 +113,10 @@ func (s *TagLogicService) DeleteTag(id uint64) error {
 
 		// 2. 级联删除这些标签关联的所有匹配规则
 		if len(tagIDs) > 0 {
+			// 在软删除前将 is_enabled 置为 false
+			if err := tx.Model(&model.SysMatchRule{}).Where("tag_id IN ?", tagIDs).Update("is_enabled", false).Error; err != nil {
+				return err
+			}
 			if err := tx.Where("tag_id IN ?", tagIDs).Delete(&model.SysMatchRule{}).Error; err != nil {
 				return err
 			}
@@ -332,7 +336,14 @@ func (s *TagLogicService) GetRulesByTagID(tagID uint64) ([]model.SysMatchRule, e
 
 // DeleteRule 删除规则
 func (s *TagLogicService) DeleteRule(id uint64) error {
-	return s.db.Delete(&model.SysMatchRule{}, id).Error
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		// 在软删除前将 is_enabled 置为 false
+		if err := tx.Model(&model.SysMatchRule{}).Where("id = ?", id).Update("is_enabled", false).Error; err != nil {
+			return err
+		}
+		// 执行软删除
+		return tx.Delete(&model.SysMatchRule{}, id).Error
+	})
 }
 
 // ----------------- 试运行 (Dry Run) -----------------
