@@ -97,3 +97,7 @@ export function SaveAppConfig(arg1) {
 export function SaveRule(arg1) {
   return window['go']['main']['App']['SaveRule'](arg1);
 }
+
+export function UpdateTag(arg1) {
+  return window['go']['main']['App']['UpdateTag'](arg1);
+}

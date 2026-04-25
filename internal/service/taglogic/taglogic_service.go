@@ -47,6 +47,22 @@ func (s *TagLogicService) CreateTag(tag *model.SysTag) error {
 	return s.db.Create(tag).Error
 }
 
+// UpdateTag 更新标签的基本信息（名称、颜色、描述）
+func (s *TagLogicService) UpdateTag(tag *model.SysTag) error {
+	if tag.ID == 0 {
+		return fmt.Errorf("tag id cannot be empty")
+	}
+	if tag.Name == "" {
+		return fmt.Errorf("tag name cannot be empty")
+	}
+	// 仅更新允许修改的字段，防止意外修改 Path 和 ParentID 等结构字段
+	return s.db.Model(tag).Updates(map[string]interface{}{
+		"name":        tag.Name,
+		"color":       tag.Color,
+		"description": tag.Description,
+	}).Error
+}
+
 // GetTagTree 获取所有标签并组装为树形结构
 func (s *TagLogicService) GetTagTree() ([]model.TagTreeNode, error) {
 	var tags []model.SysTag

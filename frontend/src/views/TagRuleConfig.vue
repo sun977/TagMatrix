@@ -56,19 +56,17 @@
       </div>
 
       <!-- 右侧规则配置区域 -->
-      <div class="right-pane">
+      <div class="right-pane" style="display: flex; flex-direction: column; gap: 16px; background-color: transparent; padding: 0;">
         <template v-if="selectedTag">
-          <div class="pane-header right-header">
-            <div class="header-title">
-              <span class="tag-color-dot large" :style="{ backgroundColor: selectedTag.color }"></span>
-              <h2>{{ selectedTag.name }}</h2>
-            </div>
-          </div>
-
-          <div class="pane-content scroll-content">
-            <!-- 标签基本信息 -->
-            <div class="config-section">
-              <h4 class="section-title">标签基本信息</h4>
+          <!-- 标签信息详情卡片 -->
+          <el-card class="tag-info-card" shadow="never" style="border-radius: 8px; border: 1px solid var(--tm-border-light);">
+            <template #header>
+              <div class="card-header" style="display: flex; align-items: center;">
+                <span class="tag-color-dot large" :style="{ backgroundColor: selectedTag.color }"></span>
+                <h2 style="margin: 0 0 0 12px; font-size: 18px; font-weight: 600;">{{ selectedTag.name }}</h2>
+              </div>
+            </template>
+            <div class="config-section" style="margin-bottom: 0;">
               <el-row :gutter="24">
                 <el-col :span="8">
                   <div class="form-item">
@@ -97,87 +95,100 @@
                   </div>
                 </el-col>
               </el-row>
+              <div style="text-align: right; margin-top: 16px;">
+                <el-button type="primary" class="action-btn-green" @click="handleUpdateTag" :loading="updatingTag">更新标签</el-button>
+              </div>
             </div>
+          </el-card>
 
-            <!-- 匹配规则 -->
-            <div class="config-section">
-              <div class="section-header-flex">
+          <!-- 标签对应的规则详情卡片 -->
+          <el-card class="rule-info-card" shadow="never" style="flex: 1; display: flex; flex-direction: column; border-radius: 8px; border: 1px solid var(--tm-border-light);">
+            <template #header>
+              <div class="card-header section-header-flex" style="margin-bottom: 0;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <h4 class="section-title" style="margin-bottom: 0;">匹配规则</h4>
+                  <h3 style="margin: 0; font-size: 16px;">匹配规则</h3>
                   <el-tooltip content="点击查看匹配算子说明" placement="top">
-                    <el-icon class="help-icon" @click="operatorHelpVisible = true"><QuestionFilled /></el-icon>
+                    <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer;"><QuestionFilled /></el-icon>
                   </el-tooltip>
                 </div>
                 <el-button size="small" type="info" plain @click="previewRuleJson">
                   预览 JSON
                 </el-button>
               </div>
+            </template>
 
-              <div class="rules-list">
-                <RuleGroup v-model="ruleState" :is-root="true" />
-              </div>
-            </div>
-
-            <!-- 规则测试 -->
-            <div class="config-section">
-              <div class="section-header-flex">
-                <h4 class="section-title">规则测试 (试运行)</h4>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                  <el-select v-model="testLimit" placeholder="测试数据范围" size="small" style="width: 150px">
-                    <el-option label="前 1000 条数据" :value="1000" />
-                    <el-option label="全库数据" :value="0" />
-                  </el-select>
-                  <el-button type="primary" class="action-btn-green" @click="handleDryRun" :loading="runningDry" size="small">
-                    <el-icon><VideoPlay /></el-icon> 测试此规则
-                  </el-button>
+            <div class="scroll-content" style="flex: 1; overflow-y: auto;">
+              <div class="config-section">
+                <div class="form-item" style="margin-bottom: 20px; width: 50%;">
+                  <label>规则名称</label>
+                  <el-input v-model="ruleName" :placeholder="selectedTag.name + '-Rule'" />
+                </div>
+                <div class="rules-list">
+                  <RuleGroup v-model="ruleState" :is-root="true" />
                 </div>
               </div>
 
-              <div v-if="hasRunDry" class="test-results">
-                <div class="result-alert">
-                  测试完成！抽样检测了 {{ testSummary.total }} 条数据，其中有 {{ testSummary.matched }} 条数据匹配当前规则，匹配率 {{ testSummary.ratio }}%。
+              <!-- 规则测试 -->
+              <div class="config-section" style="margin-top: 32px; border-top: 1px dashed var(--tm-border-light); padding-top: 24px;">
+                <div class="section-header-flex">
+                  <h4 class="section-title">规则测试 (试运行)</h4>
+                  <div style="display: flex; gap: 12px; align-items: center;">
+                    <el-select v-model="testLimit" placeholder="测试数据范围" size="small" style="width: 150px">
+                      <el-option label="前 1000 条数据" :value="1000" />
+                      <el-option label="全库数据" :value="0" />
+                    </el-select>
+                    <el-button type="primary" class="action-btn-green" @click="handleDryRun" :loading="runningDry" size="small">
+                      <el-icon><VideoPlay /></el-icon> 测试此规则
+                    </el-button>
+                  </div>
                 </div>
 
-                <el-table :data="mockDryRunData" style="width: 100%" class="custom-table" max-height="400">
-                  <el-table-column 
-                    label="匹配结果" 
-                    width="120" 
-                    align="center" 
-                    fixed="left"
-                    prop="_matched"
-                    sortable
-                  >
-                    <template #default="scope">
-                      <div class="match-pill" :class="scope.row._matched ? 'matched' : 'unmatched'">
-                        <el-icon><Select v-if="scope.row._matched" /><CloseBold v-else /></el-icon>
-                        {{ scope.row._matched ? '匹配' : '不匹配' }}
-                      </div>
-                    </template>
-                  </el-table-column>
-                  
-                  <!-- 动态渲染数据列 -->
-                  <el-table-column
-                    v-for="col in dynamicColumns"
-                    :key="col"
-                    :prop="col"
-                    :label="col"
-                    min-width="150"
-                    show-overflow-tooltip
-                  />
-                </el-table>
+                <div v-if="hasRunDry" class="test-results">
+                  <div class="result-alert">
+                    测试完成！抽样检测了 {{ testSummary.total }} 条数据，其中有 {{ testSummary.matched }} 条数据匹配当前规则，匹配率 {{ testSummary.ratio }}%。
+                  </div>
+
+                  <el-table :data="mockDryRunData" style="width: 100%" class="custom-table" max-height="400">
+                    <el-table-column 
+                      label="匹配结果" 
+                      width="120" 
+                      align="center" 
+                      fixed="left"
+                      prop="_matched"
+                      sortable
+                    >
+                      <template #default="scope">
+                        <div class="match-pill" :class="scope.row._matched ? 'matched' : 'unmatched'">
+                          <el-icon><Select v-if="scope.row._matched" /><CloseBold v-else /></el-icon>
+                          {{ scope.row._matched ? '匹配' : '不匹配' }}
+                        </div>
+                      </template>
+                    </el-table-column>
+                    
+                    <!-- 动态渲染数据列 -->
+                    <el-table-column
+                      v-for="col in dynamicColumns"
+                      :key="col"
+                      :prop="col"
+                      :label="col"
+                      min-width="150"
+                      show-overflow-tooltip
+                    />
+                  </el-table>
+                </div>
               </div>
             </div>
-          </div>
 
-          <!-- 底部保存条 -->
-          <div class="pane-footer">
-            <el-button>取消</el-button>
-            <el-button type="primary" class="action-btn-green" @click="handleSaveRule" :loading="savingRule">保存配置</el-button>
-          </div>
+            <!-- 底部保存条 -->
+            <div class="pane-footer" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--tm-border-light); justify-content: flex-end; display: flex;">
+              <el-button>取消</el-button>
+              <el-button type="primary" class="action-btn-green" @click="handleSaveRule" :loading="savingRule">保存配置</el-button>
+            </div>
+          </el-card>
         </template>
 
         <!-- 未选择标签时的空状态 -->
-        <div class="empty-state" v-else>
+        <div class="empty-state" v-else style="background: #fff; border-radius: 8px; border: 1px solid var(--tm-border-light); height: 100%; display: flex; align-items: center; justify-content: center;">
           <el-empty description="请在左侧选择一个标签以配置打标规则" />
         </div>
       </div>
@@ -235,7 +246,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled, Filter, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CreateTag, DeleteTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRuleByTag, CheckTagHasRules } from '../../wailsjs/go/main/App'
+import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRuleByTag, CheckTagHasRules } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import RuleGroup from '../components/RuleGroup.vue'
 
@@ -323,6 +334,8 @@ const handleDeleteTag = async (data: any, e: Event) => {
 // --- 右侧规则逻辑 ---
 const selectedTag = ref<any>(null)
 const currentRuleId = ref<number | null>(null)
+const ruleName = ref<string>('')
+const updatingTag = ref(false)
 const ruleState = ref<any>({
   logic: 'and',
   conditions: []
@@ -402,17 +415,17 @@ const handleNodeClick = async (data: any) => {
   
   hasRunDry.value = false
   currentRuleId.value = null // 重置当前规则ID
+  ruleName.value = '' // 重置规则名称
   
   try {
     const rule = await GetRuleByTag(data.id)
     if (rule && rule.id) {
       currentRuleId.value = rule.id
+      ruleName.value = rule.name || ''
     }
     
     if (rule && rule.rule_json) {
       const parsed = JSON.parse(rule.rule_json)
-      // 需要从 NeoScan 格式反解析为 state 格式，这里简化处理，假设之前存的就是带有 logic/conditions 的内部格式
-      // 实际应用中需要写一个反向解析器
       if (parsed.logic) {
         ruleState.value = parsed
       } else {
@@ -426,6 +439,26 @@ const handleNodeClick = async (data: any) => {
   }
 }
 
+const handleUpdateTag = async () => {
+  if (!selectedTag.value) return
+  updatingTag.value = true
+  try {
+    const tag = new model.SysTag()
+    tag.id = selectedTag.value.id
+    tag.name = selectedTag.value.name
+    tag.color = selectedTag.value.color
+    tag.description = selectedTag.value.description
+    
+    await UpdateTag(tag)
+    ElMessage.success('标签更新成功')
+    fetchTags() // 刷新树以显示最新信息
+  } catch (e: any) {
+    ElMessage.error('更新失败: ' + String(e))
+  } finally {
+    updatingTag.value = false
+  }
+}
+
 const savingRule = ref(false)
 const handleSaveRule = async () => {
   savingRule.value = true
@@ -435,14 +468,8 @@ const handleSaveRule = async () => {
       ruleObj.id = currentRuleId.value
     }
     ruleObj.tag_id = selectedTag.value.id
-    ruleObj.name = selectedTag.value.name + "的规则"
+    ruleObj.name = ruleName.value || (selectedTag.value.name + "-Rule")
     
-    // 这里我们依然保存前端内部的 state 格式方便回显，如果是为了对接其他系统，可以保存 NeoScan 格式
-    // 为了满足“生成一段json数据”，我们将 NeoScan 格式序列化保存
-    const neoRule = buildNeoScanRule(ruleState.value)
-    
-    // 但是为了下次回显方便，我们需要在 rule_json 中保存能够反向构建的数据。
-    // 在这里我们做一个 hack，将 state 作为内部状态保存，将 NeoScan 作为真正的规则使用
     ruleObj.rule_json = JSON.stringify(ruleState.value) 
     ruleObj.is_enabled = true
     ruleObj.priority = 0
@@ -450,11 +477,11 @@ const handleSaveRule = async () => {
     await SaveRule(ruleObj)
     ElMessage.success('配置保存成功')
     
-    // 重新获取规则以更新 currentRuleId，避免用户连续多次点击保存按钮时重复创建记录
     try {
       const updatedRule = await GetRuleByTag(selectedTag.value.id)
       if (updatedRule && updatedRule.id) {
         currentRuleId.value = updatedRule.id
+        ruleName.value = updatedRule.name || ''
       }
     } catch (ignore) {}
   } catch (e: any) {

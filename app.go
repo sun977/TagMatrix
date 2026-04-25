@@ -276,6 +276,10 @@ func (a *App) CreateTag(tag model.SysTag) error {
 	return a.tagLogic.CreateTag(&tag)
 }
 
+func (a *App) UpdateTag(tag model.SysTag) error {
+	return a.tagLogic.UpdateTag(&tag)
+}
+
 func (a *App) DeleteTag(id uint64) error {
 	return a.tagLogic.DeleteTag(id)
 }

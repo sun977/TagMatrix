@@ -52,3 +52,5 @@ export function RunTaggingTask(arg1:Array<number>,arg2:string,arg3:boolean):Prom
 export function SaveAppConfig(arg1:config.AppConfig):Promise<void>;
 
 export function SaveRule(arg1:model.SysMatchRule):Promise<void>;
+
+export function UpdateTag(arg1:model.SysTag):Promise<void>;
