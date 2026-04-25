@@ -231,6 +231,8 @@ func (s *DataImportService) parseCSV(filePath string) ([]map[string]interface{},
 				record[headers[i]] = value
 			}
 		}
+		// 为 CSV 也附加来源表（文件名）
+		record["来源表"] = filepath.Base(filePath)
 		records = append(records, record)
 	}
 

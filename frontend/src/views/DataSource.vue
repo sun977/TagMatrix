@@ -117,19 +117,6 @@
           show-overflow-tooltip
         />
 
-        <!-- Mock 的已打标签列 -->
-        <el-table-column label="已打标签" min-width="200">
-          <template #default="scope">
-            <div class="tags-container">
-              <!-- 为了 UI 演示，随机分配一些 mock 标签 -->
-              <span class="mock-tag tag-yellow" v-if="scope.$index % 3 === 0">高价值用户</span>
-              <span class="mock-tag tag-blue" v-if="scope.$index % 2 === 0">活跃用户</span>
-              <span class="mock-tag tag-gray" v-if="scope.$index % 3 === 1">普通用户</span>
-              <span class="mock-tag tag-red" v-if="scope.$index % 4 === 3">流失风险</span>
-            </div>
-          </template>
-        </el-table-column>
-
         <el-table-column label="操作" width="100" fixed="right" align="center">
           <template #default="scope">
             <el-button type="primary" link size="small" class="detail-btn" @click="handleViewDetail(scope.row)">查看详情</el-button>
@@ -274,7 +261,22 @@ const fetchTableData = async () => {
 
     // 提取动态列头
     if (parsedData.length > 0) {
-      const cols = Object.keys(parsedData[0]).filter(k => k !== 'id' && k !== 'batch_id')
+      const colSet = new Set<string>()
+      parsedData.forEach((row: any) => {
+        Object.keys(row).forEach(k => {
+          if (k !== 'id' && k !== 'batch_id') {
+            colSet.add(k)
+          }
+        })
+      })
+      let cols = Array.from(colSet)
+      
+      // 确保“来源表”字段放在最后，方便查看
+      if (cols.includes('来源表')) {
+        cols = cols.filter(c => c !== '来源表')
+        cols.push('来源表')
+      }
+      
       dynamicColumns.value = cols
     } else {
       dynamicColumns.value = []
