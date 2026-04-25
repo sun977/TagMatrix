@@ -54,7 +54,7 @@ func TestTaskEngine_RunAndRollback(t *testing.T) {
 	model.DB.Create(&rule)
 
 	// 3. 执行打标任务 (异步)
-	batchID, err := svc.RunTaggingTask([]uint64{rule.ID}, "TestBatch", true, "multiple")
+	batchID, err := svc.RunTaggingTask([]uint64{rule.ID}, "TestBatch", true, "multiple", "")
 	if err != nil {
 		t.Fatalf("RunTaggingTask failed: %v", err)
 	}

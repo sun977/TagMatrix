@@ -65,7 +65,7 @@ type tagTaskContext struct {
 // batchName: 此次打标任务的自定义名称
 // isOverwrite: 是否为覆盖模式（清除原有标签）
 // tagMode: 打标模式（single: 单标签, multiple: 多标签, mixed: 混合模式）
-func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string) (uint64, error) {
+func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, dataSource string) (uint64, error) {
 	if len(ruleIDs) == 0 {
 		return 0, fmt.Errorf("no rules provided")
 	}
@@ -95,9 +95,27 @@ func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, i
 	}
 
 	// 3. 异步启动打标引擎
-	go s.executeTask(batchID, rules, isOverwrite, tagMode)
+	go s.executeTask(batchID, rules, isOverwrite, tagMode, dataSource)
 
 	return batchID, nil
+}
+
+// GetAvailableDataSources 获取可用的数据源列表
+func (s *TaskEngineService) GetAvailableDataSources(ctx context.Context) ([]model.DataSourceOption, error) {
+	var results []model.DataSourceOption
+	// 按照数据来源字段分组（从 JSON 数据中提取）
+	err := s.db.WithContext(ctx).
+		Table("raw_data_records").
+		Select("json_extract(data, '$.\"数据来源\"') as source_name, count(id) as count").
+		Where("deleted_at IS NULL AND json_extract(data, '$.\"数据来源\"') IS NOT NULL").
+		Group("json_extract(data, '$.\"数据来源\"')").
+		Order("source_name ASC").
+		Find(&results).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch data sources: %w", err)
+	}
+	return results, nil
 }
 
 // parsedRule 用于预解析的规则结构体
@@ -107,8 +125,8 @@ type parsedRule struct {
 }
 
 // executeTask 核心调度引擎，使用 Worker Pool 模式流式处理海量数据
-func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string) {
-	log.Printf("[TaskEngine] Starting batch %d", batchID)
+func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string, dataSource string) {
+	log.Printf("[TaskEngine] Starting batch %d, dataSource: %s", batchID, dataSource)
 
 	// 预解析规则
 	var pRules []parsedRule
@@ -131,7 +149,11 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 
 	// 先获取总记录数用于进度计算
 	var totalRecords int64
-	s.db.Model(&model.RawDataRecord{}).Count(&totalRecords)
+	query := s.db.Model(&model.RawDataRecord{})
+	if dataSource != "" && dataSource != "all" {
+		query = query.Where("json_extract(data, '$.\"数据来源\"') = ?", dataSource)
+	}
+	query.Count(&totalRecords)
 
 	// 发送初始进度事件
 	s.emitProgress(batchID, 0, 0, totalRecords, "running")
@@ -164,7 +186,11 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 	// 流式读取数据库 (FindInBatches) 丢入 Channel
 	batchSize := 1000
 	var results []model.RawDataRecord
-	err := s.db.Model(&model.RawDataRecord{}).FindInBatches(&results, batchSize, func(tx *gorm.DB, batch int) error {
+	query = s.db.Model(&model.RawDataRecord{})
+	if dataSource != "" && dataSource != "all" {
+		query = query.Where("json_extract(data, '$.\"数据来源\"') = ?", dataSource)
+	}
+	err := query.FindInBatches(&results, batchSize, func(tx *gorm.DB, batch int) error {
 		// 将当前的 records 深拷贝发送给 channel，避免并发修改
 		recordsCopy := make([]model.RawDataRecord, len(results))
 		copy(recordsCopy, results)

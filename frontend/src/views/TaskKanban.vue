@@ -23,8 +23,9 @@
             <div class="form-item">
               <label>选择数据源</label>
               <el-select v-model="taskForm.dataSource" placeholder="请选择数据源" class="w-100">
-                <el-option :label="`全量库内数据 (${totalRecords}条)`" value="ds1" />
-              </el-select>
+                  <el-option :label="`全量库内数据 (${totalRecords}条)`" value="all" />
+                  <el-option v-for="ds in availableDataSources" :key="ds.source_name" :label="`${ds.source_name} (${ds.count}条)`" :value="ds.source_name" />
+                </el-select>
             </div>
           </el-col>
           <el-col :span="6">
@@ -225,7 +226,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableDataSources } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -233,10 +234,11 @@ const loadingBatches = ref(false)
 
 const totalRecords = ref(0)
 const availableRules = ref<model.SysMatchRule[]>([])
+const availableDataSources = ref<model.DataSourceOption[]>([])
 
 const taskForm = ref({
   batchName: '',
-  dataSource: 'ds1',
+  dataSource: 'all',
   rules: 'all',
   execStrategy: 'append',
   tagMode: 'multiple',
@@ -388,6 +390,9 @@ const loadData = async () => {
 
     const rules = await GetAllRules()
     availableRules.value = rules || []
+
+    const ds = await GetAvailableDataSources()
+    availableDataSources.value = ds || []
   } catch (e: any) {
     console.error("加载前置数据失败", e)
   }
@@ -444,7 +449,7 @@ const submitTask = async () => {
 
     const isOverwrite = taskForm.value.execStrategy === 'overwrite'
 
-    await RunTaggingTask(ruleIDs, taskForm.value.batchName, isOverwrite, taskForm.value.tagMode)
+    await RunTaggingTask(ruleIDs, taskForm.value.batchName, isOverwrite, taskForm.value.tagMode, taskForm.value.dataSource)
     ElMessage.success(`任务提交成功`)
     
     taskForm.value.batchName = ''

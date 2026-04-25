@@ -33,6 +33,8 @@ export function GetAllTags():Promise<Array<model.SysTag>>;
 
 export function GetAppConfig():Promise<config.AppConfig>;
 
+export function GetAvailableDataSources():Promise<Array<model.DataSourceOption>>;
+
 export function GetDashboardStats():Promise<model.DashboardStats>;
 
 export function GetRawDataList(arg1:number,arg2:number,arg3:string,arg4:string):Promise<main.PagedData>;
@@ -53,7 +55,7 @@ export function ImportTags(arg1:string):Promise<void>;
 
 export function RollbackTask(arg1:number):Promise<void>;
 
-export function RunTaggingTask(arg1:Array<number>,arg2:string,arg3:boolean,arg4:string):Promise<number>;
+export function RunTaggingTask(arg1:Array<number>,arg2:string,arg3:boolean,arg4:string,arg5:string):Promise<number>;
 
 export function SaveAppConfig(arg1:config.AppConfig):Promise<void>;
 

@@ -67,3 +67,9 @@ type ExportTagNode struct {
 	RuleJSON    string          `json:"rule_json,omitempty"` // 级联导出的匹配规则
 	Children    []ExportTagNode `json:"children,omitempty"`
 }
+
+// DataSourceOption 打标任务数据源选项
+type DataSourceOption struct {
+	SourceName string `json:"source_name" gorm:"column:source_name"`
+	Count      int64  `json:"count" gorm:"column:count"`
+}

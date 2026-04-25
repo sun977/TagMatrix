@@ -186,6 +186,20 @@ export namespace model {
 	        this.totalRules = source["totalRules"];
 	    }
 	}
+	export class DataSourceOption {
+	    source_name: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DataSourceOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source_name = source["source_name"];
+	        this.count = source["count"];
+	    }
+	}
 	export class FileAnalysisResult {
 	    filePath: string;
 	    fileName: string;

@@ -3,7 +3,16 @@
     <!-- 页面顶部 Header -->
     <header class="page-header">
       <div class="header-left">
-        <h1 class="page-title">数据源管理</h1>
+        <h1 class="page-title">
+          数据源管理
+          <el-tooltip
+            effect="dark"
+            content="注意：目前的导入逻辑是纯追加模式，即使文件内容或文件名相同，也会作为新的一批数据重复导入。"
+            placement="right"
+          >
+            <el-icon style="font-size: 16px; margin-left: 8px; color: #909399; cursor: help;"><QuestionFilled /></el-icon>
+          </el-tooltip>
+        </h1>
         <p class="page-subtitle">在这里管理所有待打标和已打标的数据源，支持上传、预览、导出数据。</p>
       </div>
     </header>
@@ -15,7 +24,7 @@
           <el-icon><Upload /></el-icon> 上传数据
         </el-button>
         <el-button @click="handleExportClick">
-          <el-icon><Download /></el-icon> 导出当前结果
+          <el-icon><Download /></el-icon> 导出数据
         </el-button>
         <el-button @click="handleDeleteClick" type="danger" plain :disabled="selectedRows.length === 0">
           <el-icon><Delete /></el-icon> 删除选中
@@ -191,7 +200,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Upload, Download, Delete, Search, Filter, UploadFilled, RefreshRight, Setting, DocumentCopy } from '@element-plus/icons-vue'
+import { Upload, Download, Delete, Search, Filter, UploadFilled, RefreshRight, Setting, DocumentCopy, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings

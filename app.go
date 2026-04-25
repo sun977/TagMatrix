@@ -362,8 +362,13 @@ func (a *App) DryRunRule(ruleJSON string, limit int) ([]taglogic.DryRunResult, e
 }
 
 // ----------------- Task Engine API -----------------
-func (a *App) RunTaggingTask(ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string) (uint64, error) {
-	return a.taskEngine.RunTaggingTask(ruleIDs, batchName, isOverwrite, tagMode)
+func (a *App) RunTaggingTask(ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, dataSource string) (uint64, error) {
+	return a.taskEngine.RunTaggingTask(ruleIDs, batchName, isOverwrite, tagMode, dataSource)
+}
+
+// GetAvailableDataSources 获取所有可用的数据来源选项
+func (a *App) GetAvailableDataSources() ([]model.DataSourceOption, error) {
+	return a.taskEngine.GetAvailableDataSources(a.ctx)
 }
 
 func (a *App) RollbackTask(batchID uint64) error {

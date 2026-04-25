@@ -58,6 +58,10 @@ export function GetAppConfig() {
   return window['go']['main']['App']['GetAppConfig']();
 }
 
+export function GetAvailableDataSources() {
+  return window['go']['main']['App']['GetAvailableDataSources']();
+}
+
 export function GetDashboardStats() {
   return window['go']['main']['App']['GetDashboardStats']();
 }
@@ -98,8 +102,8 @@ export function RollbackTask(arg1) {
   return window['go']['main']['App']['RollbackTask'](arg1);
 }
 
-export function RunTaggingTask(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['RunTaggingTask'](arg1, arg2, arg3, arg4);
+export function RunTaggingTask(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['RunTaggingTask'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function SaveAppConfig(arg1) {
