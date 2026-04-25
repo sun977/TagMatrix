@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -38,15 +39,27 @@ func NewApp() *App {
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
+	// 确定数据存放目录
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		configDir = "."
+	}
+	appDir := filepath.Join(configDir, "TagMatrix")
+	if err := os.MkdirAll(appDir, 0755); err != nil {
+		fmt.Printf("Failed to create app directory: %v\n", err)
+		appDir = "."
+	}
+
+	dbPath := filepath.Join(appDir, "data.db")
+
 	// 1. 初始化数据库
-	// 实际环境中应将数据库保存在用户的 AppData 目录下，这里简单使用当前目录的 data.db
-	err := model.InitDB("data.db")
+	err = model.InitDB(dbPath)
 	if err != nil {
 		fmt.Printf("Failed to initialize database: %v\n", err)
 	}
 
-	// 2. 初始化配置文件 (保存到当前目录)
-	err = config.InitConfig(".")
+	// 2. 初始化配置文件
+	err = config.InitConfig(appDir)
 	if err != nil {
 		fmt.Printf("Failed to initialize config: %v\n", err)
 	}

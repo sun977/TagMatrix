@@ -72,6 +72,11 @@ TagMatrix 是一个致力于解决海量结构化/半结构化数据打标签问
    ```bash
    wails dev
    ```
+### 数据保存位置
+- 🍏 macOS : ~/Library/Application Support/TagMatrix/
+- 🪟 Windows : C:\Users\<用户名>\AppData\Roaming\TagMatrix\
+- 🐧 Linux : ~/.config/TagMatrix/
+
 
 ### 编译打包
 在项目根目录运行以下命令，即可生成对应平台的单体桌面可执行文件（存放于 `build/bin/` 目录下）：
