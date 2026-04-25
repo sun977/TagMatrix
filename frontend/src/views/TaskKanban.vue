@@ -10,7 +10,12 @@
 
     <!-- 发起新任务区域 -->
     <div class="launch-section">
-      <h3 class="section-title">发起新的打标任务</h3>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 class="section-title" style="margin-bottom: 0;">发起新的打标任务</h3>
+        <el-button type="primary" class="action-btn-green" @click="submitTask" :loading="isSubmitting">
+          <el-icon><VideoPlay /></el-icon> 开始执行任务
+        </el-button>
+      </div>
       <div class="launch-form">
         <el-row :gutter="24">
           <el-col :span="4">
@@ -78,11 +83,6 @@
             </div>
           </el-col>
         </el-row>
-        <div class="form-actions">
-          <el-button type="primary" class="action-btn-green" @click="submitTask" :loading="isSubmitting">
-            <el-icon><VideoPlay /></el-icon> 开始执行任务
-          </el-button>
-        </div>
       </div>
     </div>
 
