@@ -214,6 +214,7 @@ func (s *TagLogicService) convertToExportNodes(nodes []model.TagTreeNode) []mode
 		// 级联查询并挂载匹配规则
 		var rule model.SysMatchRule
 		if err := s.db.Where("tag_id = ?", node.ID).First(&rule).Error; err == nil {
+			exportNode.RuleName = rule.Name
 			exportNode.RuleJSON = rule.RuleJSON
 		}
 
@@ -294,6 +295,7 @@ func (s *TagLogicService) importTagNodes(tx *gorm.DB, nodes []model.ExportTagNod
 				// 不存在则创建
 				newRule := model.SysMatchRule{
 					TagID:     currentID,
+					Name:      node.RuleName,
 					RuleJSON:  node.RuleJSON,
 					Priority:  0,
 					IsEnabled: true, // 默认为启用状态
@@ -303,6 +305,7 @@ func (s *TagLogicService) importTagNodes(tx *gorm.DB, nodes []model.ExportTagNod
 				}
 			case nil:
 				// 存在则更新
+				rule.Name = node.RuleName
 				rule.RuleJSON = node.RuleJSON
 				if err := tx.Save(&rule).Error; err != nil {
 					return err
