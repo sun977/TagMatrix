@@ -95,6 +95,16 @@
   </div>
 </template>
 
+<script lang="ts">
+import { defineComponent } from 'vue'
+
+// 显式添加默认导出以解决 Vetur/IDE 提示的 "has no default export" 模块导入报错
+// 并在递归组件调用时提供明确的 name 属性
+export default defineComponent({
+  name: 'RuleGroup'
+})
+</script>
+
 <script setup lang="ts">
 import { Plus, FolderAdd, Delete, Close } from '@element-plus/icons-vue'
 
@@ -120,8 +130,9 @@ const addGroup = () => {
   })
 }
 
-const removeCondition = (index: number) => {
-  props.modelValue.conditions.splice(index, 1)
+// 处理在 template 中 v-for 的 index 可能是 string 或 number 的情况，修复潜在的 TS 类型报错
+const removeCondition = (index: number | string) => {
+  props.modelValue.conditions.splice(Number(index), 1)
 }
 </script>
 

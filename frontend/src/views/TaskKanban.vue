@@ -16,14 +16,14 @@
           <el-col :span="4">
             <div class="form-item">
               <label>任务名称</label>
-              <el-input v-model="taskForm.batchName" placeholder="2024年Q2用户全量标签更新" />
+              <el-input v-model="taskForm.batchName" placeholder="请输入任务名称" />
             </div>
           </el-col>
           <el-col :span="6">
             <div class="form-item">
               <label>选择数据源</label>
               <el-select v-model="taskForm.dataSource" placeholder="请选择数据源" class="w-100">
-                <el-option label="用户行为数据_202404.xlsx (25,000条)" value="ds1" />
+                <el-option :label="`全量库内数据 (${totalRecords}条)`" value="ds1" />
               </el-select>
             </div>
           </el-col>
@@ -32,6 +32,7 @@
               <label>选择要执行的标签规则</label>
               <el-select v-model="taskForm.rules" placeholder="请选择规则" class="w-100">
                 <el-option label="全部生效规则" value="all" />
+                <el-option v-for="rule in availableRules" :key="rule.id" :label="rule.name" :value="String(rule.id)" />
               </el-select>
             </div>
           </el-col>
@@ -80,7 +81,7 @@
         </div>
       </div>
 
-      <el-table :data="mockTaskHistory" style="width: 100%" class="custom-table" v-loading="loadingBatches">
+      <el-table :data="taskHistory" style="width: 100%" class="custom-table" v-loading="loadingBatches">
         <el-table-column prop="name" label="任务名称" min-width="180" />
         <el-table-column prop="status" label="状态" width="120">
           <template #default="scope">
@@ -122,6 +123,9 @@
               <el-button type="danger" link size="small">查看错误日志</el-button>
               <el-button type="success" size="small" class="action-btn retry-btn">重试</el-button>
             </template>
+            <template v-else-if="scope.row.statusType === 'rolled_back'">
+              <el-button size="small" class="action-btn">查看日志</el-button>
+            </template>
             <template v-else-if="scope.row.statusType === 'pending'">
               <el-button size="small" class="action-btn">编辑</el-button>
               <el-button type="success" size="small" class="action-btn retry-btn">立即执行</el-button>
@@ -133,11 +137,11 @@
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
-        <span class="pagination-info">显示 1 到 10 条，共 28 条记录</span>
+        <span class="pagination-info">共 {{ taskHistory.length }} 条记录</span>
         <el-pagination
           background
           layout="prev, pager, next"
-          :total="28"
+          :total="taskHistory.length"
           :page-size="10"
         />
       </div>
@@ -149,10 +153,13 @@
 import { ref, onMounted } from 'vue'
 import { VideoPlay, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 
 const loadingBatches = ref(false)
+
+const totalRecords = ref(0)
+const availableRules = ref<model.SysMatchRule[]>([])
 
 const taskForm = ref({
   batchName: '',
@@ -166,20 +173,32 @@ const filterStatus = ref('all')
 const filterTime = ref('7d')
 const isSubmitting = ref(false)
 
-// 纯 Mock 数据以适配设计图展示
-const mockTaskHistory = ref<any[]>([])
+// 真实任务历史数据
+const taskHistory = ref<any[]>([])
+
+const loadData = async () => {
+  try {
+    const stats = await GetDashboardStats()
+    totalRecords.value = stats.totalRecords || 0
+
+    const rules = await GetAllRules()
+    availableRules.value = rules || []
+  } catch (e: any) {
+    console.error("加载前置数据失败", e)
+  }
+}
 
 const fetchBatches = async () => {
   loadingBatches.value = true
   try {
     const batches = await GetTaskBatches()
-    mockTaskHistory.value = batches.map((b: model.TagTaskBatch) => {
+    taskHistory.value = batches.map((b: model.TagTaskBatch) => {
       return {
         id: b.id,
         name: b.name,
         statusType: b.status,
-        statusText: b.status === 'running' ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : '未知')),
-        progress: b.status === 'completed' ? 100 : (b.status === 'running' ? 50 : 0),
+        statusText: b.status === 'running' ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : (b.status === 'rolled_back' ? '已回退' : '未知'))),
+        progress: (b.status === 'completed' || b.status === 'rolled_back') ? 100 : (b.status === 'running' ? 50 : 0),
         processed: `${b.total_processed} 条`,
         time: '-',
         creator: '系统',
@@ -236,11 +255,13 @@ const getProgressColor = (statusType: string) => {
   if (statusType === 'running') return '#52c48f'
   if (statusType === 'completed') return '#3a8ee6'
   if (statusType === 'failed') return '#f56c6c'
+  if (statusType === 'rolled_back') return '#909399'
   return '#e4e7ed'
 }
 
 onMounted(() => {
   fetchBatches()
+  loadData()
 })
 </script>
 
@@ -374,16 +395,22 @@ onMounted(() => {
     .dot { background-color: var(--tm-accent-primary); }
   }
 
-  &.success {
+  &.completed {
     background-color: #e6f0fa;
     color: #3a8ee6;
     .dot { background-color: #3a8ee6; }
   }
 
-  &.error {
+  &.failed {
     background-color: #fef0f0;
     color: #f56c6c;
     .dot { background-color: #f56c6c; }
+  }
+
+  &.rolled_back {
+    background-color: #f4f4f5;
+    color: #909399;
+    .dot { background-color: #909399; }
   }
 
   &.pending {
