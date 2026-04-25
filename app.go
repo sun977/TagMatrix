@@ -49,7 +49,7 @@ func (a *App) startup(ctx context.Context) {
 	// 3. 初始化所有的 Service
 	a.dataImport = dataimport.NewDataImportService()
 	a.tagLogic = taglogic.NewTagLogicService()
-	a.taskEngine = taskengine.NewTaskEngineService()
+	a.taskEngine = taskengine.NewTaskEngineService(ctx)
 	a.aiEngine = aiengine.NewAIEngineService()
 }
 

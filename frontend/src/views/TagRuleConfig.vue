@@ -322,6 +322,7 @@ const handleDeleteTag = async (data: any, e: Event) => {
 
 // --- 右侧规则逻辑 ---
 const selectedTag = ref<any>(null)
+const currentRuleId = ref<number | null>(null)
 const ruleState = ref<any>({
   logic: 'and',
   conditions: []
@@ -400,9 +401,14 @@ const handleNodeClick = async (data: any) => {
   if (!data.raw) data.raw = {}
   
   hasRunDry.value = false
+  currentRuleId.value = null // 重置当前规则ID
   
   try {
     const rule = await GetRuleByTag(data.id)
+    if (rule && rule.id) {
+      currentRuleId.value = rule.id
+    }
+    
     if (rule && rule.rule_json) {
       const parsed = JSON.parse(rule.rule_json)
       // 需要从 NeoScan 格式反解析为 state 格式，这里简化处理，假设之前存的就是带有 logic/conditions 的内部格式
@@ -425,6 +431,9 @@ const handleSaveRule = async () => {
   savingRule.value = true
   try {
     const ruleObj = new model.SysMatchRule()
+    if (currentRuleId.value) {
+      ruleObj.id = currentRuleId.value
+    }
     ruleObj.tag_id = selectedTag.value.id
     ruleObj.name = selectedTag.value.name + "的规则"
     
@@ -440,6 +449,14 @@ const handleSaveRule = async () => {
 
     await SaveRule(ruleObj)
     ElMessage.success('配置保存成功')
+    
+    // 重新获取规则以更新 currentRuleId，避免用户连续多次点击保存按钮时重复创建记录
+    try {
+      const updatedRule = await GetRuleByTag(selectedTag.value.id)
+      if (updatedRule && updatedRule.id) {
+        currentRuleId.value = updatedRule.id
+      }
+    } catch (ignore) {}
   } catch (e: any) {
     ElMessage.error('保存失败: ' + String(e))
   } finally {

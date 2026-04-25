@@ -30,7 +30,7 @@ func TestTaskEngine_RunAndRollback(t *testing.T) {
 	dbPath := setupTestDB(t, "test_taskengine.db")
 	defer teardownTestEnv(dbPath)
 
-	svc := NewTaskEngineService()
+	svc := NewTaskEngineService(context.Background())
 
 	// 1. 准备测试数据 (3条)
 	records := []map[string]interface{}{

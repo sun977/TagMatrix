@@ -150,11 +150,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
 const loadingBatches = ref(false)
 
@@ -193,12 +194,21 @@ const fetchBatches = async () => {
   try {
     const batches = await GetTaskBatches()
     taskHistory.value = batches.map((b: model.TagTaskBatch) => {
+      const isRunning = b.status === 'running'
+      const isCompleted = b.status === 'completed' || b.status === 'rolled_back'
+      const isFailed = b.status === 'failed'
+      
+      let statusText = '未知'
+      if (isRunning) statusText = '执行中'
+      else if (isCompleted) statusText = b.status === 'rolled_back' ? '已回退' : '已完成'
+      else if (isFailed) statusText = '失败'
+
       return {
         id: b.id,
         name: b.name,
         statusType: b.status,
-        statusText: b.status === 'running' ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : (b.status === 'rolled_back' ? '已回退' : '未知'))),
-        progress: (b.status === 'completed' || b.status === 'rolled_back') ? 100 : (b.status === 'running' ? 50 : 0),
+        statusText: statusText,
+        progress: isCompleted ? 100 : (isRunning ? 0 : 0), // 运行中的进度交给WebSocket推送
         processed: `${b.total_processed} 条`,
         time: '-',
         creator: '系统',
@@ -262,6 +272,36 @@ const getProgressColor = (statusType: string) => {
 onMounted(() => {
   fetchBatches()
   loadData()
+
+  // 监听后端推送的任务进度事件
+  EventsOn('taskProgress', (data: any) => {
+    const batchIndex = taskHistory.value.findIndex(b => b.id === data.batchID)
+    if (batchIndex !== -1) {
+      const batch = taskHistory.value[batchIndex]
+      batch.statusType = data.status
+      
+      let statusText = '未知'
+      if (data.status === 'running') statusText = '执行中'
+      else if (data.status === 'completed') statusText = '已完成'
+      else if (data.status === 'rolled_back') statusText = '已回退'
+      else if (data.status === 'failed') statusText = '失败'
+
+      batch.statusText = statusText
+      batch.progress = data.progress
+      batch.processed = `${data.processed} 条` // data.total 如果需要可以拼接
+
+      taskHistory.value[batchIndex] = { ...batch }
+    } else {
+      // 也有可能是新创建的任务（刚发起还没重新fetch的）
+      if (data.status === 'running' && data.progress === 0) {
+        fetchBatches()
+      }
+    }
+  })
+})
+
+onUnmounted(() => {
+  EventsOff('taskProgress')
 })
 </script>
 

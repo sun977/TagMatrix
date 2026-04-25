@@ -11,18 +11,21 @@ import (
 	"TagMatrix/internal/model"
 	"TagMatrix/internal/pkg/matcher"
 
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"gorm.io/gorm"
 )
 
 // TaskEngineService 处理打标任务的异步调度与回退逻辑
 type TaskEngineService struct {
-	db *gorm.DB
+	db  *gorm.DB
+	ctx context.Context
 }
 
 // NewTaskEngineService 创建 TaskEngineService 实例
-func NewTaskEngineService() *TaskEngineService {
+func NewTaskEngineService(ctx context.Context) *TaskEngineService {
 	return &TaskEngineService{
-		db: model.DB,
+		db:  model.DB,
+		ctx: ctx,
 	}
 }
 
@@ -103,6 +106,21 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 	var totalProcessed int
 	var mu sync.Mutex // 保护 totalProcessed
 
+	// 先获取总记录数用于进度计算
+	var totalRecords int64
+	s.db.Model(&model.RawDataRecord{}).Count(&totalRecords)
+
+	// 发送初始进度事件
+	if s.ctx != nil && s.ctx.Err() == nil {
+		runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
+			"batchID":   batchID,
+			"progress":  0,
+			"processed": 0,
+			"total":     totalRecords,
+			"status":    "running",
+		})
+	}
+
 	// 启动 Workers
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
@@ -113,7 +131,23 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 
 				mu.Lock()
 				totalProcessed += len(records)
+				currentProcessed := totalProcessed
 				mu.Unlock()
+
+				// 计算并推送进度
+				if totalRecords > 0 && s.ctx != nil && s.ctx.Err() == nil {
+					progress := float64(currentProcessed) / float64(totalRecords) * 100.0
+					if progress > 100 {
+						progress = 100
+					}
+					runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
+						"batchID":   batchID,
+						"progress":  int(progress),
+						"processed": currentProcessed,
+						"total":     totalRecords,
+						"status":    "running",
+					})
+				}
 			}
 		}()
 	}
@@ -145,6 +179,20 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 		"total_processed": totalProcessed,
 		"finished_at":     &now,
 	})
+
+	if s.ctx != nil && s.ctx.Err() == nil {
+		progress := 100
+		if status == "failed" {
+			progress = 0 // 或者保持原有进度，或者根据需要设置
+		}
+		runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
+			"batchID":   batchID,
+			"progress":  progress,
+			"processed": totalProcessed,
+			"total":     totalRecords,
+			"status":    status,
+		})
+	}
 
 	log.Printf("[TaskEngine] Finished batch %d. Processed: %d", batchID, totalProcessed)
 }
@@ -219,6 +267,16 @@ func (s *TaskEngineService) RollbackTask(ctx context.Context, batchID uint64) er
 		// 3. 更新 Batch 状态
 		if err := tx.Model(&batch).Update("status", "rolled_back").Error; err != nil {
 			return fmt.Errorf("failed to update batch status: %w", err)
+		}
+
+		if s.ctx != nil && s.ctx.Err() == nil {
+			runtime.EventsEmit(s.ctx, "taskProgress", map[string]interface{}{
+				"batchID":   batchID,
+				"progress":  100, // 回退完成
+				"processed": batch.TotalProcessed,
+				"total":     batch.TotalProcessed,
+				"status":    "rolled_back",
+			})
 		}
 
 		log.Printf("[TaskEngine] Rolled back batch %d", batchID)
