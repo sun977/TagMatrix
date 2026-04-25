@@ -609,4 +609,35 @@ onMounted(() => {
     border-color: #45b07e;
   }
 }
+
+.detail-content-wrapper {
+  max-height: 50vh;
+  overflow-y: auto;
+  background-color: #f5f7fa;
+  border-radius: var(--tm-border-radius-sm);
+  padding: 16px;
+  border: 1px solid var(--tm-border-color);
+}
+
+.json-preview {
+  margin: 0;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  color: var(--tm-text-primary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.detail-btn {
+  color: var(--tm-text-secondary);
+  font-weight: 500;
+  background-color: #f5f5f5;
+  padding: 6px 12px;
+  border-radius: 6px;
+
+  &:hover {
+    color: var(--tm-text-primary);
+    background-color: #e5e5e5;
+  }
+}
 </style>
