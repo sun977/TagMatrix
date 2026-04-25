@@ -85,6 +85,38 @@
 
     <!-- 数据表格区 (卡片) -->
     <div class="table-card card-panel">
+      <div class="table-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <span style="font-size: 14px; color: var(--tm-text-secondary);">共 {{ totalItems }} 条数据</span>
+        <div class="action-icons">
+          <el-button circle @click="handleSearch">
+            <el-icon><RefreshRight /></el-icon>
+          </el-button>
+          
+          <el-popover
+            placement="bottom-end"
+            title="展示列设置"
+            :width="200"
+            trigger="click"
+          >
+            <template #reference>
+              <el-button circle>
+                <el-icon><Setting /></el-icon>
+              </el-button>
+            </template>
+            <div class="column-settings">
+              <el-checkbox 
+                v-for="col in dynamicColumns" 
+                :key="col" 
+                :model-value="!hiddenColumns.includes(col)"
+                @change="toggleColumn(col)"
+              >
+                {{ col }}
+              </el-checkbox>
+            </div>
+          </el-popover>
+        </div>
+      </div>
+
       <el-table 
         :data="tableData" 
         style="width: 100%" 
@@ -95,7 +127,7 @@
         
         <!-- 动态列 (原始数据的所有字段) -->
         <el-table-column 
-          v-for="col in dynamicColumns" 
+          v-for="col in visibleColumns" 
           :key="col" 
           :prop="col" 
           :label="col" 
@@ -151,15 +183,21 @@
         <el-table-column prop="batchName" label="任务批次" min-width="150" show-overflow-tooltip />
         <el-table-column prop="dataSource" label="数据来源" min-width="120" show-overflow-tooltip />
         <el-table-column prop="updateTime" label="打标时间" width="160" />
-        
-        <el-table-column label="状态" width="100" fixed="right">
-          <template #default="scope">
-            <el-tag :type="scope.row.status === 'success' ? 'success' : 'info'" size="small">
-              {{ scope.row.status === 'success' ? '已打标' : '未命中' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
+          
+          <el-table-column label="状态" width="100">
+            <template #default="scope">
+              <el-tag :type="scope.row.status === 'success' ? 'success' : 'info'" size="small">
+                {{ scope.row.status === 'success' ? '已打标' : '未命中' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="操作" width="100" fixed="right" align="center">
+            <template #default="scope">
+              <el-button type="primary" link size="small" class="detail-btn" @click="handleViewDetail(scope.row)">查看详情</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
 
       <!-- 分页器 -->
       <div class="pagination-wrapper">
@@ -174,6 +212,25 @@
         />
       </div>
     </div>
+
+    <!-- 查看详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="打标数据详情 (JSON)"
+      width="600px"
+    >
+      <div class="detail-content-wrapper">
+        <pre class="json-preview">{{ formattedDetailJson }}</pre>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="detailDialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="copyDetailJson" :icon="DocumentCopy">
+            复制 JSON
+          </el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -352,6 +409,59 @@ const handleCurrentChange = (val: number) => {
   handleSearch()
 }
 
+const handleViewDetail = (row: any) => {
+  // 排除掉不需要展示在 JSON 中的辅助字段
+  const { id, updateTime, tags, primaryTag, ...rest } = row
+  
+  // 处理展示的标签名称
+  const displayObj: any = { ...rest }
+  
+  if (tags && tags.length > 0) {
+    displayObj['命中标签'] = tags.map((t: any) => t.name).join(', ')
+  } else {
+    displayObj['命中标签'] = '-'
+  }
+
+  if (row.tagMode === 'mixed' && primaryTag) {
+    displayObj['命中主标签'] = primaryTag.name
+  } else if (row.tagMode === 'mixed') {
+    displayObj['命中主标签'] = '-'
+  }
+  
+  // 格式化打标模式
+  displayObj['打标模式'] = formatTagMode(row.tagMode)
+  delete displayObj.tagMode
+  
+  // 重命名其它系统字段
+  if (displayObj.batchName) {
+    displayObj['任务批次'] = displayObj.batchName
+    delete displayObj.batchName
+  }
+  if (displayObj.dataSource) {
+    displayObj['数据来源'] = displayObj.dataSource
+    delete displayObj.dataSource
+  }
+  if (displayObj.status) {
+    displayObj['状态'] = displayObj.status === 'success' ? '已打标' : '未命中'
+    delete displayObj.status
+  }
+  if (displayObj.content) {
+    delete displayObj.content
+  }
+
+  formattedDetailJson.value = JSON.stringify(displayObj, null, 2)
+  detailDialogVisible.value = true
+}
+
+const copyDetailJson = async () => {
+  try {
+    await navigator.clipboard.writeText(formattedDetailJson.value)
+    ElMessage.success('JSON 数据已复制到剪贴板')
+  } catch (err) {
+    ElMessage.error('复制失败，您的浏览器可能不支持该功能')
+  }
+}
+
 const loadOptions = async () => {
   try {
     const tags = await GetAllTags()
@@ -396,6 +506,22 @@ onMounted(() => {
     font-weight: 600;
     color: var(--tm-text-primary);
   }
+}
+
+.column-settings {
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.column-settings::-webkit-scrollbar {
+  width: 6px;
+}
+.column-settings::-webkit-scrollbar-thumb {
+  background-color: var(--tm-border-color);
+  border-radius: 3px;
 }
 
 .card-panel {
