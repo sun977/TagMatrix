@@ -44,7 +44,7 @@
         </div>
       </el-col>
       <el-col :span="6">
-        <div class="stat-card">
+        <div class="stat-card clickable-card" @click="showTagsDialog">
           <div class="card-top">
             <span class="card-title">标签总数</span>
             <div class="icon-wrapper yellow-bg">
@@ -52,7 +52,7 @@
             </div>
           </div>
           <div class="card-value">{{ stats.totalTags || 0 }}</div>
-          <div class="card-trend green-text">系统标签数量</div>
+          <div class="card-trend green-text" style="cursor: pointer;">点击查看系统标签详情</div>
         </div>
       </el-col>
       <el-col :span="6">
@@ -135,13 +135,28 @@
         </el-table-column>
       </el-table>
     </div>
+    <!-- 标签列表弹窗 -->
+    <el-dialog v-model="tagsDialogVisible" title="系统标签列表" width="800px">
+      <el-table :data="tagsList" style="width: 100%" height="400" v-loading="loadingTags" class="custom-table">
+        <el-table-column prop="name" label="标签名称" width="180">
+          <template #default="{ row }">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="tag-color-dot" :style="{ backgroundColor: row.color || 'var(--tm-accent-primary)' }"></span>
+              <span>{{ row.name }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="path" label="路径" />
+        <el-table-column prop="description" label="描述" show-overflow-tooltip />
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { Loading, Setting, Coin, PriceTag, Collection, Document, UploadFilled, ArrowRight } from '@element-plus/icons-vue'
-import { GetDashboardStats, GetTaskBatches } from '../../wailsjs/go/main/App'
+import { GetDashboardStats, GetTaskBatches, GetAllTags } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 
 const stats = ref<model.DashboardStats>({
@@ -157,6 +172,22 @@ const loadingTasks = ref(false)
 const runningTask = computed(() => {
   return recentTasks.value.find(t => t.statusType === 'running')
 })
+
+const tagsDialogVisible = ref(false)
+const tagsList = ref<model.SysTag[]>([])
+const loadingTags = ref(false)
+
+const showTagsDialog = async () => {
+  tagsDialogVisible.value = true
+  loadingTags.value = true
+  try {
+    tagsList.value = await GetAllTags()
+  } catch (e) {
+    console.error('Failed to load tags:', e)
+  } finally {
+    loadingTags.value = false
+  }
+}
 
 const loadDashboardData = async () => {
   try {
@@ -196,6 +227,24 @@ onMounted(() => {
 <style scoped lang="scss">
 .dashboard-page {
   padding: 24px 32px 40px;
+}
+
+.clickable-card {
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+}
+
+.tag-color-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* --- 页面顶部 --- */
