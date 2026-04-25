@@ -1,51 +1,23 @@
 [
   {
-    "id": 1,
-    "created_at": "2026-04-24T18:57:08.6706892+08:00",
-    "updated_at": "2026-04-24T18:57:08.6706892+08:00",
     "name": "A",
     "parent_id": 0,
     "path": "/A/",
     "level": 1,
     "color": "#52c48f",
-    "description": "A标签，是所有的标签的根标签",
+    "description": "测试修改描述",
+    "rule_name": "A-Rule",
+    "rule_json": "{\"logic\":\"and\",\"conditions\":[{\"field\":\"是否成本\",\"operator\":\"equals\",\"value\":\"1\"}]}",
     "children": [
       {
-        "id": 2,
-        "created_at": "2026-04-24T18:57:14.7741692+08:00",
-        "updated_at": "2026-04-24T18:57:14.7741692+08:00",
-        "name": "b",
-        "parent_id": 1,
-        "path": "/A/b/",
+        "name": "B",
+        "parent_id": 15,
+        "path": "/A/是否/",
         "level": 2,
         "color": "#52c48f",
-        "description": "",
-        "children": [
-          {
-            "id": 9,
-            "created_at": "2026-04-24T18:58:14.8086122+08:00",
-            "updated_at": "2026-04-24T18:58:14.8086122+08:00",
-            "name": "v",
-            "parent_id": 2,
-            "path": "/A/b/v/",
-            "level": 3,
-            "color": "#52c48f",
-            "description": "",
-            "children": null
-          }
-        ]
-      },
-      {
-        "id": 4,
-        "created_at": "2026-04-24T18:57:28.0389957+08:00",
-        "updated_at": "2026-04-24T18:57:28.0389957+08:00",
-        "name": "g",
-        "parent_id": 1,
-        "path": "/A/g/",
-        "level": 2,
-        "color": "#52c48f",
-        "description": "",
-        "children": null
+        "description": "测试",
+        "rule_name": "B的规则",
+        "rule_json": "{\"logic\":\"and\",\"conditions\":[{\"field\":\"是否运营\",\"operator\":\"equals\",\"value\":\"1\"},{\"field\":\"是否成本\",\"operator\":\"equals\",\"value\":\"0\"}]}"
       }
     ]
   }
