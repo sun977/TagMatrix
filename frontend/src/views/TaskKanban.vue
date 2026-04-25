@@ -152,17 +152,37 @@
         <el-table-column prop="time" label="耗时" width="100" />
         <el-table-column prop="creator" label="创建人" width="100" />
         <el-table-column prop="createTime" label="创建时间" width="160" />
-        <el-table-column label="操作" width="220" align="right">
+        <el-table-column width="220" align="right">
+          <template #header>
+            <div style="display: flex; align-items: center; justify-content: flex-end;">
+              操作
+              <el-tooltip effect="dark" placement="top-end">
+                <template #content>
+                  <div style="line-height: 1.8;">
+                    <div><strong>查看</strong>：查看打标任务详细日志及命中规则。</div>
+                    <div><strong>导出</strong>：将该批次产生的打标日志导出为 CSV。</div>
+                    <div><strong style="color: #67C23A;">回退</strong>：撤销本次打标任务所产生的所有标签。</div>
+                    <div><strong style="color: #F56C6C;">删除</strong>：彻底删除该任务及其所有相关日志记录。</div>
+                  </div>
+                </template>
+                <el-icon style="font-size: 14px; margin-left: 4px; color: #909399; cursor: help;"><QuestionFilled /></el-icon>
+              </el-tooltip>
+            </div>
+          </template>
           <template #default="scope">
             <template v-if="scope.row.statusType === 'running'">
               <el-button size="small" class="action-btn">查看详情</el-button>
               <el-button type="danger" link size="small">终止</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'completed'">
-              <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
-              <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
-              <el-button type="danger" link size="small" @click="handleRollback(scope.row.id)">回退</el-button>
-              <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)">删除</el-button>
+              <div style="margin-bottom: 6px;">
+                <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看</el-button>
+                <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
+              </div>
+              <div>
+                <el-button size="small" class="action-btn" @click="handleRollback(scope.row.id)" style="color: #67C23A; border-color: #dcdfe6; background-color: #fff;">回退</el-button>
+                <el-button size="small" class="action-btn" @click="handleSingleDelete(scope.row.id)" style="color: #F56C6C; border-color: #dcdfe6; background-color: #fff;">删除</el-button>
+              </div>
             </template>
             <template v-else-if="scope.row.statusType === 'failed'">
               <el-button type="danger" link size="small">查看错误日志</el-button>
