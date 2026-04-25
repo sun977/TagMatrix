@@ -231,8 +231,8 @@ func (s *DataImportService) parseCSV(filePath string) ([]map[string]interface{},
 				record[headers[i]] = value
 			}
 		}
-		// 为 CSV 也附加来源表（文件名）
-		record["来源表"] = filepath.Base(filePath)
+		// 为 CSV 也附加数据来源（文件名）
+		record["数据来源"] = filepath.Base(filePath)
 		records = append(records, record)
 	}
 
@@ -286,7 +286,7 @@ func (s *DataImportService) parseExcel(filePath string, selectedSheets []string)
 			}
 
 			// 可以在记录中附加来源 sheet 名，方便追溯
-			record["来源表"] = sheetName
+			record["数据来源"] = sheetName
 
 			allRecords = append(allRecords, record)
 		}

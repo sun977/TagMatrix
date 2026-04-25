@@ -271,10 +271,10 @@ const fetchTableData = async () => {
       })
       let cols = Array.from(colSet)
       
-      // 确保“来源表”字段放在最后，方便查看
-      if (cols.includes('来源表')) {
-        cols = cols.filter(c => c !== '来源表')
-        cols.push('来源表')
+      // 确保“数据来源”字段放在最后，方便查看
+      if (cols.includes('数据来源')) {
+        cols = cols.filter(c => c !== '数据来源')
+        cols.push('数据来源')
       }
       
       dynamicColumns.value = cols
