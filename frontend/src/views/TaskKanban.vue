@@ -97,6 +97,7 @@
             <el-option label="失败" value="failed" />
           </el-select>
           <el-select v-model="filterTime" class="filter-select">
+            <el-option label="全部时间" value="all" />
             <el-option label="近7天" value="7d" />
             <el-option label="近30天" value="30d" />
           </el-select>
@@ -106,7 +107,7 @@
         </div>
       </div>
 
-      <el-table :data="taskHistory" style="width: 100%" class="custom-table" v-loading="loadingBatches">
+      <el-table :data="paginatedTaskHistory" style="width: 100%" class="custom-table" v-loading="loadingBatches">
         <el-table-column prop="name" label="任务名称" min-width="180" />
         <el-table-column prop="status" label="状态" width="120">
           <template #default="scope">
@@ -163,12 +164,14 @@
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
-        <span class="pagination-info">共 {{ taskHistory.length }} 条记录</span>
+        <span class="pagination-info">共 {{ filteredTaskHistory.length }} 条记录</span>
         <el-pagination
           background
           layout="prev, pager, next"
-          :total="taskHistory.length"
-          :page-size="10"
+          :total="filteredTaskHistory.length"
+          :page-size="pageSize"
+          :current-page="currentPage"
+          @update:current-page="currentPage = $event"
         />
       </div>
     </div>
@@ -199,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV } from '../../wailsjs/go/main/App'
@@ -221,11 +224,53 @@ const taskForm = ref({
 })
 
 const filterStatus = ref('all')
-const filterTime = ref('7d')
+const filterTime = ref('all')
 const isSubmitting = ref(false)
 
 // 真实任务历史数据
 const taskHistory = ref<any[]>([])
+
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+const filteredTaskHistory = computed(() => {
+  let result = [...taskHistory.value]
+
+  // 过滤状态
+  if (filterStatus.value !== 'all') {
+    result = result.filter(item => {
+      if (filterStatus.value === 'completed') {
+        return item.statusType === 'completed' || item.statusType === 'rolled_back'
+      }
+      return item.statusType === filterStatus.value
+    })
+  }
+
+  // 过滤时间
+  const now = Date.now()
+  if (filterTime.value === '7d') {
+    result = result.filter(item => {
+      return (now - item.rawTime) <= 7 * 24 * 60 * 60 * 1000
+    })
+  } else if (filterTime.value === '30d') {
+    result = result.filter(item => {
+      return (now - item.rawTime) <= 30 * 24 * 60 * 60 * 1000
+    })
+  }
+
+  // 时间倒序排序（最新的在前面）
+  return result.sort((a, b) => b.rawTime - a.rawTime)
+})
+
+const paginatedTaskHistory = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return filteredTaskHistory.value.slice(start, end)
+})
+
+watch([filterStatus, filterTime], () => {
+  currentPage.value = 1
+})
 
 // 日志弹窗相关状态
 const logDialogVisible = ref(false)
@@ -291,7 +336,8 @@ const fetchBatches = async () => {
         processed: `${b.total_processed} 条`,
         time: '-',
         creator: '系统',
-        createTime: new Date(b.created_at || Date.now()).toLocaleString()
+        createTime: new Date(b.created_at || Date.now()).toLocaleString(),
+        rawTime: new Date(b.created_at || Date.now()).getTime()
       }
     })
   } catch (e: any) {
