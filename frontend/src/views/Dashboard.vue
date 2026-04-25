@@ -124,7 +124,7 @@
           <template #default="scope">
             <el-button v-if="scope.row.statusType === 'running'" size="small" class="action-btn">查看详情</el-button>
             <template v-else-if="scope.row.statusType === 'completed' || scope.row.statusType === 'rolled_back'">
-              <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
+              <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看</el-button>
               <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
             </template>
             <template v-else-if="scope.row.statusType === 'failed'">
