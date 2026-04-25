@@ -56,7 +56,7 @@
         </div>
       </el-col>
       <el-col :span="6">
-        <div class="stat-card">
+        <div class="stat-card clickable-card" @click="showRulesDialog">
           <div class="card-top">
             <span class="card-title">规则总数</span>
             <div class="icon-wrapper purple-bg">
@@ -64,7 +64,7 @@
             </div>
           </div>
           <div class="card-value">{{ stats.totalRules || 0 }}</div>
-          <div class="card-trend green-text">自动化打标策略数</div>
+          <div class="card-trend green-text" style="cursor: pointer;">系统规则详情</div>
         </div>
       </el-col>
     </el-row>
@@ -150,13 +150,41 @@
         <el-table-column prop="description" label="描述" show-overflow-tooltip />
       </el-table>
     </el-dialog>
+
+    <!-- 规则列表弹窗 -->
+    <el-dialog v-model="rulesDialogVisible" title="已生效规则列表" width="900px">
+      <el-table :data="rulesList" style="width: 100%" height="400" v-loading="loadingRules" class="custom-table">
+        <el-table-column prop="name" label="规则名称" min-width="180" />
+        <el-table-column prop="tagName" label="关联标签" width="150">
+          <template #default="{ row }">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span class="tag-color-dot" :style="{ backgroundColor: row.tagColor || 'var(--tm-accent-primary)' }"></span>
+              <span>{{ row.tagName }}</span>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="entity_type" label="实体类型" width="120">
+          <template #default="{ row }">
+            <el-tag size="small" type="info">{{ row.entity_type }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="priority" label="优先级" width="100" align="center" />
+        <el-table-column prop="is_enabled" label="状态" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.is_enabled ? 'success' : 'danger'">
+              {{ row.is_enabled ? '已启用' : '已禁用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { Loading, Setting, Coin, PriceTag, Collection, Document, UploadFilled, ArrowRight } from '@element-plus/icons-vue'
-import { GetDashboardStats, GetTaskBatches, GetAllTags } from '../../wailsjs/go/main/App'
+import { GetDashboardStats, GetTaskBatches, GetAllTags, GetAllRules } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 
 const stats = ref<model.DashboardStats>({
@@ -186,6 +214,41 @@ const showTagsDialog = async () => {
     console.error('Failed to load tags:', e)
   } finally {
     loadingTags.value = false
+  }
+}
+
+const rulesDialogVisible = ref(false)
+const rulesList = ref<any[]>([])
+const loadingRules = ref(false)
+
+const showRulesDialog = async () => {
+  rulesDialogVisible.value = true
+  loadingRules.value = true
+  try {
+    // 同时获取规则和标签数据（用于匹配标签名称）
+    const [rules, tags] = await Promise.all([
+      GetAllRules(),
+      GetAllTags()
+    ])
+    
+    // 过滤出已生效的规则
+    const enabledRules = rules.filter(r => r.is_enabled)
+    
+    // 组装关联的标签信息
+    const tagsMap = new Map(tags.map(t => [t.id, t]))
+    
+    rulesList.value = enabledRules.map(r => {
+      const tag = tagsMap.get(r.tag_id)
+      return {
+        ...r,
+        tagName: tag ? tag.name : '未知标签',
+        tagColor: tag ? tag.color : ''
+      }
+    })
+  } catch (e) {
+    console.error('Failed to load rules:', e)
+  } finally {
+    loadingRules.value = false
   }
 }
 
