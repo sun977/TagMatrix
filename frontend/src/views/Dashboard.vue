@@ -52,7 +52,7 @@
             </div>
           </div>
           <div class="card-value">{{ stats.totalTags || 0 }}</div>
-          <div class="card-trend green-text" style="cursor: pointer;">点击查看系统标签详情</div>
+          <div class="card-trend green-text" style="cursor: pointer;">系统标签详情</div>
         </div>
       </el-col>
       <el-col :span="6">
