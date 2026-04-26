@@ -41,7 +41,7 @@ export function GetAllTags():Promise<Array<model.SysTag>>;
 
 export function GetAppConfig():Promise<config.AppConfig>;
 
-export function GetAvailableDataSources(arg1:number):Promise<Array<model.DataSourceOption>>;
+export function GetAvailableSourceFiles(arg1:number):Promise<Array<model.SourceFileOption>>;
 
 export function GetDashboardStats():Promise<model.DashboardStats>;
 

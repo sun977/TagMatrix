@@ -66,7 +66,7 @@ type tagTaskContext struct {
 // batchName: 此次打标任务的自定义名称
 // isOverwrite: 是否为覆盖模式（清除原有标签）
 // tagMode: 打标模式（single: 单标签, multiple: 多标签, mixed: 混合模式）
-func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, dataSource string) (uint64, error) {
+func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, sourceFile string) (uint64, error) {
 	if datasetID == 0 {
 		return 0, fmt.Errorf("dataset_id cannot be empty")
 	}
@@ -95,36 +95,36 @@ func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, b
 		Name:       batchName,
 		Status:     "running",
 		TagMode:    tagMode,
-		DataSource: dataSource,
+		SourceFile: sourceFile,
 	}
 	if err := s.db.Create(&batch).Error; err != nil {
 		return 0, fmt.Errorf("failed to create task batch: %w", err)
 	}
 
 	// 3. 异步启动打标引擎
-	go s.executeTask(batchID, datasetID, rules, isOverwrite, tagMode, dataSource)
+	go s.executeTask(batchID, datasetID, rules, isOverwrite, tagMode, sourceFile)
 
 	return batchID, nil
 }
 
-// GetAvailableDataSources 获取可用的数据源列表
-func (s *TaskEngineService) GetAvailableDataSources(ctx context.Context, datasetID uint64) ([]model.DataSourceOption, error) {
-	var results []model.DataSourceOption
+// GetAvailableSourceFiles 获取可用的来源文件列表
+func (s *TaskEngineService) GetAvailableSourceFiles(ctx context.Context, datasetID uint64) ([]model.SourceFileOption, error) {
+	var results []model.SourceFileOption
 
 	query := s.db.WithContext(ctx).Table("raw_data_records").
-		Select("json_extract(data, '$.\"数据来源\"') as source_name, count(id) as count").
-		Where("deleted_at IS NULL AND json_extract(data, '$.\"数据来源\"') IS NOT NULL")
+		Select("json_extract(data, '$.\"来源文件\"') as source_name, count(id) as count").
+		Where("deleted_at IS NULL AND json_extract(data, '$.\"来源文件\"') IS NOT NULL")
 
 	if datasetID > 0 {
 		query = query.Where("dataset_id = ?", datasetID)
 	}
 
-	err := query.Group("json_extract(data, '$.\"数据来源\"')").
+	err := query.Group("json_extract(data, '$.\"来源文件\"')").
 		Order("source_name ASC").
 		Find(&results).Error
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch data sources: %w", err)
+		return nil, fmt.Errorf("failed to fetch source files: %w", err)
 	}
 	return results, nil
 }
@@ -136,8 +136,8 @@ type parsedRule struct {
 }
 
 // executeTask 核心调度引擎，使用 Worker Pool 模式流式处理海量数据
-func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string, dataSource string) {
-	log.Printf("[TaskEngine] Starting batch %d, datasetID: %d, dataSource: %s", batchID, datasetID, dataSource)
+func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string, sourceFile string) {
+	log.Printf("[TaskEngine] Starting batch %d, datasetID: %d, sourceFile: %s", batchID, datasetID, sourceFile)
 
 	// 预解析规则
 	var pRules []parsedRule
@@ -161,8 +161,8 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	// 先获取总记录数用于进度计算
 	var totalRecords int64
 	query := s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
-	if dataSource != "" && dataSource != "all" {
-		query = query.Where("json_extract(data, '$.\"数据来源\"') = ?", dataSource)
+	if sourceFile != "" && sourceFile != "all" {
+		query = query.Where("json_extract(data, '$.\"来源文件\"') = ?", sourceFile)
 	}
 	query.Count(&totalRecords)
 
@@ -198,8 +198,8 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	batchSize := 1000
 	var results []model.RawDataRecord
 	query = s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
-	if dataSource != "" && dataSource != "all" {
-		query = query.Where("json_extract(data, '$.\"数据来源\"') = ?", dataSource)
+	if sourceFile != "" && sourceFile != "all" {
+		query = query.Where("json_extract(data, '$.\"来源文件\"') = ?", sourceFile)
 	}
 	err := query.FindInBatches(&results, batchSize, func(tx *gorm.DB, batch int) error {
 		// 将当前的 records 深拷贝发送给 channel，避免并发修改

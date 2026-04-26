@@ -536,9 +536,9 @@ const fetchTableData = async () => {
         })
       })
       let cols = Array.from(colSet)
-      if (cols.includes('数据来源')) {
-        cols = cols.filter(c => c !== '数据来源')
-        cols.push('数据来源')
+      if (cols.includes('来源文件')) {
+        cols = cols.filter(c => c !== '来源文件')
+        cols.push('来源文件')
       }
       dynamicColumns.value = cols
     } else {

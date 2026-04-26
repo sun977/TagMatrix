@@ -42,9 +42,9 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="数据来源">
-          <el-select v-model="filterForm.dataSource" placeholder="全部来源" clearable class="w-150">
-            <el-option v-for="ds in dataSourceOptions" :key="ds.source_name" :label="ds.source_name" :value="ds.source_name" />
+        <el-form-item label="来源文件">
+          <el-select v-model="filterForm.sourceFile" placeholder="全部来源文件" clearable class="w-150">
+            <el-option v-for="ds in availableSourceFiles" :key="ds.source_name" :label="ds.source_name" :value="ds.source_name" />
           </el-select>
         </el-form-item>
 
@@ -181,7 +181,7 @@
         </el-table-column>
 
         <el-table-column prop="batchName" label="任务批次" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="dataSource" label="数据来源" min-width="120" show-overflow-tooltip />
+        <el-table-column prop="sourceFile" label="来源文件" min-width="120" show-overflow-tooltip />
         <el-table-column prop="updateTime" label="打标时间" width="160" />
           
           <el-table-column label="状态" width="100">
@@ -238,7 +238,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { Search, Download, RefreshRight, Setting, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { GetTaggedDataList, ExportTaggedDataList, GetAllTags, GetTaskBatches, GetAvailableDataSources } from '../../wailsjs/go/main/App'
+import { GetTaggedDataList, ExportTaggedDataList, GetAllTags, GetTaskBatches, GetAvailableSourceFiles } from '../../wailsjs/go/main/App'
 
 const loading = ref(false)
 
@@ -248,7 +248,7 @@ const filterForm = reactive({
   searchCol: '',
   tag: '',
   batch: '',
-  dataSource: '',
+  sourceFile: '',
   tagMode: '',
   status: '',
   dateRange: null as string[] | null
@@ -288,7 +288,7 @@ const formatTagMode = (mode: string) => {
 // 下拉选项数据
 const tagOptions = ref<any[]>([])
 const batchOptions = ref<any[]>([])
-const dataSourceOptions = ref<any[]>([])
+const availableSourceFiles = ref<any[]>([])
 
 // 分页状态
 const currentPage = ref(1)
@@ -304,9 +304,9 @@ const handleSearch = async () => {
     const res = await GetTaggedDataList(
       filterForm.keyword, 
       filterForm.tag, 
-      filterForm.batch, 
-      filterForm.searchCol, 
-      filterForm.dataSource,
+      filterForm.batch,
+      filterForm.searchCol,
+      filterForm.sourceFile,
       filterForm.tagMode,
       filterForm.status,
       filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[0] : '',
@@ -344,7 +344,7 @@ const handleSearch = async () => {
           } catch(e) {}
           
           keys.forEach(k => {
-            if (k !== 'id' && k !== '数据来源') {
+            if (k !== 'id' && k !== '来源文件') {
               colSet.add(k)
             }
           })
@@ -370,7 +370,7 @@ const resetFilter = () => {
   filterForm.searchCol = ''
   filterForm.tag = ''
   filterForm.batch = ''
-  filterForm.dataSource = ''
+  filterForm.sourceFile = ''
   filterForm.tagMode = ''
   filterForm.status = ''
   filterForm.dateRange = null
@@ -383,9 +383,9 @@ const handleExport = async () => {
     await ExportTaggedDataList(
       filterForm.keyword, 
       filterForm.tag, 
-      filterForm.batch, 
-      filterForm.searchCol, 
-      filterForm.dataSource,
+      filterForm.batch,
+      filterForm.searchCol,
+      filterForm.sourceFile,
       filterForm.tagMode,
       filterForm.status,
       filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[0] : '',
@@ -437,9 +437,9 @@ const handleViewDetail = (row: any) => {
     displayObj['任务批次'] = displayObj.batchName
     delete displayObj.batchName
   }
-  if (displayObj.dataSource) {
-    displayObj['数据来源'] = displayObj.dataSource
-    delete displayObj.dataSource
+  if (displayObj.sourceFile) {
+    displayObj['来源文件'] = displayObj.sourceFile
+    delete displayObj.sourceFile
   }
   if (displayObj.status) {
     displayObj['状态'] = displayObj.status === 'success' ? '已打标' : '未命中'
@@ -471,8 +471,8 @@ const loadOptions = async () => {
     if (batches) batchOptions.value = batches
 
     // TODO: 目前没有指定 dataset_id，获取所有的 data sources
-    const ds = await GetAvailableDataSources(0)
-    if (ds) dataSourceOptions.value = ds
+    const ds = await GetAvailableSourceFiles(0)
+    if (ds) availableSourceFiles.value = ds
   } catch (e) {
     console.error('加载选项失败', e)
   }

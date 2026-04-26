@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -251,7 +252,7 @@ func (a *App) DeleteRawData(ids []uint64) error {
 	return model.DB.Delete(&model.RawDataRecord{}, ids).Error
 }
 
-func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagMode, status, startDate, endDate string, page, pageSize int) (*model.PagedTaggedData, error) {
+func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate string, page, pageSize int) (*model.PagedTaggedData, error) {
 	var total int64
 	var dtos []model.TaggedRecordDto
 
@@ -268,8 +269,8 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagM
 		}
 	}
 
-	if dataSource != "" {
-		db = db.Where("json_extract(raw_data_records.data, '$.\"数据来源\"') = ?", dataSource)
+	if sourceFile != "" {
+		db = db.Where("json_extract(raw_data_records.data, '$.\"来源文件\"') = ?", sourceFile)
 	}
 
 	if startDate != "" {
@@ -329,11 +330,11 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagM
 			Tags:       []model.TagDto{},
 		}
 
-		// 解析数据来源
-		var dataMap map[string]any
+		// 解析来源文件
+		var dataMap map[string]interface{}
 		if err := json.Unmarshal([]byte(r.Data), &dataMap); err == nil {
-			if src, ok := dataMap["数据来源"].(string); ok {
-				dto.DataSource = src
+			if src, ok := dataMap["来源文件"].(string); ok {
+				dto.SourceFile = src
 			}
 		}
 
@@ -394,7 +395,7 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagM
 }
 
 // ExportTaggedDataList 按筛选条件导出打标数据，包含动态字段和系统处理字段，不包含 ID 和打标时间
-func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, tagMode, status, startDate, endDate string) error {
+func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate string) error {
 	// 构建查询条件
 	db := model.DB.Model(&model.RawDataRecord{})
 
@@ -406,8 +407,8 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, t
 		}
 	}
 
-	if dataSource != "" {
-		db = db.Where("json_extract(raw_data_records.data, '$.\"数据来源\"') = ?", dataSource)
+	if sourceFile != "" {
+		db = db.Where("json_extract(raw_data_records.data, '$.\"来源文件\"') = ?", sourceFile)
 	}
 
 	if startDate != "" {
@@ -491,17 +492,18 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, t
 		json.Unmarshal([]byte(r.Data), &dMap)
 		parsedDataMap[i] = dMap
 		for k := range dMap {
-			// 跳过 id 和 数据来源（数据来源放在最后固定位置）
-			if !colSet[k] && k != "id" && k != "数据来源" {
+			// 跳过 id 和 来源文件（来源文件放在最后固定位置）
+			if !colSet[k] && k != "id" && k != "来源文件" {
 				colSet[k] = true
 				dynamicCols = append(dynamicCols, k)
 			}
 		}
 	}
 
+	sort.Strings(dynamicCols)
 	// 构建表头 (不要系统 ID 和打标时间)
 	headers := append([]string{}, dynamicCols...)
-	headers = append(headers, "打标模式", "命中标签", "命中主标签", "任务批次", "数据来源", "状态")
+	headers = append(headers, "打标模式", "命中标签", "命中主标签", "任务批次", "来源文件", "状态")
 
 	if err := writer.Write(headers); err != nil {
 		return err
@@ -570,10 +572,10 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, t
 			tagModeVal = "-"
 		}
 
-		// 数据来源
-		dataSourceStr := "-"
-		if ds, ok := dMap["数据来源"].(string); ok {
-			dataSourceStr = ds
+		// 来源文件
+		sourceFileStr := "-"
+		if ds, ok := dMap["来源文件"].(string); ok {
+			sourceFileStr = ds
 		}
 
 		// 构建单行数组
@@ -587,7 +589,7 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, dataSource, t
 			}
 		}
 		// 追加系统处理字段
-		row = append(row, tagModeVal, tagsStr, primaryTagStr, batchName, dataSourceStr, statusVal)
+		row = append(row, tagModeVal, tagsStr, primaryTagStr, batchName, sourceFileStr, statusVal)
 
 		if err := writer.Write(row); err != nil {
 			return err
@@ -689,13 +691,13 @@ func (a *App) DryRunRule(ruleJSON string, limit int) ([]taglogic.DryRunResult, e
 }
 
 // ----------------- Task Engine API -----------------
-func (a *App) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, dataSource string) (uint64, error) {
-	return a.taskEngine.RunTaggingTask(datasetID, ruleIDs, batchName, isOverwrite, tagMode, dataSource)
+func (a *App) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, sourceFile string) (uint64, error) {
+	return a.taskEngine.RunTaggingTask(datasetID, ruleIDs, batchName, isOverwrite, tagMode, sourceFile)
 }
 
-// GetAvailableDataSources 获取所有可用的数据来源选项
-func (a *App) GetAvailableDataSources(datasetID uint64) ([]model.DataSourceOption, error) {
-	return a.taskEngine.GetAvailableDataSources(a.ctx, datasetID)
+// GetAvailableSourceFiles 获取所有可用的来源文件选项
+func (a *App) GetAvailableSourceFiles(datasetID uint64) ([]model.SourceFileOption, error) {
+	return a.taskEngine.GetAvailableSourceFiles(a.ctx, datasetID)
 }
 
 func (a *App) RollbackTask(batchID uint64) error {

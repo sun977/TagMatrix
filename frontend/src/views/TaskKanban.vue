@@ -39,10 +39,10 @@
           </el-col>
           <el-col :span="4">
             <div class="form-item">
-              <label>选择数据源</label>
-              <el-select v-model="taskForm.dataSource" placeholder="请选择数据源" class="w-100">
+              <label>选择来源文件</label>
+              <el-select v-model="taskForm.sourceFile" placeholder="请选择来源文件" class="w-100">
                   <el-option :label="`全量库内数据 (${totalRecords}条)`" value="all" />
-                  <el-option v-for="ds in availableDataSources" :key="ds.source_name" :label="`${ds.source_name} (${ds.count}条)`" :value="ds.source_name" />
+                  <el-option v-for="ds in availableSourceFiles" :key="ds.source_name" :label="`${ds.source_name} (${ds.count}条)`" :value="ds.source_name" />
                 </el-select>
             </div>
           </el-col>
@@ -259,7 +259,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableDataSources, ListDatasets, GetRulesByDataset, GetRulesByTag, GetAllRules } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset, GetRulesByTag, GetAllRules } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -267,13 +267,13 @@ const loadingBatches = ref(false)
 
 const totalRecords = ref(0)
 const availableRules = ref<model.SysMatchRule[]>([])
-const availableDataSources = ref<model.DataSourceOption[]>([])
+const availableSourceFiles = ref<model.SourceFileOption[]>([])
 const availableDatasets = ref<model.SysDataset[]>([])
 
 const taskForm = ref({
   batchName: '',
   datasetId: undefined as number | undefined,
-  dataSource: 'all',
+  sourceFile: 'all',
   rules: 'all',
   execStrategy: 'append',
   tagMode: 'multiple',
@@ -282,18 +282,29 @@ const taskForm = ref({
 
 const handleDatasetChange = async () => {
   taskForm.value.rules = 'all'
-  taskForm.value.dataSource = 'all'
+  taskForm.value.sourceFile = 'all'
   availableRules.value = []
-  availableDataSources.value = []
-  if (!taskForm.value.datasetId) return
+  availableSourceFiles.value = []
+  if (!taskForm.value.datasetId) {
+    totalRecords.value = 0
+    return
+  }
 
   // 重新获取该数据集下的规则
   try {
-    const sources = await GetAvailableDataSources(taskForm.value.datasetId)
-    availableDataSources.value = sources || []
+    const sources = await GetAvailableSourceFiles(taskForm.value.datasetId)
+    availableSourceFiles.value = sources || []
     
     const rules = await GetRulesByDataset(taskForm.value.datasetId)
     availableRules.value = rules || []
+    
+    const stats = await GetDashboardStats()
+    if (stats.datasetStats) {
+      const dsStat = stats.datasetStats.find(s => s.datasetId === taskForm.value.datasetId)
+      totalRecords.value = dsStat ? dsStat.totalRecords : 0
+    } else {
+      totalRecords.value = 0
+    }
   } catch (e: any) {
     ElMessage.error('加载数据集相关信息失败: ' + String(e))
   }
@@ -497,7 +508,7 @@ const submitTask = async () => {
 
     const isOverwrite = taskForm.value.execStrategy === 'overwrite'
 
-    await RunTaggingTask(taskForm.value.datasetId!, ruleIDs, taskForm.value.batchName, isOverwrite, taskForm.value.tagMode, taskForm.value.dataSource)
+    await RunTaggingTask(taskForm.value.datasetId!, ruleIDs, taskForm.value.batchName, isOverwrite, taskForm.value.tagMode, taskForm.value.sourceFile === 'all' ? '' : taskForm.value.sourceFile)
     ElMessage.success(`任务提交成功`)
     
     taskForm.value.batchName = ''

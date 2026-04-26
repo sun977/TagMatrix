@@ -224,20 +224,6 @@ export namespace model {
 		    return a;
 		}
 	}
-	export class DataSourceOption {
-	    source_name: string;
-	    count: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new DataSourceOption(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.source_name = source["source_name"];
-	        this.count = source["count"];
-	    }
-	}
 	
 	export class FileAnalysisResult {
 	    filePath: string;
@@ -278,7 +264,7 @@ export namespace model {
 	    primaryTag?: TagDto;
 	    batchName: string;
 	    tagMode: string;
-	    dataSource: string;
+	    sourceFile: string;
 	    updateTime: string;
 	    status: string;
 	
@@ -294,7 +280,7 @@ export namespace model {
 	        this.primaryTag = this.convertValues(source["primaryTag"], TagDto);
 	        this.batchName = source["batchName"];
 	        this.tagMode = source["tagMode"];
-	        this.dataSource = source["dataSource"];
+	        this.sourceFile = source["sourceFile"];
 	        this.updateTime = source["updateTime"];
 	        this.status = source["status"];
 	    }
@@ -390,6 +376,20 @@ export namespace model {
 		    }
 		    return a;
 		}
+	}
+	export class SourceFileOption {
+	    source_name: string;
+	    count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SourceFileOption(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.source_name = source["source_name"];
+	        this.count = source["count"];
+	    }
 	}
 	export class SysDataset {
 	    id: number;
@@ -541,7 +541,7 @@ export namespace model {
 	    status: string;
 	    total_processed: number;
 	    tag_mode: string;
-	    data_source: string;
+	    source_file: string;
 	    // Go type: time
 	    finished_at?: any;
 	
@@ -559,7 +559,7 @@ export namespace model {
 	        this.status = source["status"];
 	        this.total_processed = source["total_processed"];
 	        this.tag_mode = source["tag_mode"];
-	        this.data_source = source["data_source"];
+	        this.source_file = source["source_file"];
 	        this.finished_at = this.convertValues(source["finished_at"], null);
 	    }
 	

@@ -25,7 +25,7 @@ type TaggedRecordDto struct {
 	PrimaryTag *TagDto  `json:"primaryTag,omitempty"` // 主标签（混合模式下）
 	BatchName  string   `json:"batchName"`
 	TagMode    string   `json:"tagMode"`    // 打标模式：multiple, single, mixed
-	DataSource string   `json:"dataSource"` // 数据来源
+	SourceFile string   `json:"sourceFile"` // 来源文件
 	UpdateTime string   `json:"updateTime"`
 	Status     string   `json:"status"` // success 或 unmatched
 }
@@ -78,8 +78,8 @@ type ExportTagNode struct {
 	Children    []ExportTagNode `json:"children,omitempty"`
 }
 
-// DataSourceOption 打标任务数据源选项
-type DataSourceOption struct {
+// SourceFileOption 用于下拉列表展示来源文件
+type SourceFileOption struct {
 	SourceName string `json:"source_name" gorm:"column:source_name"`
 	Count      int64  `json:"count" gorm:"column:count"`
 }

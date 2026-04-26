@@ -74,8 +74,8 @@ export function GetAppConfig() {
   return window['go']['main']['App']['GetAppConfig']();
 }
 
-export function GetAvailableDataSources(arg1) {
-  return window['go']['main']['App']['GetAvailableDataSources'](arg1);
+export function GetAvailableSourceFiles(arg1) {
+  return window['go']['main']['App']['GetAvailableSourceFiles'](arg1);
 }
 
 export function GetDashboardStats() {
