@@ -19,6 +19,9 @@
           <el-button type="success" @click="handleImportClick()" :loading="isImporting">
             <el-icon><Upload /></el-icon> 导入数据
           </el-button>
+          <el-button type="info" @click="handleImportBusinessAsset">
+            <el-icon><Upload /></el-icon> 导入业务资产
+          </el-button>
         </div>
         <div class="toolbar-right">
           <el-button class="filter-btn" @click="fetchDatasetList" circle>
@@ -40,11 +43,16 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="220" fixed="right" align="center">
+          <el-table-column label="操作" width="220" align="right">
             <template #default="scope">
-              <el-button type="primary" link size="small" @click="handleViewDataset(scope.row)">查看数据</el-button>
-              <el-button type="primary" link size="small" @click="handleEditDataset(scope.row)">编辑</el-button>
-              <el-button type="danger" link size="small" @click="handleDeleteDataset(scope.row)">删除</el-button>
+              <div style="margin-bottom: 6px;">
+                <el-button size="small" class="action-btn" @click="handleViewDataset(scope.row)">数据</el-button>
+                <el-button size="small" class="action-btn" @click="handleEditDataset(scope.row)">编辑</el-button>
+              </div>
+              <div>
+                <el-button size="small" class="action-btn" @click="handleExportBusinessAsset(scope.row)">导出</el-button>
+                <el-button size="small" class="action-btn" @click="handleDeleteDataset(scope.row)" style="color: #F56C6C; border-color: #dcdfe6; background-color: #fff;">删除</el-button>
+              </div>
             </template>
           </el-table-column>
         </el-table>
@@ -268,13 +276,14 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus } from '@element-plus/icons-vue'
+import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus, MoreFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings
 import { 
   AnalyzeDataFile, ImportData, GetRawDataList, ExportData, DeleteRawData, 
-  ListDatasets, CreateDataset, UpdateDataset, DeleteDataset 
+  ListDatasets, CreateDataset, UpdateDataset, DeleteDataset,
+  ExportDatasetWithRules, ImportDatasetWithRules
 } from '../../wailsjs/go/main/App'
 
 const viewMode = ref<'list' | 'detail'>('list')
@@ -338,6 +347,31 @@ const toggleColumn = (col: string) => {
     hiddenColumns.value.splice(idx, 1)
   } else {
     hiddenColumns.value.push(col)
+  }
+}
+
+// 添加导出数据集结构和规则功能
+const handleExportBusinessAsset = async (dataset: any) => {
+  try {
+    const result = await ExportDatasetWithRules(dataset.id, "")
+    if (result !== undefined && result !== null) {
+      ElMessage.success(`数据集结构和规则导出成功 (${dataset.name})`)
+    }
+  } catch (error: any) {
+    if (error !== "cancelled") ElMessage.error('数据集结构和规则导出失败: ' + String(error))
+  }
+}
+
+// 添加导入数据集结构和规则功能
+const handleImportBusinessAsset = async () => {
+  try {
+    const result = await ImportDatasetWithRules("")
+    if (result) {
+      ElMessage.success(`数据集结构和规则导入成功: ${result.dataset_name}, 导入规则${result.rule_imported}个, 跳过规则${result.rule_skipped}个`)
+      fetchDatasetList() // 刷新数据集列表
+    }
+  } catch (error: any) {
+    if (error !== "cancelled") ElMessage.error('数据集结构和规则导入失败: ' + String(error))
   }
 }
 
