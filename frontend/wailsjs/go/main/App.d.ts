@@ -29,6 +29,8 @@ export function DryRunRule(arg1:string,arg2:number,arg3:number):Promise<Array<ta
 
 export function ExportData(arg1:number,arg2:string):Promise<void>;
 
+export function ExportDatasetWithRules(arg1:number,arg2:string):Promise<void>;
+
 export function ExportTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string,arg9:string,arg10:string):Promise<void>;
 
 export function ExportTags(arg1:string):Promise<void>;
@@ -60,6 +62,8 @@ export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
 export function GetTaskLogs(arg1:number):Promise<Array<model.TagTaskLogDto>>;
 
 export function ImportData(arg1:string,arg2:Array<string>,arg3:number,arg4:string):Promise<number>;
+
+export function ImportDatasetWithRules(arg1:string):Promise<model.ImportResult>;
 
 export function ImportTags(arg1:string):Promise<void>;
 

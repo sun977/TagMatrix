@@ -79,6 +79,31 @@ type ExportTagNode struct {
 	Children    []ExportTagNode `json:"children,omitempty"`
 }
 
+// ExportRule 用于局部资产导出规则
+type ExportRule struct {
+	TagPath   string `json:"tag_path"`
+	Name      string `json:"name"`
+	Priority  int    `json:"priority"`
+	RuleJSON  string `json:"rule_json"`
+	IsEnabled bool   `json:"is_enabled"`
+}
+
+// ExportDatasetWithRules 用于导出整个数据集及其规则
+type ExportDatasetWithRules struct {
+	Version     string       `json:"version"` // e.g. "1.0"
+	Name        string       `json:"name"`
+	Description string       `json:"description"`
+	SchemaKeys  string       `json:"schema_keys"`
+	Rules       []ExportRule `json:"rules"`
+}
+
+// ImportResult 导入业务资产的结果
+type ImportResult struct {
+	DatasetName  string `json:"dataset_name"`
+	RuleImported int    `json:"rule_imported"`
+	RuleSkipped  int    `json:"rule_skipped"`
+}
+
 // SourceFileOption 用于下拉列表展示来源文件
 type SourceFileOption struct {
 	SourceName string `json:"source_name" gorm:"column:source_name"`

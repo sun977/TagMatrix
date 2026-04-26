@@ -243,6 +243,22 @@ export namespace model {
 	        this.sheetNames = source["sheetNames"];
 	    }
 	}
+	export class ImportResult {
+	    dataset_name: string;
+	    rule_imported: number;
+	    rule_skipped: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImportResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dataset_name = source["dataset_name"];
+	        this.rule_imported = source["rule_imported"];
+	        this.rule_skipped = source["rule_skipped"];
+	    }
+	}
 	export class TagDto {
 	    name: string;
 	    color: string;

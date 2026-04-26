@@ -163,6 +163,47 @@ func (a *App) DeleteDataset(id uint64) error {
 	return a.dataset.DeleteDataset(id)
 }
 
+// ExportDatasetWithRules 导出数据集和规则业务资产
+func (a *App) ExportDatasetWithRules(datasetID uint64, exportPath string) error {
+	if exportPath == "" {
+		file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+			Title:           "导出业务资产",
+			DefaultFilename: "dataset_with_rules.json",
+			Filters: []runtime.FileFilter{
+				{DisplayName: "JSON Files (*.json)", Pattern: "*.json"},
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if file == "" {
+			return nil // 用户取消
+		}
+		exportPath = file
+	}
+	return a.dataset.ExportDatasetWithRules(datasetID, exportPath)
+}
+
+// ImportDatasetWithRules 导入业务资产
+func (a *App) ImportDatasetWithRules(filePath string) (*model.ImportResult, error) {
+	if filePath == "" {
+		file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+			Title: "导入业务资产",
+			Filters: []runtime.FileFilter{
+				{DisplayName: "JSON Files (*.json)", Pattern: "*.json"},
+			},
+		})
+		if err != nil {
+			return nil, err
+		}
+		if file == "" {
+			return nil, nil // 用户取消
+		}
+		filePath = file
+	}
+	return a.dataset.ImportDatasetWithRules(filePath)
+}
+
 // ----------------- Data Import/Export API -----------------
 
 // AnalyzeDataFile 分析文件并返回表信息 (前端用来做多 Sheet 选择)

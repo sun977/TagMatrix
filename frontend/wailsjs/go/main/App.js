@@ -50,6 +50,10 @@ export function ExportData(arg1, arg2) {
   return window['go']['main']['App']['ExportData'](arg1, arg2);
 }
 
+export function ExportDatasetWithRules(arg1, arg2) {
+  return window['go']['main']['App']['ExportDatasetWithRules'](arg1, arg2);
+}
+
 export function ExportTaggedDataList(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
   return window['go']['main']['App']['ExportTaggedDataList'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
 }
@@ -112,6 +116,10 @@ export function GetTaskLogs(arg1) {
 
 export function ImportData(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['ImportData'](arg1, arg2, arg3, arg4);
+}
+
+export function ImportDatasetWithRules(arg1) {
+  return window['go']['main']['App']['ImportDatasetWithRules'](arg1);
 }
 
 export function ImportTags(arg1) {
