@@ -40,7 +40,7 @@
 
         <!-- 软件版本信息 -->
         <div class="version-info" v-if="!isCollapsed">
-          © 2026 Sun977 | v2.0.0
+          © 2026 Sun977 | v3.0.0
         </div>
       </div>
 
