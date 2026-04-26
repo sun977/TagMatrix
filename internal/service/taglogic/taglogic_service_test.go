@@ -130,7 +130,7 @@ func TestTagLogicService_DryRunRule(t *testing.T) {
 	// 测试一个规则：age > 18
 	ruleJSON := `{"field":"age","operator":"greater_than","value":18}`
 
-	results, err := svc.DryRunRule(ruleJSON, 10)
+	results, err := svc.DryRunRule(ruleJSON, 10, 0)
 	if err != nil {
 		t.Fatalf("DryRunRule failed: %v", err)
 	}
