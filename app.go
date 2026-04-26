@@ -40,20 +40,30 @@ func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
 	// 确定数据存放目录
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		configDir = "."
-	}
-	appDir := filepath.Join(configDir, "TagMatrix")
-	if err := os.MkdirAll(appDir, 0755); err != nil {
-		fmt.Printf("Failed to create app directory: %v\n", err)
+	var appDir string
+	env := runtime.Environment(ctx)
+	if env.BuildType == "dev" || env.BuildType == "debug" {
+		// 开发模式：直接使用当前项目根目录
 		appDir = "."
+		fmt.Println("Running in Dev/Debug mode, using current directory for data and config.")
+	} else {
+		// 生产打包模式：使用系统标准的 AppData 目录
+		configDir, err := os.UserConfigDir()
+		if err != nil {
+			configDir = "."
+		}
+		appDir = filepath.Join(configDir, "TagMatrix")
+		if err := os.MkdirAll(appDir, 0755); err != nil {
+			fmt.Printf("Failed to create app directory: %v\n", err)
+			appDir = "."
+		}
+		fmt.Printf("Running in Production mode, using directory: %s\n", appDir)
 	}
 
 	dbPath := filepath.Join(appDir, "data.db")
 
 	// 1. 初始化数据库
-	err = model.InitDB(dbPath)
+	err := model.InitDB(dbPath)
 	if err != nil {
 		fmt.Printf("Failed to initialize database: %v\n", err)
 	}
