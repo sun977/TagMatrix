@@ -21,7 +21,7 @@
             <template #prepend>
               <el-select v-model="filterForm.searchCol" placeholder="全部字段" style="width: 120px" clearable>
                 <el-option label="全部字段" value="" />
-                <el-option v-for="col in dynamicColumns" :key="col" :label="col" :value="col" />
+                <el-option v-for="col in allToggleableColumns" :key="col" :label="col" :value="col" />
               </el-select>
             </template>
             <template #append>
@@ -30,7 +30,7 @@
           </el-input>
         </el-form-item>
         
-        <el-form-item label="标签分类">
+        <el-form-item label="命中标签">
           <el-select v-model="filterForm.tag" placeholder="全部标签" clearable class="w-150">
             <el-option v-for="tag in tagOptions" :key="tag.id" :label="tag.name" :value="String(tag.id)" />
           </el-select>
@@ -105,7 +105,7 @@
             </template>
             <div class="column-settings">
               <el-checkbox 
-                v-for="col in dynamicColumns" 
+                v-for="col in allToggleableColumns" 
                 :key="col" 
                 :model-value="!hiddenColumns.includes(col)"
                 @change="toggleColumn(col)"
@@ -136,7 +136,7 @@
         />
 
         <!-- 系统处理字段 -->
-        <el-table-column label="打标模式" width="120">
+        <el-table-column v-if="!hiddenColumns.includes('TagM_打标模式')" label="TagM_打标模式" width="120">
           <template #default="scope">
             <el-tag size="small" type="info">
               {{ formatTagMode(scope.row.tagMode) }}
@@ -144,7 +144,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="命中标签" min-width="200">
+        <el-table-column v-if="!hiddenColumns.includes('TagM_命中标签')" label="TagM_命中标签" min-width="200">
           <template #default="scope">
             <div class="tags-wrapper">
               <el-tag 
@@ -163,7 +163,7 @@
           </template>
         </el-table-column>
 
-        <el-table-column label="命中主标签" min-width="120">
+        <el-table-column v-if="!hiddenColumns.includes('TagM_命中主标签')" label="TagM_命中主标签" min-width="120">
           <template #default="scope">
             <div v-if="scope.row.tagMode === 'mixed' && scope.row.primaryTag">
               <el-tag 
@@ -180,11 +180,11 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="batchName" label="任务批次" min-width="150" show-overflow-tooltip />
-        <el-table-column prop="sourceFile" label="来源文件" min-width="120" show-overflow-tooltip />
-        <el-table-column prop="updateTime" label="打标时间" width="160" />
+        <el-table-column v-if="!hiddenColumns.includes('TagM_任务批次')" prop="batchName" label="TagM_任务批次" min-width="150" show-overflow-tooltip />
+        <el-table-column v-if="!hiddenColumns.includes('TagM_sourceFile')" prop="sourceFile" label="TagM_sourceFile" min-width="120" show-overflow-tooltip />
+        <el-table-column v-if="!hiddenColumns.includes('TagM_打标时间')" prop="updateTime" label="TagM_打标时间" width="160" />
           
-          <el-table-column label="状态" width="100">
+          <el-table-column v-if="!hiddenColumns.includes('TagM_状态')" label="TagM_状态" width="100">
             <template #default="scope">
               <el-tag :type="scope.row.status === 'success' ? 'success' : 'info'" size="small">
                 {{ scope.row.status === 'success' ? '已打标' : '未命中' }}
@@ -254,9 +254,14 @@ const filterForm = reactive({
   dateRange: null as string[] | null
 })
 
-// 动态列名
+// 动态列与显示控制
 const dynamicColumns = ref<string[]>([])
 const hiddenColumns = ref<string[]>([])
+const systemColumns = ['TagM_打标模式', 'TagM_命中标签', 'TagM_命中主标签', 'TagM_任务批次', 'TagM_sourceFile', 'TagM_打标时间', 'TagM_状态']
+
+const allToggleableColumns = computed(() => {
+  return [...dynamicColumns.value, ...systemColumns]
+})
 
 // 查看详情相关的状态
 const detailDialogVisible = ref(false)
@@ -344,7 +349,7 @@ const handleSearch = async () => {
           } catch(e) {}
           
           keys.forEach(k => {
-            if (k !== 'id' && k !== '来源文件') {
+            if (k !== 'id' && k !== 'TagM_sourceFile') {
               colSet.add(k)
             }
           })
@@ -417,32 +422,32 @@ const handleViewDetail = (row: any) => {
   const displayObj: any = { ...rest }
   
   if (tags && tags.length > 0) {
-    displayObj['命中标签'] = tags.map((t: any) => t.name).join(', ')
+    displayObj['TagM_命中标签'] = tags.map((t: any) => t.name).join(', ')
   } else {
-    displayObj['命中标签'] = '-'
+    displayObj['TagM_命中标签'] = '-'
   }
 
   if (row.tagMode === 'mixed' && primaryTag) {
-    displayObj['命中主标签'] = primaryTag.name
+    displayObj['TagM_命中主标签'] = primaryTag.name
   } else if (row.tagMode === 'mixed') {
-    displayObj['命中主标签'] = '-'
+    displayObj['TagM_命中主标签'] = '-'
   }
   
   // 格式化打标模式
-  displayObj['打标模式'] = formatTagMode(row.tagMode)
+  displayObj['TagM_打标模式'] = formatTagMode(row.tagMode)
   delete displayObj.tagMode
   
   // 重命名其它系统字段
   if (displayObj.batchName) {
-    displayObj['任务批次'] = displayObj.batchName
+    displayObj['TagM_任务批次'] = displayObj.batchName
     delete displayObj.batchName
   }
   if (displayObj.sourceFile) {
-    displayObj['来源文件'] = displayObj.sourceFile
+    displayObj['TagM_sourceFile'] = displayObj.sourceFile
     delete displayObj.sourceFile
   }
   if (displayObj.status) {
-    displayObj['状态'] = displayObj.status === 'success' ? '已打标' : '未命中'
+    displayObj['TagM_状态'] = displayObj.status === 'success' ? '已打标' : '未命中'
     delete displayObj.status
   }
   if (displayObj.content) {

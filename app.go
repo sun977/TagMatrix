@@ -503,7 +503,7 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, sourceFile, t
 	sort.Strings(dynamicCols)
 	// 构建表头 (不要系统 ID 和打标时间)
 	headers := append([]string{}, dynamicCols...)
-	headers = append(headers, "打标模式", "命中标签", "命中主标签", "任务批次", "来源文件", "状态")
+	headers = append(headers, "TagM_打标模式", "TagM_命中标签", "TagM_命中主标签", "TagM_任务批次", "TagM_sourceFile", "TagM_状态")
 
 	if err := writer.Write(headers); err != nil {
 		return err
