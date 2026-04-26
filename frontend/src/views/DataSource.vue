@@ -20,7 +20,7 @@
             <el-icon><Upload /></el-icon> 导入数据
           </el-button>
           <el-button type="info" @click="handleImportBusinessAsset">
-            <el-icon><Upload /></el-icon> 导入业务资产
+            <el-icon><Upload /></el-icon> 导入数据集结构和规则
           </el-button>
         </div>
         <div class="toolbar-right">
@@ -44,12 +44,28 @@
             </template>
           </el-table-column>
           <el-table-column label="操作" width="220" align="right">
+            <template #header>
+              <div style="display: flex; align-items: center; justify-content: flex-end;">
+                操作
+                <el-tooltip effect="dark" placement="top-end">
+                  <template #content>
+                    <div style="line-height: 1.8;">
+                      <div><strong>数据</strong>：浏览和管理该数据集内的数据记录。</div>
+                      <div><strong>编辑</strong>：修改数据集的名称和描述信息。</div>
+                      <div><strong>导出</strong>：导出该数据集的结构和绑定规则。</div>
+                      <div><strong style="color: #F56C6C;">删除</strong>：彻底删除该数据集数据和绑定规则。</div>
+                    </div>
+                  </template>
+                  <el-icon style="font-size: 14px; margin-left: 4px; color: #909399; cursor: help;"><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </div>
+            </template>
             <template #default="scope">
               <div style="margin-bottom: 6px;">
                 <el-button size="small" class="action-btn" @click="handleViewDataset(scope.row)">数据</el-button>
                 <el-button size="small" class="action-btn" @click="handleEditDataset(scope.row)">编辑</el-button>
               </div>
-              <div>
+              <div style="display: flex; align-items: center; justify-content: flex-end;">
                 <el-button size="small" class="action-btn" @click="handleExportBusinessAsset(scope.row)">导出</el-button>
                 <el-button size="small" class="action-btn" @click="handleDeleteDataset(scope.row)" style="color: #F56C6C; border-color: #dcdfe6; background-color: #fff;">删除</el-button>
               </div>
@@ -276,7 +292,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus, MoreFilled } from '@element-plus/icons-vue'
+import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus, MoreFilled, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings
