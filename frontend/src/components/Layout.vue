@@ -7,7 +7,7 @@
       :style="{ width: actualSidebarWidth + 'px' }"
     >
       <div class="sidebar-header">
-        <el-icon :size="24" color="var(--tm-accent-primary)"><Grid /></el-icon>
+        <img src="../assets/images/appicon.png" alt="TagMatrix Logo" class="app-logo" :class="{ 'is-collapsed': isCollapsed }" />
         <span class="logo-text" v-if="!isCollapsed">TagMatrix</span>
       </div>
 
@@ -201,6 +201,19 @@ onUnmounted(() => {
     padding: 0 12px 40px;
     white-space: nowrap;
     overflow: hidden;
+    
+    .app-logo {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      border-radius: 4px;
+      flex-shrink: 0;
+
+      &.is-collapsed {
+        width: 32px;
+        height: 32px;
+      }
+    }
     
     .logo-text {
       font-weight: 700;
