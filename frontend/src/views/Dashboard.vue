@@ -20,7 +20,7 @@
     <!-- 数据统计卡片 -->
     <el-row :gutter="20" class="stat-cards">
       <el-col :span="6">
-        <div class="stat-card">
+        <div class="stat-card clickable-card" @click="showDatasetRecordsDialog">
           <div class="card-top">
             <span class="card-title">总数据量</span>
             <div class="icon-wrapper green-bg">
@@ -28,11 +28,11 @@
             </div>
           </div>
           <div class="card-value">{{ stats.totalRecords || 0 }}</div>
-          <div class="card-trend green-text">当前库内记录总数</div>
+          <div class="card-trend green-text" style="cursor: pointer;">当前库内记录总数</div>
         </div>
       </el-col>
       <el-col :span="6">
-        <div class="stat-card">
+        <div class="stat-card clickable-card" @click="showDatasetTaggedDialog">
           <div class="card-top">
             <span class="card-title">已打标数据量</span>
             <div class="icon-wrapper blue-bg">
@@ -40,7 +40,7 @@
             </div>
           </div>
           <div class="card-value">{{ stats.taggedRecords || 0 }}</div>
-          <div class="card-trend green-text">打标覆盖率 {{ stats.totalRecords ? Math.round((stats.taggedRecords / stats.totalRecords) * 100) : 0 }}%</div>
+          <div class="card-trend green-text" style="cursor: pointer;">打标覆盖率 {{ stats.totalRecords ? Math.round((stats.taggedRecords / stats.totalRecords) * 100) : 0 }}%</div>
         </div>
       </el-col>
       <el-col :span="6">
@@ -155,6 +155,7 @@
     <el-dialog v-model="rulesDialogVisible" title="规则列表" width="900px">
       <el-table :data="rulesList" style="width: 100%" height="400" v-loading="loadingRules" class="custom-table">
         <el-table-column prop="name" label="规则名称" min-width="180" />
+        <el-table-column prop="datasetName" label="所属数据集" width="150" />
         <el-table-column prop="tagName" label="关联标签" width="150">
           <template #default="{ row }">
             <div style="display: flex; align-items: center; gap: 8px;">
@@ -196,13 +197,39 @@
         <el-table-column prop="createdAt" label="时间" width="180" />
       </el-table>
     </el-dialog>
+
+    <!-- 总数据量（按数据集）弹窗 -->
+    <el-dialog v-model="datasetRecordsDialogVisible" title="数据量统计" width="700px">
+      <el-table :data="stats.datasetStats || []" style="width: 100%" height="400" class="custom-table">
+        <el-table-column prop="datasetName" label="数据集名称" min-width="200" />
+        <el-table-column prop="totalRecords" label="数据量" width="150" align="right" />
+        <el-table-column label="占比" width="150" align="right">
+          <template #default="{ row }">
+            {{ stats.totalRecords ? Math.round((row.totalRecords / stats.totalRecords) * 100) : 0 }}%
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
+
+    <!-- 已打标数据量（按数据集）弹窗 -->
+    <el-dialog v-model="datasetTaggedDialogVisible" title="打标覆盖率统计" width="700px">
+      <el-table :data="stats.datasetStats || []" style="width: 100%" height="400" class="custom-table">
+        <el-table-column prop="datasetName" label="数据集名称" min-width="200" />
+        <el-table-column prop="taggedRecords" label="已打标数量" width="150" align="right" />
+        <el-table-column label="打标覆盖率" width="150" align="right">
+          <template #default="{ row }">
+            {{ row.totalRecords ? Math.round((row.taggedRecords / row.totalRecords) * 100) : 0 }}%
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { Loading, Setting, Coin, PriceTag, Collection, Document, UploadFilled, ArrowRight } from '@element-plus/icons-vue'
-import { GetDashboardStats, GetTaskBatches, GetAllTags, GetAllRules, GetTaskLogs, ExportTaskLogsCSV } from '../../wailsjs/go/main/App'
+import { GetDashboardStats, GetTaskBatches, GetAllTags, GetAllRules, GetTaskLogs, ExportTaskLogsCSV, ListDatasets } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { ElMessage } from 'element-plus'
 
@@ -210,8 +237,20 @@ const stats = ref<model.DashboardStats>({
   totalRecords: 0,
   taggedRecords: 0,
   totalTags: 0,
-  totalRules: 0
+  totalRules: 0,
+  datasetStats: []
 } as any)
+
+const datasetRecordsDialogVisible = ref(false)
+const datasetTaggedDialogVisible = ref(false)
+
+const showDatasetRecordsDialog = () => {
+  datasetRecordsDialogVisible.value = true
+}
+
+const showDatasetTaggedDialog = () => {
+  datasetTaggedDialogVisible.value = true
+}
 
 const recentTasks = ref<any[]>([])
 const loadingTasks = ref(false)
@@ -244,24 +283,28 @@ const showRulesDialog = async () => {
   rulesDialogVisible.value = true
   loadingRules.value = true
   try {
-    // 同时获取规则和标签数据（用于匹配标签名称）
-    const [rules, tags] = await Promise.all([
+    // 同时获取规则和标签数据（用于匹配标签名称）以及数据集（用于匹配数据集名称）
+    const [rules, tags, datasets] = await Promise.all([
       GetAllRules(),
-      GetAllTags()
+      GetAllTags(),
+      ListDatasets()
     ])
     
     // 过滤出已生效的规则
     const enabledRules = rules.filter(r => r.is_enabled)
     
-    // 组装关联的标签信息
+    // 组装关联的标签信息和数据集信息
     const tagsMap = new Map(tags.map(t => [t.id, t]))
+    const datasetsMap = new Map(datasets.map(d => [d.id, d]))
     
     rulesList.value = enabledRules.map(r => {
       const tag = tagsMap.get(r.tag_id)
+      const ds = datasetsMap.get(r.dataset_id)
       return {
         ...r,
         tagName: tag ? tag.name : '未知标签',
-        tagColor: tag ? tag.color : ''
+        tagColor: tag ? tag.color : '',
+        datasetName: ds ? ds.name : '未知数据集'
       }
     })
   } catch (e) {

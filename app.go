@@ -117,6 +117,26 @@ func (a *App) GetDashboardStats() (*model.DashboardStats, error) {
 		Distinct("sys_entity_tags.record_id").
 		Count(&stats.TaggedRecords)
 
+	// 按数据集分组统计
+	var datasets []model.SysDataset
+	model.DB.Find(&datasets)
+
+	for _, ds := range datasets {
+		var dsStat model.DatasetStat
+		dsStat.DatasetID = ds.ID
+		dsStat.DatasetName = ds.Name
+
+		model.DB.Model(&model.RawDataRecord{}).Where("dataset_id = ?", ds.ID).Count(&dsStat.TotalRecords)
+
+		model.DB.Model(&model.SysEntityTag{}).
+			Joins("JOIN raw_data_records ON raw_data_records.id = sys_entity_tags.record_id").
+			Where("raw_data_records.deleted_at IS NULL AND raw_data_records.dataset_id = ?", ds.ID).
+			Distinct("sys_entity_tags.record_id").
+			Count(&dsStat.TaggedRecords)
+
+		stats.DatasetStats = append(stats.DatasetStats, dsStat)
+	}
+
 	return &stats, nil
 }
 

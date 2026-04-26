@@ -2,10 +2,19 @@ package model
 
 // DashboardStats 用于概览控制台的数据统计
 type DashboardStats struct {
-	TotalRecords  int64 `json:"totalRecords"`
-	TaggedRecords int64 `json:"taggedRecords"`
-	TotalTags     int64 `json:"totalTags"`
-	TotalRules    int64 `json:"totalRules"`
+	TotalRecords  int64         `json:"totalRecords"`
+	TaggedRecords int64         `json:"taggedRecords"`
+	TotalTags     int64         `json:"totalTags"`
+	TotalRules    int64         `json:"totalRules"`
+	DatasetStats  []DatasetStat `json:"datasetStats"`
+}
+
+// DatasetStat 数据集级别的统计信息
+type DatasetStat struct {
+	DatasetID     uint64 `json:"datasetId"`
+	DatasetName   string `json:"datasetName"`
+	TotalRecords  int64  `json:"totalRecords"`
+	TaggedRecords int64  `json:"taggedRecords"`
 }
 
 // TaggedRecordDto 用于展示打标结果的 DTO

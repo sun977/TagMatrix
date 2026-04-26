@@ -45,6 +45,9 @@
                     <el-button link type="danger" size="small" @click.stop="handleDeleteTag(data, $event)"><el-icon><Delete /></el-icon></el-button>
                   </span>
                   <div class="spacer"></div>
+                  <el-tooltip v-if="data.has_rule" content="该标签已在部分数据集中配置规则" placement="right">
+                    <el-icon class="has-rule-icon" style="color: #67c23a; margin-left: 8px;"><Check /></el-icon>
+                  </el-tooltip>
                 </span>
               </template>
             </el-tree>
@@ -162,7 +165,15 @@
     </el-dialog>
 
     <!-- 规则配置弹窗 -->
-    <el-dialog v-model="ruleDialogVisible" :title="currentRuleId ? '编辑规则' : '新增规则'" width="850px" top="5vh">
+    <el-dialog v-model="ruleDialogVisible" width="850px" top="5vh">
+      <template #header>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span class="el-dialog__title">{{ currentRuleId ? '编辑规则' : '新增规则' }}</span>
+          <el-tooltip content="点击查看匹配算子说明" placement="top">
+            <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399;"><QuestionFilled /></el-icon>
+          </el-tooltip>
+        </div>
+      </template>
       <div style="display: flex; flex-direction: column; gap: 20px;">
         <div style="display: flex; gap: 24px;">
           <div class="form-item inline" style="display: flex; align-items: center; gap: 12px; margin-bottom: 0;">
@@ -177,9 +188,6 @@
           </div>
           <div style="flex: 1; text-align: right;">
             <el-button size="small" type="info" plain @click="previewRuleJson">预览 JSON</el-button>
-            <el-tooltip content="点击查看匹配算子说明" placement="top">
-              <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399; margin-left: 12px; vertical-align: middle;"><QuestionFilled /></el-icon>
-            </el-tooltip>
           </div>
         </div>
 
