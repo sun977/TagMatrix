@@ -270,7 +270,7 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, sourceFile, tagM
 	}
 
 	if sourceFile != "" {
-		db = db.Where("json_extract(raw_data_records.data, '$.\"来源文件\"') = ?", sourceFile)
+		db = db.Where("json_extract(raw_data_records.data, '$.\"TagM_sourceFile\"') = ?", sourceFile)
 	}
 
 	if startDate != "" {
@@ -333,7 +333,7 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, sourceFile, tagM
 		// 解析来源文件
 		var dataMap map[string]interface{}
 		if err := json.Unmarshal([]byte(r.Data), &dataMap); err == nil {
-			if src, ok := dataMap["来源文件"].(string); ok {
+			if src, ok := dataMap["TagM_sourceFile"].(string); ok {
 				dto.SourceFile = src
 			}
 		}
@@ -408,7 +408,7 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, sourceFile, t
 	}
 
 	if sourceFile != "" {
-		db = db.Where("json_extract(raw_data_records.data, '$.\"来源文件\"') = ?", sourceFile)
+		db = db.Where("json_extract(raw_data_records.data, '$.\"TagM_sourceFile\"') = ?", sourceFile)
 	}
 
 	if startDate != "" {
@@ -492,8 +492,8 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, sourceFile, t
 		json.Unmarshal([]byte(r.Data), &dMap)
 		parsedDataMap[i] = dMap
 		for k := range dMap {
-			// 跳过 id 和 来源文件（来源文件放在最后固定位置）
-			if !colSet[k] && k != "id" && k != "来源文件" {
+			// 跳过 id 和 TagM_sourceFile
+			if !colSet[k] && k != "id" && k != "TagM_sourceFile" {
 				colSet[k] = true
 				dynamicCols = append(dynamicCols, k)
 			}
@@ -574,7 +574,7 @@ func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, sourceFile, t
 
 		// 来源文件
 		sourceFileStr := "-"
-		if ds, ok := dMap["来源文件"].(string); ok {
+		if ds, ok := dMap["TagM_sourceFile"].(string); ok {
 			sourceFileStr = ds
 		}
 

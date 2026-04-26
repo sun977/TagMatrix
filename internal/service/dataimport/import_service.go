@@ -237,7 +237,7 @@ func (s *DataImportService) ImportData(filePath string, selectedSheets []string,
 		// 追加新出现的列
 		for _, rec := range records {
 			for k := range rec {
-				if !headerMap[k] && k != "来源文件" {
+				if !headerMap[k] && k != "TagM_sourceFile" {
 					headerMap[k] = true
 					headers = append(headers, k)
 				}
@@ -286,7 +286,7 @@ func (s *DataImportService) parseCSV(filePath string) ([]map[string]interface{},
 			}
 		}
 		// 为 CSV 也附加来源文件（文件名）
-		record["来源文件"] = filepath.Base(filePath)
+		record["TagM_sourceFile"] = filepath.Base(filePath)
 		records = append(records, record)
 	}
 
@@ -313,6 +313,7 @@ func (s *DataImportService) parseExcel(filePath string, selectedSheets []string)
 
 	var allRecords []map[string]interface{}
 
+	fileName := filepath.Base(filePath)
 	for _, sheetName := range sheetsToProcess {
 		rows, err := f.GetRows(sheetName)
 		if err != nil {
@@ -339,8 +340,12 @@ func (s *DataImportService) parseExcel(filePath string, selectedSheets []string)
 				record[headers[j]] = ""
 			}
 
-			// 可以在记录中附加来源 sheet 名，方便追溯
-			record["来源文件"] = sheetName
+			// 在记录中附加来源文件名和 sheet 名，方便追溯
+			if len(sheetsToProcess) == 1 && sheetName == "Sheet1" {
+				record["TagM_sourceFile"] = fileName
+			} else {
+				record["TagM_sourceFile"] = fmt.Sprintf("%s (%s)", fileName, sheetName)
+			}
 
 			allRecords = append(allRecords, record)
 		}

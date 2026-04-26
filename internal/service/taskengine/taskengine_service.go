@@ -112,14 +112,14 @@ func (s *TaskEngineService) GetAvailableSourceFiles(ctx context.Context, dataset
 	var results []model.SourceFileOption
 
 	query := s.db.WithContext(ctx).Table("raw_data_records").
-		Select("json_extract(data, '$.\"来源文件\"') as source_name, count(id) as count").
-		Where("deleted_at IS NULL AND json_extract(data, '$.\"来源文件\"') IS NOT NULL")
+		Select("json_extract(data, '$.\"TagM_sourceFile\"') as source_name, count(id) as count").
+		Where("deleted_at IS NULL AND json_extract(data, '$.\"TagM_sourceFile\"') IS NOT NULL")
 
 	if datasetID > 0 {
 		query = query.Where("dataset_id = ?", datasetID)
 	}
 
-	err := query.Group("json_extract(data, '$.\"来源文件\"')").
+	err := query.Group("json_extract(data, '$.\"TagM_sourceFile\"')").
 		Order("source_name ASC").
 		Find(&results).Error
 
@@ -162,7 +162,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	var totalRecords int64
 	query := s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
 	if sourceFile != "" && sourceFile != "all" {
-		query = query.Where("json_extract(data, '$.\"来源文件\"') = ?", sourceFile)
+		query = query.Where("json_extract(data, '$.\"TagM_sourceFile\"') = ?", sourceFile)
 	}
 	query.Count(&totalRecords)
 
@@ -199,7 +199,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	var results []model.RawDataRecord
 	query = s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
 	if sourceFile != "" && sourceFile != "all" {
-		query = query.Where("json_extract(data, '$.\"来源文件\"') = ?", sourceFile)
+		query = query.Where("json_extract(data, '$.\"TagM_sourceFile\"') = ?", sourceFile)
 	}
 	err := query.FindInBatches(&results, batchSize, func(tx *gorm.DB, batch int) error {
 		// 将当前的 records 深拷贝发送给 channel，避免并发修改
