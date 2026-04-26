@@ -47,7 +47,7 @@ func (s *TagLogicService) CreateTag(tag *model.SysTag) error {
 	return s.db.Create(tag).Error
 }
 
-// UpdateTag 更新标签的基本信息（名称、颜色、描述）
+// UpdateTag 更新标签的基本信息（名称、颜色、描述）并级联更新路径
 func (s *TagLogicService) UpdateTag(tag *model.SysTag) error {
 	if tag.ID == 0 {
 		return fmt.Errorf("tag id cannot be empty")
@@ -55,12 +55,52 @@ func (s *TagLogicService) UpdateTag(tag *model.SysTag) error {
 	if tag.Name == "" {
 		return fmt.Errorf("tag name cannot be empty")
 	}
-	// 仅更新允许修改的字段，防止意外修改 Path 和 ParentID 等结构字段
-	return s.db.Model(tag).Updates(map[string]interface{}{
-		"name":        tag.Name,
-		"color":       tag.Color,
-		"description": tag.Description,
-	}).Error
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var oldTag model.SysTag
+		if err := tx.First(&oldTag, tag.ID).Error; err != nil {
+			return err
+		}
+
+		updates := map[string]interface{}{
+			"name":        tag.Name,
+			"color":       tag.Color,
+			"description": tag.Description,
+		}
+
+		if oldTag.Name != tag.Name {
+			// 名称发生改变，需要重新计算当前标签的路径
+			var newPath string
+			if oldTag.ParentID == 0 {
+				newPath = fmt.Sprintf("/%s/", tag.Name)
+			} else {
+				var parent model.SysTag
+				if err := tx.First(&parent, oldTag.ParentID).Error; err != nil {
+					return fmt.Errorf("parent tag not found: %w", err)
+				}
+				newPath = fmt.Sprintf("%s%s/", parent.Path, tag.Name)
+			}
+			updates["path"] = newPath
+
+			// 查找所有子标签并更新它们的路径前缀
+			var children []model.SysTag
+			if err := tx.Where("path LIKE ? AND id != ?", oldTag.Path+"%", tag.ID).Find(&children).Error; err != nil {
+				return err
+			}
+
+			for _, child := range children {
+				if len(child.Path) >= len(oldTag.Path) {
+					childNewPath := newPath + child.Path[len(oldTag.Path):]
+					if err := tx.Model(&child).Update("path", childNewPath).Error; err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		// 仅更新允许修改的字段，防止意外修改 ParentID 等结构字段
+		return tx.Model(tag).Updates(updates).Error
+	})
 }
 
 // GetTagTree 获取所有标签并组装为树形结构
