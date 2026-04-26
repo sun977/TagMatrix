@@ -114,6 +114,15 @@
           </el-button>
         </div>
         <div class="header-filters">
+          <el-select v-model="filterDataset" class="filter-select">
+            <el-option label="全部数据集" value="all" />
+            <el-option 
+              v-for="ds in availableDatasets" 
+              :key="ds.id" 
+              :label="ds.name" 
+              :value="ds.id" 
+            />
+          </el-select>
           <el-select v-model="filterStatus" class="filter-select">
             <el-option label="全部状态" value="all" />
             <el-option label="执行中" value="running" />
@@ -140,6 +149,11 @@
       >
         <el-table-column type="selection" width="55" />
         <el-table-column prop="name" label="任务名称" min-width="180" />
+        <el-table-column label="目标数据集" min-width="120">
+          <template #default="scope">
+            {{ getDatasetName(scope.row.datasetId) }}
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="120">
           <template #default="scope">
             <div class="status-pill" :class="scope.row.statusType">
@@ -310,6 +324,7 @@ const handleDatasetChange = async () => {
   }
 }
 
+const filterDataset = ref<string | number>('all')
 const filterStatus = ref('all')
 const filterTime = ref('all')
 const isSubmitting = ref(false)
@@ -322,6 +337,11 @@ const pageSize = ref(10)
 
 const filteredTaskHistory = computed(() => {
   let result = [...taskHistory.value]
+
+  // 过滤数据集
+  if (filterDataset.value !== 'all') {
+    result = result.filter(item => item.datasetId === filterDataset.value)
+  }
 
   // 过滤状态
   if (filterStatus.value !== 'all') {
@@ -349,13 +369,18 @@ const filteredTaskHistory = computed(() => {
   return result.sort((a, b) => b.rawTime - a.rawTime)
 })
 
+const getDatasetName = (id: number) => {
+  const ds = availableDatasets.value.find(d => d.id === id)
+  return ds ? ds.name : `未知数据集(${id})`
+}
+
 const paginatedTaskHistory = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   const end = start + pageSize.value
   return filteredTaskHistory.value.slice(start, end)
 })
 
-watch([filterStatus, filterTime], () => {
+watch([filterDataset, filterStatus, filterTime], () => {
   currentPage.value = 1
 })
 
@@ -474,6 +499,7 @@ const fetchBatches = async () => {
       return {
         id: b.id,
         name: b.name,
+        datasetId: b.dataset_id,
         statusType: b.status,
         statusText: statusText,
         progress: isCompleted ? 100 : (isRunning ? 0 : 0), // 运行中的进度交给WebSocket推送
