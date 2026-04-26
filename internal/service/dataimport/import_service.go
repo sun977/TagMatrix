@@ -150,10 +150,11 @@ func (s *DataImportService) AnalyzeFile(filePath string) (*model.FileAnalysisRes
 		FileName: fileName,
 	}
 
-	if ext == ".csv" {
+	switch ext {
+	case ".csv":
 		result.FileType = "csv"
 		return result, nil
-	} else if ext == ".xlsx" || ext == ".xls" {
+	case ".xlsx", ".xls":
 		result.FileType = "excel"
 		f, err := excelize.OpenFile(filePath)
 		if err != nil {
@@ -163,9 +164,9 @@ func (s *DataImportService) AnalyzeFile(filePath string) (*model.FileAnalysisRes
 
 		result.SheetNames = f.GetSheetList()
 		return result, nil
+	default:
+		return nil, fmt.Errorf("unsupported file format: %s", ext)
 	}
-
-	return nil, fmt.Errorf("unsupported file format: %s", ext)
 }
 
 // ImportData 导入 Excel 或 CSV 文件

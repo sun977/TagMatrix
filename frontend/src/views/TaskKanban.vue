@@ -257,9 +257,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { VideoPlay, RefreshRight, DocumentCopy } from '@element-plus/icons-vue'
+import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset, GetRulesByTag, GetAllRules } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
