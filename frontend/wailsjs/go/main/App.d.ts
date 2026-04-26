@@ -25,11 +25,11 @@ export function DeleteTag(arg1:number):Promise<void>;
 
 export function DeleteTaskBatches(arg1:Array<number>):Promise<void>;
 
-export function DryRunRule(arg1:string,arg2:number):Promise<Array<taglogic.DryRunResult>>;
+export function DryRunRule(arg1:string,arg2:number,arg3:number):Promise<Array<taglogic.DryRunResult>>;
 
 export function ExportData(arg1:number,arg2:string):Promise<void>;
 
-export function ExportTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string,arg9:string):Promise<void>;
+export function ExportTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string,arg9:string,arg10:string):Promise<void>;
 
 export function ExportTags(arg1:string):Promise<void>;
 
@@ -53,7 +53,7 @@ export function GetRulesByTag(arg1:number):Promise<Array<model.SysMatchRule>>;
 
 export function GetTagTree():Promise<Array<model.TagTreeNode>>;
 
-export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string,arg9:string,arg10:number,arg11:number):Promise<model.PagedTaggedData>;
+export function GetTaggedDataList(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:string,arg8:string,arg9:string,arg10:string,arg11:number,arg12:number):Promise<model.PagedTaggedData>;
 
 export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
 

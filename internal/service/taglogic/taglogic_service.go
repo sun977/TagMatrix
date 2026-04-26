@@ -407,7 +407,7 @@ type DryRunResult struct {
 
 // DryRunRule 对给定的规则 JSON 在少量数据上进行试运行
 // limit <= 0 表示查询全部数据，limit > 0 表示查询前 N 条数据
-func (s *TagLogicService) DryRunRule(ruleJSON string, limit int) ([]DryRunResult, error) {
+func (s *TagLogicService) DryRunRule(ruleJSON string, limit int, datasetID uint64) ([]DryRunResult, error) {
 	var mRule matcher.MatchRule
 	if err := json.Unmarshal([]byte(ruleJSON), &mRule); err != nil {
 		return nil, fmt.Errorf("invalid rule_json format: %w", err)
@@ -415,6 +415,10 @@ func (s *TagLogicService) DryRunRule(ruleJSON string, limit int) ([]DryRunResult
 
 	var rawRecords []model.RawDataRecord
 	query := s.db.Model(&model.RawDataRecord{})
+
+	if datasetID > 0 {
+		query = query.Where("dataset_id = ?", datasetID)
+	}
 
 	if limit > 0 {
 		query = query.Limit(limit)

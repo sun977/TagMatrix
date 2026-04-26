@@ -263,6 +263,8 @@ func (s *DataImportService) parseCSV(filePath string) ([]map[string]interface{},
 	defer file.Close()
 
 	reader := csv.NewReader(file)
+	// 关键修复：允许 CSV 包含灵活（非严格）数量的字段或带有一些特殊的格式
+	reader.LazyQuotes = true
 	// 读取表头
 	headers, err := reader.Read()
 	if err != nil {

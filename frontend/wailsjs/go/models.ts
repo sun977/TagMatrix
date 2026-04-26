@@ -259,6 +259,7 @@ export namespace model {
 	}
 	export class TaggedRecordDto {
 	    id: number;
+	    datasetId: number;
 	    content: string;
 	    tags: TagDto[];
 	    primaryTag?: TagDto;
@@ -275,6 +276,7 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.datasetId = source["datasetId"];
 	        this.content = source["content"];
 	        this.tags = this.convertValues(source["tags"], TagDto);
 	        this.primaryTag = this.convertValues(source["primaryTag"], TagDto);

@@ -252,12 +252,16 @@ func (a *App) DeleteRawData(ids []uint64) error {
 	return model.DB.Delete(&model.RawDataRecord{}, ids).Error
 }
 
-func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate string, page, pageSize int) (*model.PagedTaggedData, error) {
+func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate string, page, pageSize int) (*model.PagedTaggedData, error) {
 	var total int64
 	var dtos []model.TaggedRecordDto
 
 	// 1. 构建查询构造器
 	db := model.DB.Model(&model.RawDataRecord{})
+
+	if datasetID != "" {
+		db = db.Where("raw_data_records.dataset_id = ?", datasetID)
+	}
 
 	if keyword != "" {
 		if searchCol != "" {
@@ -325,6 +329,7 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, sourceFile, tagM
 	for _, r := range records {
 		dto := model.TaggedRecordDto{
 			ID:         r.ID,
+			DatasetID:  r.DatasetID,
 			Content:    r.Data, // 将原始数据内容传递给前端，前端可做解析
 			UpdateTime: r.UpdatedAt.Format("2006-01-02 15:04:05"),
 			Tags:       []model.TagDto{},
@@ -395,9 +400,13 @@ func (a *App) GetTaggedDataList(keyword, tag, batch, searchCol, sourceFile, tagM
 }
 
 // ExportTaggedDataList 按筛选条件导出打标数据，包含动态字段和系统处理字段，不包含 ID 和打标时间
-func (a *App) ExportTaggedDataList(keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate string) error {
+func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate string) error {
 	// 构建查询条件
 	db := model.DB.Model(&model.RawDataRecord{})
+
+	if datasetID != "" {
+		db = db.Where("raw_data_records.dataset_id = ?", datasetID)
+	}
 
 	if keyword != "" {
 		if searchCol != "" {
@@ -686,8 +695,8 @@ func (a *App) GetAllRules() ([]model.SysMatchRule, error) {
 	return rules, err
 }
 
-func (a *App) DryRunRule(ruleJSON string, limit int) ([]taglogic.DryRunResult, error) {
-	return a.tagLogic.DryRunRule(ruleJSON, limit)
+func (a *App) DryRunRule(ruleJSON string, limit int, datasetID uint64) ([]taglogic.DryRunResult, error) {
+	return a.tagLogic.DryRunRule(ruleJSON, limit, datasetID)
 }
 
 // ----------------- Task Engine API -----------------

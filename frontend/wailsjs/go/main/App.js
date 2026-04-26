@@ -42,16 +42,16 @@ export function DeleteTaskBatches(arg1) {
   return window['go']['main']['App']['DeleteTaskBatches'](arg1);
 }
 
-export function DryRunRule(arg1, arg2) {
-  return window['go']['main']['App']['DryRunRule'](arg1, arg2);
+export function DryRunRule(arg1, arg2, arg3) {
+  return window['go']['main']['App']['DryRunRule'](arg1, arg2, arg3);
 }
 
 export function ExportData(arg1, arg2) {
   return window['go']['main']['App']['ExportData'](arg1, arg2);
 }
 
-export function ExportTaggedDataList(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
-  return window['go']['main']['App']['ExportTaggedDataList'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+export function ExportTaggedDataList(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10) {
+  return window['go']['main']['App']['ExportTaggedDataList'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
 }
 
 export function ExportTags(arg1) {
@@ -98,8 +98,8 @@ export function GetTagTree() {
   return window['go']['main']['App']['GetTagTree']();
 }
 
-export function GetTaggedDataList(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11) {
-  return window['go']['main']['App']['GetTaggedDataList'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
+export function GetTaggedDataList(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12) {
+  return window['go']['main']['App']['GetTaggedDataList'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12);
 }
 
 export function GetTaskBatches() {

@@ -11,6 +11,17 @@
     <!-- 筛选过滤栏 (卡片) -->
     <div class="filter-card card-panel">
       <el-form :inline="true" :model="filterForm" class="filter-form" @submit.prevent>
+        <el-form-item label="目标数据集">
+          <el-select v-model="filterForm.datasetId" placeholder="请选择数据集" class="w-150" @change="handleFilterChange">
+            <el-option 
+              v-for="ds in availableDatasets" 
+              :key="ds.id" 
+              :label="ds.name" 
+              :value="String(ds.id)" 
+            />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="关键字">
           <el-input 
             v-model="filterForm.keyword" 
@@ -25,7 +36,7 @@
               </el-select>
             </template>
             <template #append>
-              <el-button :icon="Search" @click="handleSearch" />
+              <el-button :icon="Search" @click="handleFilterChange" />
             </template>
           </el-input>
         </el-form-item>
@@ -77,7 +88,7 @@
         </el-form-item>
 
         <el-form-item>
-          <el-button type="primary" class="mint-btn" :icon="Search" @click="handleSearch">查询</el-button>
+          <el-button type="primary" class="mint-btn" :icon="Search" @click="handleFilterChange">查询</el-button>
           <el-button :icon="RefreshRight" @click="resetFilter">重置</el-button>
         </el-form-item>
       </el-form>
@@ -88,7 +99,7 @@
       <div class="table-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <span style="font-size: 14px; color: var(--tm-text-secondary);">共 {{ totalItems }} 条数据</span>
         <div class="action-icons">
-          <el-button circle @click="handleSearch">
+          <el-button circle @click="handleFilterChange">
             <el-icon><RefreshRight /></el-icon>
           </el-button>
           
@@ -136,6 +147,12 @@
         />
 
         <!-- 系统处理字段 -->
+        <el-table-column v-if="!hiddenColumns.includes('TagM_目标数据集')" label="TagM_目标数据集" min-width="120">
+          <template #default="{ row }">
+            {{ getDatasetName(row.datasetId) }}
+          </template>
+        </el-table-column>
+
         <el-table-column v-if="!hiddenColumns.includes('TagM_打标模式')" label="TagM_打标模式" width="120">
           <template #default="scope">
             <el-tag size="small" type="info">
@@ -238,12 +255,13 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { Search, Download, RefreshRight, Setting, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import { GetTaggedDataList, ExportTaggedDataList, GetAllTags, GetTaskBatches, GetAvailableSourceFiles } from '../../wailsjs/go/main/App'
+import { GetTaggedDataList, ExportTaggedDataList, GetAllTags, GetTaskBatches, GetAvailableSourceFiles, ListDatasets } from '../../wailsjs/go/main/App'
 
 const loading = ref(false)
 
 // 过滤表单状态
 const filterForm = reactive({
+  datasetId: '',
   keyword: '',
   searchCol: '',
   tag: '',
@@ -257,7 +275,7 @@ const filterForm = reactive({
 // 动态列与显示控制
 const dynamicColumns = ref<string[]>([])
 const hiddenColumns = ref<string[]>([])
-const systemColumns = ['TagM_打标模式', 'TagM_命中标签', 'TagM_命中主标签', 'TagM_任务批次', 'TagM_sourceFile', 'TagM_打标时间', 'TagM_状态']
+const systemColumns = ['TagM_目标数据集', 'TagM_打标模式', 'TagM_命中标签', 'TagM_命中主标签', 'TagM_任务批次', 'TagM_sourceFile', 'TagM_打标时间', 'TagM_状态']
 
 const allToggleableColumns = computed(() => {
   return [...dynamicColumns.value, ...systemColumns]
@@ -294,6 +312,7 @@ const formatTagMode = (mode: string) => {
 const tagOptions = ref<any[]>([])
 const batchOptions = ref<any[]>([])
 const availableSourceFiles = ref<any[]>([])
+const availableDatasets = ref<any[]>([])
 
 // 分页状态
 const currentPage = ref(1)
@@ -303,10 +322,16 @@ const totalItems = ref(0)
 // 表格数据
 const tableData = ref<any[]>([])
 
+const handleFilterChange = () => {
+  currentPage.value = 1
+  handleSearch()
+}
+
 const handleSearch = async () => {
   loading.value = true
   try {
     const res = await GetTaggedDataList(
+      filterForm.datasetId,
       filterForm.keyword, 
       filterForm.tag, 
       filterForm.batch,
@@ -336,8 +361,22 @@ const handleSearch = async () => {
         }
       })
 
-      // 提取动态列头
-      if (parsedData.length > 0) {
+      // 提取动态列头：优先使用目标数据集的 schema_keys，如果未选数据集或无 schema 则回退到从当前页数据中提取
+      let cols: string[] = []
+      const selectedDs = availableDatasets.value.find(ds => String(ds.id) === filterForm.datasetId)
+      
+      if (selectedDs && selectedDs.schema_keys) {
+        try {
+          const schemaKeys = JSON.parse(selectedDs.schema_keys)
+          if (Array.isArray(schemaKeys)) {
+            cols = schemaKeys.filter(k => k !== 'id' && k !== 'TagM_sourceFile')
+          }
+        } catch (e) {
+          console.warn('Failed to parse schema_keys:', selectedDs.schema_keys)
+        }
+      }
+
+      if (cols.length === 0 && parsedData.length > 0) {
         const colSet = new Set<string>()
         parsedData.forEach((row: any) => {
           // 只把 JSON 内解析出来的 key 作为动态列
@@ -354,11 +393,10 @@ const handleSearch = async () => {
             }
           })
         })
-        let cols = Array.from(colSet)
-        dynamicColumns.value = cols
-      } else {
-        dynamicColumns.value = []
+        cols = Array.from(colSet)
       }
+      
+      dynamicColumns.value = cols
 
       tableData.value = parsedData
       totalItems.value = res.total || 0
@@ -386,6 +424,7 @@ const resetFilter = () => {
 const handleExport = async () => {
   try {
     await ExportTaggedDataList(
+      filterForm.datasetId,
       filterForm.keyword, 
       filterForm.tag, 
       filterForm.batch,
@@ -402,6 +441,19 @@ const handleExport = async () => {
       ElMessage.error('导出失败: ' + String(e))
     }
   }
+}
+
+// 数据集映射函数
+const getDatasetName = (id: number | string) => {
+  if (!id) return '-'
+  const numId = Number(id)
+  const ds = availableDatasets.value.find(d => d.id === numId)
+  return ds ? ds.name : `未知数据集(${id})`
+}
+
+const handlePageChange = (val: number) => {
+  currentPage.value = val
+  handleSearch()
 }
 
 const handleSizeChange = (val: number) => {
@@ -475,6 +527,10 @@ const loadOptions = async () => {
     const batches = await GetTaskBatches()
     if (batches) batchOptions.value = batches
 
+    // 获取数据集列表
+    const dsList = await ListDatasets()
+    if (dsList) availableDatasets.value = dsList
+
     // TODO: 目前没有指定 dataset_id，获取所有的 data sources
     const ds = await GetAvailableSourceFiles(0)
     if (ds) availableSourceFiles.value = ds
@@ -483,8 +539,12 @@ const loadOptions = async () => {
   }
 }
 
-onMounted(() => {
-  loadOptions()
+onMounted(async () => {
+  await loadOptions()
+  // 默认选中第一个数据集，避免不同数据集表头混杂
+  if (availableDatasets.value.length > 0 && !filterForm.datasetId) {
+    filterForm.datasetId = String(availableDatasets.value[0].id)
+  }
   handleSearch()
 })
 </script>

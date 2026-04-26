@@ -611,12 +611,17 @@ const handleDryRun = async () => {
     return
   }
 
+  if (!ruleDatasetId.value) {
+    ElMessage.warning('未能获取到当前标签所属的数据集ID，无法进行测试')
+    return
+  }
+
   runningDry.value = true
   try {
     // DryRun 依然使用 NeoScan 格式发送给后端
     const neoRule = buildNeoScanRule(ruleState.value)
     const ruleJSON = JSON.stringify(neoRule)
-    const results = await DryRunRule(ruleJSON, testLimit.value) // Call Go API
+    const results = await DryRunRule(ruleJSON, testLimit.value, Number(ruleDatasetId.value)) // Call Go API
     
     if (!results || results.length === 0) {
       ElMessage.warning('当前数据库中没有可供试运行的目标数据，请先导入数据！')

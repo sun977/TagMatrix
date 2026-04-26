@@ -20,6 +20,7 @@ type DatasetStat struct {
 // TaggedRecordDto 用于展示打标结果的 DTO
 type TaggedRecordDto struct {
 	ID         uint64   `json:"id"`
+	DatasetID  uint64   `json:"datasetId"` // 数据集 ID
 	Content    string   `json:"content"`
 	Tags       []TagDto `json:"tags"`
 	PrimaryTag *TagDto  `json:"primaryTag,omitempty"` // 主标签（混合模式下）
