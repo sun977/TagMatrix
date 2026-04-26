@@ -333,6 +333,9 @@ func (s *TagLogicService) SaveRule(rule *model.SysMatchRule) error {
 	if rule.TagID == 0 {
 		return fmt.Errorf("tag_id cannot be empty")
 	}
+	if rule.DatasetID == 0 {
+		return fmt.Errorf("dataset_id cannot be empty")
+	}
 
 	// 校验 rule_json 是否能被正确解析为 matcher.MatchRule
 	var mRule matcher.MatchRule
@@ -351,6 +354,23 @@ func (s *TagLogicService) GetRulesByTagID(tagID uint64) ([]model.SysMatchRule, e
 	var rules []model.SysMatchRule
 	err := s.db.Where("tag_id = ?", tagID).Find(&rules).Error
 	return rules, err
+}
+
+// GetRulesByDataset 获取某个数据集下的所有规则 (打标任务引擎使用的批量拉取接口)
+func (s *TagLogicService) GetRulesByDataset(datasetID uint64) ([]model.SysMatchRule, error) {
+	var rules []model.SysMatchRule
+	err := s.db.Where("dataset_id = ?", datasetID).Find(&rules).Error
+	return rules, err
+}
+
+// GetRulesByTagAndDataset 按标签和数据集获取规则
+func (s *TagLogicService) GetRulesByTagAndDataset(tagID uint64, datasetID uint64) (*model.SysMatchRule, error) {
+	var rule model.SysMatchRule
+	err := s.db.Where("tag_id = ? AND dataset_id = ?", tagID, datasetID).First(&rule).Error
+	if err != nil {
+		return nil, err
+	}
+	return &rule, nil
 }
 
 // DeleteRule 删除规则

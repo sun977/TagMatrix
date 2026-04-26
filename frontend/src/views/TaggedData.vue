@@ -470,7 +470,8 @@ const loadOptions = async () => {
     const batches = await GetTaskBatches()
     if (batches) batchOptions.value = batches
 
-    const ds = await GetAvailableDataSources()
+    // TODO: 目前没有指定 dataset_id，获取所有的 data sources
+    const ds = await GetAvailableDataSources(0)
     if (ds) dataSourceOptions.value = ds
   } catch (e) {
     console.error('加载选项失败', e)

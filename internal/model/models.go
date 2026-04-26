@@ -45,8 +45,8 @@ type SysTag struct {
 // SysMatchRule 自动打标规则表
 type SysMatchRule struct {
 	BaseModel
-	DatasetID uint64         `json:"dataset_id" gorm:"index;not null;comment:关联的数据集ID"`
-	TagID     uint64         `json:"tag_id" gorm:"index;not null;comment:关联的标签ID"`
+	DatasetID uint64         `json:"dataset_id" gorm:"uniqueIndex:idx_tag_dataset;not null;comment:关联的数据集ID"`
+	TagID     uint64         `json:"tag_id" gorm:"uniqueIndex:idx_tag_dataset;not null;comment:关联的标签ID"`
 	Name      string         `json:"name" gorm:"size:100;comment:规则名称"`
 	Priority  int            `json:"priority" gorm:"default:0;comment:优先级 (越大越先匹配)"`
 	RuleJSON  string         `json:"rule_json" gorm:"type:text;not null;comment:JSON格式的匹配规则 (matcher.MatchRule)"`

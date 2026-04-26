@@ -61,22 +61,26 @@ type tagTaskContext struct {
 }
 
 // RunTaggingTask 异步执行规则打标任务
+// datasetID: 任务针对的数据集
 // ruleIDs: 需要执行的规则ID列表
 // batchName: 此次打标任务的自定义名称
 // isOverwrite: 是否为覆盖模式（清除原有标签）
 // tagMode: 打标模式（single: 单标签, multiple: 多标签, mixed: 混合模式）
-func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, dataSource string) (uint64, error) {
+func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, dataSource string) (uint64, error) {
+	if datasetID == 0 {
+		return 0, fmt.Errorf("dataset_id cannot be empty")
+	}
 	if len(ruleIDs) == 0 {
 		return 0, fmt.Errorf("no rules provided")
 	}
 
-	// 1. 获取规则并解析
+	// 1. 获取规则并解析 (确保规则属于该数据集)
 	var rules []model.SysMatchRule
-	if err := s.db.Where("id IN ?", ruleIDs).Find(&rules).Error; err != nil {
+	if err := s.db.Where("id IN ? AND dataset_id = ?", ruleIDs, datasetID).Find(&rules).Error; err != nil {
 		return 0, fmt.Errorf("failed to fetch rules: %w", err)
 	}
 	if len(rules) == 0 {
-		return 0, fmt.Errorf("no valid rules found")
+		return 0, fmt.Errorf("no valid rules found for this dataset")
 	}
 
 	// 2. 生成任务批次
@@ -87,6 +91,7 @@ func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, i
 
 	batch := model.TagTaskBatch{
 		BaseModel:  model.BaseModel{ID: batchID},
+		DatasetID:  datasetID,
 		Name:       batchName,
 		Status:     "running",
 		TagMode:    tagMode,
@@ -97,20 +102,24 @@ func (s *TaskEngineService) RunTaggingTask(ruleIDs []uint64, batchName string, i
 	}
 
 	// 3. 异步启动打标引擎
-	go s.executeTask(batchID, rules, isOverwrite, tagMode, dataSource)
+	go s.executeTask(batchID, datasetID, rules, isOverwrite, tagMode, dataSource)
 
 	return batchID, nil
 }
 
 // GetAvailableDataSources 获取可用的数据源列表
-func (s *TaskEngineService) GetAvailableDataSources(ctx context.Context) ([]model.DataSourceOption, error) {
+func (s *TaskEngineService) GetAvailableDataSources(ctx context.Context, datasetID uint64) ([]model.DataSourceOption, error) {
 	var results []model.DataSourceOption
-	// 按照数据来源字段分组（从 JSON 数据中提取）
-	err := s.db.WithContext(ctx).
-		Table("raw_data_records").
+
+	query := s.db.WithContext(ctx).Table("raw_data_records").
 		Select("json_extract(data, '$.\"数据来源\"') as source_name, count(id) as count").
-		Where("deleted_at IS NULL AND json_extract(data, '$.\"数据来源\"') IS NOT NULL").
-		Group("json_extract(data, '$.\"数据来源\"')").
+		Where("deleted_at IS NULL AND json_extract(data, '$.\"数据来源\"') IS NOT NULL")
+
+	if datasetID > 0 {
+		query = query.Where("dataset_id = ?", datasetID)
+	}
+
+	err := query.Group("json_extract(data, '$.\"数据来源\"')").
 		Order("source_name ASC").
 		Find(&results).Error
 
@@ -127,8 +136,8 @@ type parsedRule struct {
 }
 
 // executeTask 核心调度引擎，使用 Worker Pool 模式流式处理海量数据
-func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string, dataSource string) {
-	log.Printf("[TaskEngine] Starting batch %d, dataSource: %s", batchID, dataSource)
+func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string, dataSource string) {
+	log.Printf("[TaskEngine] Starting batch %d, datasetID: %d, dataSource: %s", batchID, datasetID, dataSource)
 
 	// 预解析规则
 	var pRules []parsedRule
@@ -151,7 +160,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 
 	// 先获取总记录数用于进度计算
 	var totalRecords int64
-	query := s.db.Model(&model.RawDataRecord{})
+	query := s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
 	if dataSource != "" && dataSource != "all" {
 		query = query.Where("json_extract(data, '$.\"数据来源\"') = ?", dataSource)
 	}
@@ -188,7 +197,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, rules []model.SysMatchRu
 	// 流式读取数据库 (FindInBatches) 丢入 Channel
 	batchSize := 1000
 	var results []model.RawDataRecord
-	query = s.db.Model(&model.RawDataRecord{})
+	query = s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
 	if dataSource != "" && dataSource != "all" {
 		query = query.Where("json_extract(data, '$.\"数据来源\"') = ?", dataSource)
 	}

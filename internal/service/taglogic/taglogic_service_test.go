@@ -81,9 +81,10 @@ func TestTagLogicService_SaveRule(t *testing.T) {
 	// 1. 保存有效的规则
 	validRuleJSON := `{"field":"age","operator":"greater_than","value":18}`
 	rule := &model.SysMatchRule{
-		TagID:    tag.ID,
-		Name:     "Adults",
-		RuleJSON: validRuleJSON,
+		DatasetID: 1,
+		TagID:     tag.ID,
+		Name:      "Adults",
+		RuleJSON:  validRuleJSON,
 	}
 	err := svc.SaveRule(rule)
 	if err != nil {
@@ -93,9 +94,10 @@ func TestTagLogicService_SaveRule(t *testing.T) {
 	// 2. 尝试保存无效的规则 (模拟前端传入错误的 JSON)
 	invalidRuleJSON := `{"field":"age",` // 缺少括号
 	invalidRule := &model.SysMatchRule{
-		TagID:    tag.ID,
-		Name:     "Invalid",
-		RuleJSON: invalidRuleJSON,
+		DatasetID: 1,
+		TagID:     tag.ID,
+		Name:      "Invalid",
+		RuleJSON:  invalidRuleJSON,
 	}
 	err = svc.SaveRule(invalidRule)
 	if err == nil {

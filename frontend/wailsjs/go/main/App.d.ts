@@ -19,6 +19,8 @@ export function DeleteDataset(arg1:number):Promise<void>;
 
 export function DeleteRawData(arg1:Array<number>):Promise<void>;
 
+export function DeleteRule(arg1:number):Promise<void>;
+
 export function DeleteTag(arg1:number):Promise<void>;
 
 export function DeleteTaskBatches(arg1:Array<number>):Promise<void>;
@@ -39,13 +41,13 @@ export function GetAllTags():Promise<Array<model.SysTag>>;
 
 export function GetAppConfig():Promise<config.AppConfig>;
 
-export function GetAvailableDataSources():Promise<Array<model.DataSourceOption>>;
+export function GetAvailableDataSources(arg1:number):Promise<Array<model.DataSourceOption>>;
 
 export function GetDashboardStats():Promise<model.DashboardStats>;
 
 export function GetRawDataList(arg1:number,arg2:number,arg3:number,arg4:string,arg5:string):Promise<main.PagedData>;
 
-export function GetRuleByTag(arg1:number):Promise<model.SysMatchRule>;
+export function GetRulesByTag(arg1:number):Promise<Array<model.SysMatchRule>>;
 
 export function GetTagTree():Promise<Array<model.TagTreeNode>>;
 
@@ -63,7 +65,7 @@ export function ListDatasets():Promise<Array<model.SysDataset>>;
 
 export function RollbackTask(arg1:number):Promise<void>;
 
-export function RunTaggingTask(arg1:Array<number>,arg2:string,arg3:boolean,arg4:string,arg5:string):Promise<number>;
+export function RunTaggingTask(arg1:number,arg2:Array<number>,arg3:string,arg4:boolean,arg5:string,arg6:string):Promise<number>;
 
 export function SaveAppConfig(arg1:config.AppConfig):Promise<void>;
 

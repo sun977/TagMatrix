@@ -95,87 +95,43 @@
             </div>
           </el-card>
 
-          <!-- 标签对应的规则详情卡片 -->
+          <!-- 标签对应的规则列表卡片 -->
           <el-card class="rule-info-card" shadow="never" style="flex: 1; display: flex; flex-direction: column; border-radius: 8px; border: 1px solid var(--tm-border-light);">
             <template #header>
               <div class="card-header" style="margin-bottom: 0; display: flex; justify-content: space-between; align-items: center;">
                 <div style="display: flex; align-items: center; gap: 8px;">
-                  <h3 style="margin: 0; font-size: 16px; font-weight: 600;">规则配置</h3>
-                  <el-tooltip content="点击查看匹配算子说明" placement="top">
-                    <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399;"><QuestionFilled /></el-icon>
+                  <h3 style="margin: 0; font-size: 16px; font-weight: 600;">打标规则列表</h3>
+                  <el-tooltip content="每个标签在一个数据集中只能配置一套规则" placement="top">
+                    <el-icon class="help-icon" style="cursor: pointer; color: #909399;"><QuestionFilled /></el-icon>
                   </el-tooltip>
                 </div>
                 <div style="display: flex; gap: 12px; align-items: center;">
-                  <el-button type="primary" class="action-btn-green" @click="handleSaveRule" :loading="savingRule" size="small">保存配置</el-button>
+                  <el-button type="primary" class="action-btn-green" @click="showAddRuleDialog" size="small">
+                    <el-icon><Plus /></el-icon> 新增规则
+                  </el-button>
                 </div>
               </div>
             </template>
 
             <div class="scroll-content" style="flex: 1; overflow-y: auto;">
-              <div class="config-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                  <div class="form-item inline" style="display: flex; align-items: center; gap: 12px; margin-bottom: 0;">
-                    <label style="margin-bottom: 0; white-space: nowrap; font-weight: 500;">规则名称</label>
-                    <el-input v-model="ruleName" :placeholder="selectedTag.name + '-Rule'" style="width: 300px;" />
+              <div v-if="rulesList && rulesList.length > 0" style="display: flex; flex-direction: column; gap: 16px;">
+                <el-card v-for="rule in rulesList" :key="rule.id" shadow="hover" style="border: 1px solid var(--tm-border-color);">
+                  <template #header>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <span style="font-weight: 500;">针对【{{ getDatasetName(rule.dataset_id) }}】的规则：{{ rule.name || '未命名规则' }}</span>
+                      <div>
+                        <el-button size="small" type="primary" link @click="editRule(rule)">编辑</el-button>
+                        <el-button size="small" type="danger" link @click="deleteRule(rule)">删除</el-button>
+                      </div>
+                    </div>
+                  </template>
+                  <div style="color: #606266; font-size: 13px;">
+                    规则配置预览: 
+                    <pre style="margin: 8px 0 0 0; padding: 8px; background: #f5f7fa; border-radius: 4px; max-height: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ rule.rule_json }}</pre>
                   </div>
-                  <el-button size="small" type="info" plain @click="previewRuleJson">
-                    预览 JSON
-                  </el-button>
-                </div>
-                <div class="rules-list">
-                  <RuleGroup v-model="ruleState" :is-root="true" />
-                </div>
+                </el-card>
               </div>
-
-              <!-- 规则测试 -->
-              <div class="config-section" style="margin-top: 32px; border-top: 1px dashed var(--tm-border-light); padding-top: 24px;">
-                <div class="section-header-flex">
-                  <h4 class="section-title">规则测试 (试运行)</h4>
-                  <div style="display: flex; gap: 12px; align-items: center;">
-                    <el-select v-model="testLimit" placeholder="测试数据范围" size="small" style="width: 150px">
-                      <el-option label="前 1000 条数据" :value="1000" />
-                      <el-option label="全库数据" :value="0" />
-                    </el-select>
-                    <el-button type="primary" class="action-btn-green" @click="handleDryRun" :loading="runningDry" size="small">
-                      <el-icon><VideoPlay /></el-icon> 测试此规则
-                    </el-button>
-                  </div>
-                </div>
-
-                <div v-if="hasRunDry" class="test-results">
-                  <div class="result-alert">
-                    测试完成！抽样检测了 {{ testSummary.total }} 条数据，其中有 {{ testSummary.matched }} 条数据匹配当前规则，匹配率 {{ testSummary.ratio }}%。
-                  </div>
-
-                  <el-table :data="mockDryRunData" style="width: 100%" class="custom-table" max-height="400">
-                    <el-table-column 
-                      label="匹配结果" 
-                      width="120" 
-                      align="center" 
-                      fixed="left"
-                      prop="_matched"
-                      sortable
-                    >
-                      <template #default="scope">
-                        <div class="match-pill" :class="scope.row._matched ? 'matched' : 'unmatched'">
-                          <el-icon><Select v-if="scope.row._matched" /><CloseBold v-else /></el-icon>
-                          {{ scope.row._matched ? '匹配' : '不匹配' }}
-                        </div>
-                      </template>
-                    </el-table-column>
-                    
-                    <!-- 动态渲染数据列 -->
-                    <el-table-column
-                      v-for="col in dynamicColumns"
-                      :key="col"
-                      :prop="col"
-                      :label="col"
-                      min-width="150"
-                      show-overflow-tooltip
-                    />
-                  </el-table>
-                </div>
-              </div>
+              <el-empty v-else description="该标签暂无配置任何打标规则" />
             </div>
           </el-card>
         </template>
@@ -204,6 +160,74 @@
         <span class="dialog-footer">
           <el-button @click="dialogVisible = false">取消</el-button>
           <el-button type="primary" class="action-btn-green" @click="submitAddTag" :loading="savingTag">确定</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 规则配置弹窗 -->
+    <el-dialog v-model="ruleDialogVisible" :title="currentRuleId ? '编辑规则' : '新增规则'" width="850px" top="5vh">
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div style="display: flex; gap: 24px;">
+          <div class="form-item inline" style="display: flex; align-items: center; gap: 12px; margin-bottom: 0;">
+            <label style="margin-bottom: 0; white-space: nowrap; font-weight: 500;">目标数据集</label>
+            <el-select v-model="ruleDatasetId" placeholder="请选择数据集" style="width: 200px;" :disabled="!!currentRuleId">
+              <el-option v-for="ds in availableDatasets" :key="ds.id" :label="ds.name" :value="ds.id" />
+            </el-select>
+          </div>
+          <div class="form-item inline" style="display: flex; align-items: center; gap: 12px; margin-bottom: 0;">
+            <label style="margin-bottom: 0; white-space: nowrap; font-weight: 500;">规则名称</label>
+            <el-input v-model="ruleName" :placeholder="selectedTag?.name + '-Rule'" style="width: 200px;" />
+          </div>
+          <div style="flex: 1; text-align: right;">
+            <el-button size="small" type="info" plain @click="previewRuleJson">预览 JSON</el-button>
+            <el-tooltip content="点击查看匹配算子说明" placement="top">
+              <el-icon class="help-icon" @click="operatorHelpVisible = true" style="cursor: pointer; color: #909399; margin-left: 12px; vertical-align: middle;"><QuestionFilled /></el-icon>
+            </el-tooltip>
+          </div>
+        </div>
+
+        <div class="rules-list" style="max-height: 40vh; overflow-y: auto; padding-right: 8px;">
+          <RuleGroup v-model="ruleState" :is-root="true" />
+        </div>
+
+        <!-- 规则测试 -->
+        <div class="config-section" style="border-top: 1px dashed var(--tm-border-light); padding-top: 16px;">
+          <div class="section-header-flex" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h4 class="section-title" style="margin: 0;">规则测试 (试运行)</h4>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <el-select v-model="testLimit" placeholder="测试数据范围" size="small" style="width: 150px">
+                <el-option label="前 1000 条数据" :value="1000" />
+                <el-option label="全库数据" :value="0" />
+              </el-select>
+              <el-button type="primary" class="action-btn-green" @click="handleDryRun" :loading="runningDry" size="small" :disabled="!ruleDatasetId">
+                <el-icon><VideoPlay /></el-icon> 测试此规则
+              </el-button>
+            </div>
+          </div>
+
+          <div v-if="hasRunDry" class="test-results">
+            <div class="result-alert" style="margin-bottom: 12px; padding: 8px 12px; background-color: #f0f9eb; color: #67c23a; border-radius: 4px; font-size: 13px;">
+              测试完成！抽样检测了 {{ testSummary.total }} 条数据，其中有 {{ testSummary.matched }} 条数据匹配当前规则，匹配率 {{ testSummary.ratio }}%。
+            </div>
+
+            <el-table :data="mockDryRunData" style="width: 100%" class="custom-table" max-height="250">
+              <el-table-column label="匹配结果" width="100" align="center" fixed="left" prop="_matched" sortable>
+                <template #default="scope">
+                  <div class="match-pill" :class="scope.row._matched ? 'matched' : 'unmatched'">
+                    <el-icon><Select v-if="scope.row._matched" /><CloseBold v-else /></el-icon>
+                    {{ scope.row._matched ? '匹配' : '不匹配' }}
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column v-for="col in dynamicColumns" :key="col" :prop="col" :label="col" min-width="150" show-overflow-tooltip />
+            </el-table>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="ruleDialogVisible = false">取消</el-button>
+          <el-button type="primary" class="action-btn-green" @click="handleSaveRule" :loading="savingRule">保存配置</el-button>
         </span>
       </template>
     </el-dialog>
@@ -239,7 +263,7 @@
 import { ref, watch, onMounted } from 'vue'
 import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled, Filter, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRuleByTag, CheckTagHasRules } from '../../wailsjs/go/main/App'
+import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRulesByTag, CheckTagHasRules, ListDatasets, DeleteRule } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import RuleGroup from '../components/RuleGroup.vue'
 
@@ -249,6 +273,24 @@ const treeRef = ref<any>()
 // --- 左侧标签树逻辑 ---
 const loadingTags = ref(false)
 const tagTreeData = ref<model.TagTreeNode[]>([])
+
+// --- 数据集列表 ---
+const availableDatasets = ref<any[]>([])
+
+const fetchDatasets = async () => {
+  try {
+    const list = await ListDatasets()
+    availableDatasets.value = list || []
+  } catch (e: any) {
+    console.error('Failed to fetch datasets:', e)
+  }
+}
+
+const getDatasetName = (datasetId: number) => {
+  const ds = availableDatasets.value.find(d => d.id === datasetId)
+  return ds ? ds.name : '未知数据集'
+}
+
 
 const defaultProps = {
   children: 'children',
@@ -328,6 +370,7 @@ const handleDeleteTag = async (data: any, e: Event) => {
 const selectedTag = ref<any>(null)
 const currentRuleId = ref<number | null>(null)
 const ruleName = ref<string>('')
+const ruleDatasetId = ref<number | null>(null)
 const updatingTag = ref(false)
 const ruleState = ref<any>({
   logic: 'and',
@@ -336,6 +379,52 @@ const ruleState = ref<any>({
 const previewDialogVisible = ref(false)
 const previewJsonStr = ref('')
 const operatorHelpVisible = ref(false)
+const ruleDialogVisible = ref(false)
+const rulesList = ref<any[]>([])
+
+const showAddRuleDialog = () => {
+  currentRuleId.value = null
+  ruleName.value = ''
+  ruleDatasetId.value = null
+  ruleState.value = { logic: 'and', conditions: [] }
+  ruleDialogVisible.value = true
+}
+
+const editRule = (rule: any) => {
+  currentRuleId.value = rule.id
+  ruleName.value = rule.name || ''
+  ruleDatasetId.value = rule.dataset_id
+  try {
+    const parsed = JSON.parse(rule.rule_json)
+    if (parsed.logic) {
+      ruleState.value = parsed
+    } else {
+      ruleState.value = { logic: 'and', conditions: [] }
+    }
+  } catch (e) {
+    ruleState.value = { logic: 'and', conditions: [] }
+  }
+  ruleDialogVisible.value = true
+}
+
+const deleteRule = async (rule: any) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除规则 "${rule.name}" 吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await DeleteRule(rule.id)
+    ElMessage.success('规则删除成功')
+    if (selectedTag.value) {
+      const rules = await GetRulesByTag(selectedTag.value.id)
+      rulesList.value = rules || []
+    }
+  } catch (e: any) {
+    if (e !== 'cancel') ElMessage.error('删除失败: ' + String(e))
+  }
+}
+
 
 const operatorHelpData = [
   { category: '基础比较', operator: 'equals', desc: '等于', example: '字段的值完全等于目标值 (支持字符串/数字)' },
@@ -409,26 +498,13 @@ const handleNodeClick = async (data: any) => {
   hasRunDry.value = false
   currentRuleId.value = null // 重置当前规则ID
   ruleName.value = '' // 重置规则名称
+  rulesList.value = []
   
   try {
-    const rule = await GetRuleByTag(data.id)
-    if (rule && rule.id) {
-      currentRuleId.value = rule.id
-      ruleName.value = rule.name || ''
-    }
-    
-    if (rule && rule.rule_json) {
-      const parsed = JSON.parse(rule.rule_json)
-      if (parsed.logic) {
-        ruleState.value = parsed
-      } else {
-        ruleState.value = { logic: 'and', conditions: [] }
-      }
-    } else {
-      ruleState.value = { logic: 'and', conditions: [] }
-    }
+    const rules = await GetRulesByTag(data.id)
+    rulesList.value = rules || []
   } catch (e) {
-    ruleState.value = { logic: 'and', conditions: [] }
+    rulesList.value = []
   }
 }
 
@@ -454,6 +530,11 @@ const handleUpdateTag = async () => {
 
 const savingRule = ref(false)
 const handleSaveRule = async () => {
+  if (!ruleDatasetId.value) {
+    ElMessage.warning('请选择目标数据集')
+    return
+  }
+
   savingRule.value = true
   try {
     const ruleObj = new model.SysMatchRule()
@@ -461,6 +542,7 @@ const handleSaveRule = async () => {
       ruleObj.id = currentRuleId.value
     }
     ruleObj.tag_id = selectedTag.value.id
+    ruleObj.dataset_id = ruleDatasetId.value
     ruleObj.name = ruleName.value || (selectedTag.value.name + "-Rule")
     
     ruleObj.rule_json = JSON.stringify(ruleState.value) 
@@ -469,13 +551,11 @@ const handleSaveRule = async () => {
 
     await SaveRule(ruleObj)
     ElMessage.success('配置保存成功')
+    ruleDialogVisible.value = false
     
     try {
-      const updatedRule = await GetRuleByTag(selectedTag.value.id)
-      if (updatedRule && updatedRule.id) {
-        currentRuleId.value = updatedRule.id
-        ruleName.value = updatedRule.name || ''
-      }
+      const updatedRules = await GetRulesByTag(selectedTag.value.id)
+      rulesList.value = updatedRules || []
     } catch (ignore) {}
   } catch (e: any) {
     ElMessage.error('保存失败: ' + String(e))
@@ -585,6 +665,7 @@ const submitAddTag = async () => {
 
 onMounted(() => {
   fetchTags()
+  fetchDatasets()
 })
 </script>
 

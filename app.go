@@ -646,13 +646,12 @@ func (a *App) SaveRule(rule model.SysMatchRule) error {
 	return a.tagLogic.SaveRule(&rule)
 }
 
-func (a *App) GetRuleByTag(tagID uint64) (*model.SysMatchRule, error) {
-	var rule model.SysMatchRule
-	err := model.DB.Where("tag_id = ?", tagID).First(&rule).Error
-	if err != nil {
-		return nil, err
-	}
-	return &rule, nil
+func (a *App) GetRulesByTag(tagID uint64) ([]model.SysMatchRule, error) {
+	return a.tagLogic.GetRulesByTagID(tagID)
+}
+
+func (a *App) DeleteRule(id uint64) error {
+	return a.tagLogic.DeleteRule(id)
 }
 
 func (a *App) GetAllRules() ([]model.SysMatchRule, error) {
@@ -666,13 +665,13 @@ func (a *App) DryRunRule(ruleJSON string, limit int) ([]taglogic.DryRunResult, e
 }
 
 // ----------------- Task Engine API -----------------
-func (a *App) RunTaggingTask(ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, dataSource string) (uint64, error) {
-	return a.taskEngine.RunTaggingTask(ruleIDs, batchName, isOverwrite, tagMode, dataSource)
+func (a *App) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, dataSource string) (uint64, error) {
+	return a.taskEngine.RunTaggingTask(datasetID, ruleIDs, batchName, isOverwrite, tagMode, dataSource)
 }
 
 // GetAvailableDataSources 获取所有可用的数据来源选项
-func (a *App) GetAvailableDataSources() ([]model.DataSourceOption, error) {
-	return a.taskEngine.GetAvailableDataSources(a.ctx)
+func (a *App) GetAvailableDataSources(datasetID uint64) ([]model.DataSourceOption, error) {
+	return a.taskEngine.GetAvailableDataSources(a.ctx, datasetID)
 }
 
 func (a *App) RollbackTask(batchID uint64) error {

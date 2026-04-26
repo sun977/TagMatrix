@@ -30,6 +30,10 @@ export function DeleteRawData(arg1) {
   return window['go']['main']['App']['DeleteRawData'](arg1);
 }
 
+export function DeleteRule(arg1) {
+  return window['go']['main']['App']['DeleteRule'](arg1);
+}
+
 export function DeleteTag(arg1) {
   return window['go']['main']['App']['DeleteTag'](arg1);
 }
@@ -70,8 +74,8 @@ export function GetAppConfig() {
   return window['go']['main']['App']['GetAppConfig']();
 }
 
-export function GetAvailableDataSources() {
-  return window['go']['main']['App']['GetAvailableDataSources']();
+export function GetAvailableDataSources(arg1) {
+  return window['go']['main']['App']['GetAvailableDataSources'](arg1);
 }
 
 export function GetDashboardStats() {
@@ -82,8 +86,8 @@ export function GetRawDataList(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetRawDataList'](arg1, arg2, arg3, arg4, arg5);
 }
 
-export function GetRuleByTag(arg1) {
-  return window['go']['main']['App']['GetRuleByTag'](arg1);
+export function GetRulesByTag(arg1) {
+  return window['go']['main']['App']['GetRulesByTag'](arg1);
 }
 
 export function GetTagTree() {
@@ -118,8 +122,8 @@ export function RollbackTask(arg1) {
   return window['go']['main']['App']['RollbackTask'](arg1);
 }
 
-export function RunTaggingTask(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['RunTaggingTask'](arg1, arg2, arg3, arg4, arg5);
+export function RunTaggingTask(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['RunTaggingTask'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function SaveAppConfig(arg1) {

@@ -12,7 +12,7 @@
     <div class="launch-section">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
         <h3 class="section-title" style="margin-bottom: 0;">发起新的打标任务</h3>
-        <el-button type="primary" class="action-btn-green" @click="submitTask" :loading="isSubmitting">
+        <el-button type="primary" class="action-btn-green" @click="submitTask" :loading="isSubmitting" :disabled="!taskForm.datasetId">
           <el-icon><VideoPlay /></el-icon> 开始执行任务
         </el-button>
       </div>
@@ -24,7 +24,20 @@
               <el-input v-model="taskForm.batchName" placeholder="请输入任务名称" />
             </div>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="4">
+            <div class="form-item">
+              <label>目标数据集 <span style="color: red">*</span></label>
+              <el-select v-model="taskForm.datasetId" placeholder="请选择数据集" class="w-100" @change="handleDatasetChange">
+                <el-option
+                  v-for="ds in availableDatasets"
+                  :key="ds.id"
+                  :label="ds.name"
+                  :value="ds.id"
+                />
+              </el-select>
+            </div>
+          </el-col>
+          <el-col :span="4">
             <div class="form-item">
               <label>选择数据源</label>
               <el-select v-model="taskForm.dataSource" placeholder="请选择数据源" class="w-100">
@@ -33,10 +46,10 @@
                 </el-select>
             </div>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="4">
             <div class="form-item">
               <label>选择要执行的标签规则</label>
-              <el-select v-model="taskForm.rules" placeholder="请选择规则" class="w-100">
+              <el-select v-model="taskForm.rules" placeholder="请选择规则" class="w-100" :disabled="!taskForm.datasetId">
                 <el-option label="全部生效规则" value="all" />
                 <el-option v-for="rule in availableRules" :key="rule.id" :label="rule.name" :value="String(rule.id)" />
               </el-select>
@@ -244,9 +257,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
+import { VideoPlay, RefreshRight, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetAllRules, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableDataSources } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableDataSources, ListDatasets, GetRulesByTag, GetAllRules } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -255,15 +268,40 @@ const loadingBatches = ref(false)
 const totalRecords = ref(0)
 const availableRules = ref<model.SysMatchRule[]>([])
 const availableDataSources = ref<model.DataSourceOption[]>([])
+const availableDatasets = ref<model.SysDataset[]>([])
 
 const taskForm = ref({
   batchName: '',
+  datasetId: undefined as number | undefined,
   dataSource: 'all',
   rules: 'all',
   execStrategy: 'append',
   tagMode: 'multiple',
   desc: ''
 })
+
+const handleDatasetChange = async () => {
+  taskForm.value.rules = 'all'
+  taskForm.value.dataSource = 'all'
+  availableRules.value = []
+  availableDataSources.value = []
+  if (!taskForm.value.datasetId) return
+
+  // 重新获取该数据集下的规则
+  // 注意：目前 GetAllRules 获取所有，后端应提供 GetRulesByDataset。这里我们直接先拉所有然后再过滤，或者后端加新接口
+  try {
+    // 假设后端有 GetAvailableDataSources 接收 datasetID
+    const sources = await GetAvailableDataSources(taskForm.value.datasetId)
+    availableDataSources.value = sources || []
+    
+    // 这里我们为了简单起见，暂时获取所有 rules 再通过 dataset_id 过滤
+    // TODO: 调用真正的 GetRulesByDataset(datasetId) 接口
+    const allRules = await GetAllRules()
+    availableRules.value = allRules.filter(r => r.dataset_id === taskForm.value.datasetId)
+  } catch (e: any) {
+    ElMessage.error('加载数据集相关信息失败: ' + String(e))
+  }
+}
 
 const filterStatus = ref('all')
 const filterTime = ref('all')
@@ -405,16 +443,10 @@ const exportLogs = async (batchId: number) => {
 
 const loadData = async () => {
   try {
-    const stats = await GetDashboardStats()
-    totalRecords.value = stats.totalRecords || 0
-
-    const rules = await GetAllRules()
-    availableRules.value = rules || []
-
-    const ds = await GetAvailableDataSources()
-    availableDataSources.value = ds || []
+    const ds = await ListDatasets()
+    availableDatasets.value = ds || []
   } catch (e: any) {
-    console.error("加载前置数据失败", e)
+    console.error('Failed to load datasets:', e)
   }
 }
 
@@ -469,7 +501,7 @@ const submitTask = async () => {
 
     const isOverwrite = taskForm.value.execStrategy === 'overwrite'
 
-    await RunTaggingTask(ruleIDs, taskForm.value.batchName, isOverwrite, taskForm.value.tagMode, taskForm.value.dataSource)
+    await RunTaggingTask(taskForm.value.datasetId!, ruleIDs, taskForm.value.batchName, isOverwrite, taskForm.value.tagMode, taskForm.value.dataSource)
     ElMessage.success(`任务提交成功`)
     
     taskForm.value.batchName = ''

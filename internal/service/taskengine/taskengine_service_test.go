@@ -2,7 +2,6 @@ package taskengine
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -34,27 +33,25 @@ func TestTaskEngine_RunAndRollback(t *testing.T) {
 	svc := NewTaskEngineService(ctx)
 
 	// 1. 准备测试数据 (3条)
-	records := []map[string]interface{}{
-		{"id": 1, "name": "Alice", "age": 25},
-		{"id": 2, "name": "Bob", "age": 15},
-		{"id": 3, "name": "Charlie", "age": 30},
+	records := []model.RawDataRecord{
+		{DatasetID: 1, Data: `{"id":1,"name":"Alice","age":25}`},
+		{DatasetID: 1, Data: `{"id":2,"name":"Bob","age":15}`},
+		{DatasetID: 1, Data: `{"id":3,"name":"Charlie","age":30}`},
 	}
-	for _, rec := range records {
-		data, _ := json.Marshal(rec)
-		model.DB.Create(&model.RawDataRecord{Data: string(data)})
-	}
+	model.DB.Create(&records)
 
 	// 2. 准备规则 (age > 18)
 	ruleJSON := `{"field":"age","operator":"greater_than","value":18}`
 	rule := model.SysMatchRule{
-		TagID:    100, // 假设 TagID 100
-		Name:     "Adults",
-		RuleJSON: ruleJSON,
+		DatasetID: 1,
+		TagID:     100, // 假设 TagID 100
+		Name:      "Adults",
+		RuleJSON:  ruleJSON,
 	}
 	model.DB.Create(&rule)
 
 	// 3. 执行打标任务 (异步)
-	batchID, err := svc.RunTaggingTask([]uint64{rule.ID}, "TestBatch", true, "multiple", "")
+	batchID, err := svc.RunTaggingTask(1, []uint64{rule.ID}, "TestBatch", true, "multiple", "")
 	if err != nil {
 		t.Fatalf("RunTaggingTask failed: %v", err)
 	}
