@@ -86,6 +86,10 @@ export function GetRawDataList(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['GetRawDataList'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function GetRulesByDataset(arg1) {
+  return window['go']['main']['App']['GetRulesByDataset'](arg1);
+}
+
 export function GetRulesByTag(arg1) {
   return window['go']['main']['App']['GetRulesByTag'](arg1);
 }

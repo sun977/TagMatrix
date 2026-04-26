@@ -259,7 +259,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableDataSources, ListDatasets, GetRulesByTag, GetAllRules } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableDataSources, ListDatasets, GetRulesByDataset, GetRulesByTag, GetAllRules } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -288,16 +288,12 @@ const handleDatasetChange = async () => {
   if (!taskForm.value.datasetId) return
 
   // 重新获取该数据集下的规则
-  // 注意：目前 GetAllRules 获取所有，后端应提供 GetRulesByDataset。这里我们直接先拉所有然后再过滤，或者后端加新接口
   try {
-    // 假设后端有 GetAvailableDataSources 接收 datasetID
     const sources = await GetAvailableDataSources(taskForm.value.datasetId)
     availableDataSources.value = sources || []
     
-    // 这里我们为了简单起见，暂时获取所有 rules 再通过 dataset_id 过滤
-    // TODO: 调用真正的 GetRulesByDataset(datasetId) 接口
-    const allRules = await GetAllRules()
-    availableRules.value = allRules.filter(r => r.dataset_id === taskForm.value.datasetId)
+    const rules = await GetRulesByDataset(taskForm.value.datasetId)
+    availableRules.value = rules || []
   } catch (e: any) {
     ElMessage.error('加载数据集相关信息失败: ' + String(e))
   }
@@ -493,7 +489,7 @@ const submitTask = async () => {
   try {
     let ruleIDs: number[] = []
     if (taskForm.value.rules === 'all') {
-      const rules = await GetAllRules()
+      const rules = await GetRulesByDataset(taskForm.value.datasetId!)
       ruleIDs = rules.map(r => r.id)
     } else {
       ruleIDs = [parseInt(taskForm.value.rules)]

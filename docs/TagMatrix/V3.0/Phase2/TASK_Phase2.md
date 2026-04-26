@@ -2,7 +2,7 @@
 
 ## 任务列表
 
-### 任务1：后端模型重构 (`SysMatchRule`) 与服务接口更新
+### ✅ 任务1：后端模型重构 (`SysMatchRule`) 与服务接口更新
 #### 输入契约
 - 环境依赖：现有的 SQLite (GORM)
 - 输入数据：`internal/model/models.go`
@@ -12,14 +12,14 @@
 - 重构 `internal/service/tag/rule_service.go` 的 `SaveRule`、`GetRulesByTag` 逻辑。
 - 确保 `app.go` 导出 Wails API，包含 `GetRulesByTag` 和 `SaveRule` 的最新签名。
 
-### 任务2：打标引擎 (`TaskEngineService`) 适配规则隔离
+### ✅ 任务2：打标引擎 (`TaskEngineService`) 适配规则隔离
 #### 输入契约
 - 前置依赖：任务1完成
 
 #### 输出契约
 - `internal/service/taskengine/taskengine_service.go` 及其内部 `rule_matcher.go`，不再拉取全局规则，而是按当前任务绑定的 `DatasetID`，调用 `GetRulesByDataset` 或在拉取时增加 `dataset_id` 过滤。
 
-### 任务3：前端 `TagRuleConfig.vue` 视图重构 (Vue3)
+### ✅ 任务3：前端 `TagRuleConfig.vue` 视图重构 (Vue3)
 #### 输入契约
 - 前置依赖：任务1、任务2的 Wails API
 

@@ -66,8 +66,6 @@ type ExportTagNode struct {
 	Level       int             `json:"level"`
 	Color       string          `json:"color"`
 	Description string          `json:"description"`
-	RuleName    string          `json:"rule_name,omitempty"` // 级联导出的匹配规则名称
-	RuleJSON    string          `json:"rule_json,omitempty"` // 级联导出的匹配规则
 	Children    []ExportTagNode `json:"children,omitempty"`
 }
 

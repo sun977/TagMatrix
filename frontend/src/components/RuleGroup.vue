@@ -25,12 +25,23 @@
           v-if="item.logic"
           v-model="modelValue.conditions[index]"
           :is-root="false"
+          :schema-keys="schemaKeys"
           @remove="removeCondition(index)"
         />
         
         <!-- 渲染普通条件 -->
         <div v-else class="condition-row">
-          <el-input v-model="item.field" placeholder="字段名 (例如: os, port)" size="small" style="width: 180px;" />
+          <el-select 
+            v-model="item.field" 
+            filterable 
+            allow-create 
+            default-first-option 
+            placeholder="字段名 (可手写)" 
+            size="small" 
+            style="width: 180px;"
+          >
+            <el-option v-for="key in schemaKeys" :key="key" :label="key" :value="key" />
+          </el-select>
           <el-select v-model="item.operator" size="small" style="width: 120px;">
             <el-option-group label="基础比较">
               <el-option label="等于 (equals)" value="equals" />
@@ -111,6 +122,7 @@ import { Plus, FolderAdd, Delete, Close } from '@element-plus/icons-vue'
 const props = defineProps<{
   modelValue: any
   isRoot?: boolean
+  schemaKeys?: string[]
 }>()
 
 const emit = defineEmits(['update:modelValue', 'remove'])

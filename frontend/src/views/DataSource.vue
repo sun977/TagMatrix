@@ -578,8 +578,9 @@ const handleDeleteClick = async () => {
 }
 
 const handleExportClick = async () => {
+  if (!currentDataset.value) return
   try {
-    await ExportData(0, "") 
+    await ExportData(currentDataset.value.id, "") 
     ElMessage.success('导出成功')
   } catch (error: any) {
     if (error !== "cancelled") ElMessage.error('导出失败: ' + String(error))

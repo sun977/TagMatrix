@@ -29,7 +29,7 @@ func NewDataImportService() *DataImportService {
 }
 
 // ExportData 根据指定条件导出数据到文件
-func (s *DataImportService) ExportData(batchID uint64, exportPath string) error {
+func (s *DataImportService) ExportData(datasetID uint64, exportPath string) error {
 	if s.db == nil {
 		return fmt.Errorf("database not initialized")
 	}
@@ -41,8 +41,8 @@ func (s *DataImportService) ExportData(batchID uint64, exportPath string) error 
 
 	var records []model.RawDataRecord
 	query := s.db.Model(&model.RawDataRecord{})
-	if batchID > 0 {
-		query = query.Where("batch_id = ?", batchID)
+	if datasetID > 0 {
+		query = query.Where("dataset_id = ?", datasetID)
 	}
 
 	if err := query.Find(&records).Error; err != nil {
@@ -199,7 +199,7 @@ func (s *DataImportService) ImportData(filePath string, selectedSheets []string,
 	// 开启事务
 	return len(records), s.db.Transaction(func(tx *gorm.DB) error {
 		var targetDatasetID = datasetID
-		
+
 		// 1. 如果没有选择已有数据集，则创建新的数据集
 		if targetDatasetID == 0 {
 			if newDatasetName == "" {

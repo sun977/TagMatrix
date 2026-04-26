@@ -211,13 +211,6 @@ func (s *TagLogicService) convertToExportNodes(nodes []model.TagTreeNode) []mode
 			Description: node.Description,
 		}
 
-		// 级联查询并挂载匹配规则
-		var rule model.SysMatchRule
-		if err := s.db.Where("tag_id = ?", node.ID).First(&rule).Error; err == nil {
-			exportNode.RuleName = rule.Name
-			exportNode.RuleJSON = rule.RuleJSON
-		}
-
 		if len(node.Children) > 0 {
 			exportNode.Children = s.convertToExportNodes(node.Children)
 		}
@@ -286,36 +279,6 @@ func (s *TagLogicService) importTagNodes(tx *gorm.DB, nodes []model.ExportTagNod
 			currentID = existingTag.ID
 		}
 
-		// 处理级联导入的匹配规则
-		if node.RuleJSON != "" {
-			var rule model.SysMatchRule
-			err := tx.Where("tag_id = ?", currentID).First(&rule).Error
-			switch err {
-			case gorm.ErrRecordNotFound:
-				// 不存在则创建
-				newRule := model.SysMatchRule{
-					TagID:     currentID,
-					Name:      node.RuleName,
-					RuleJSON:  node.RuleJSON,
-					Priority:  0,
-					IsEnabled: true, // 默认为启用状态
-				}
-				if err := tx.Create(&newRule).Error; err != nil {
-					return err
-				}
-			case nil:
-				// 存在则更新
-				rule.Name = node.RuleName
-				rule.RuleJSON = node.RuleJSON
-				if err := tx.Save(&rule).Error; err != nil {
-					return err
-				}
-			default:
-				// 其他数据库错误
-				return err
-			}
-		}
-
 		// 递归导入子节点
 		if len(node.Children) > 0 {
 			if err := s.importTagNodes(tx, node.Children, currentID); err != nil {
@@ -346,6 +309,14 @@ func (s *TagLogicService) SaveRule(rule *model.SysMatchRule) error {
 	if rule.ID > 0 {
 		return s.db.Save(rule).Error
 	}
+
+	// 检查是否已经存在相同标签和数据集的规则
+	var count int64
+	s.db.Model(&model.SysMatchRule{}).Where("tag_id = ? AND dataset_id = ?", rule.TagID, rule.DatasetID).Count(&count)
+	if count > 0 {
+		return fmt.Errorf("当前标签在该数据集下已存在规则，请直接编辑现有规则")
+	}
+
 	return s.db.Create(rule).Error
 }
 

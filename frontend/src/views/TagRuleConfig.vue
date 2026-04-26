@@ -45,9 +45,6 @@
                     <el-button link type="danger" size="small" @click.stop="handleDeleteTag(data, $event)"><el-icon><Delete /></el-icon></el-button>
                   </span>
                   <div class="spacer"></div>
-                  <el-tooltip v-if="data.has_rule" content="该标签已配置匹配规则" placement="top" :enterable="false">
-                    <el-icon class="has-rule-icon"><Check /></el-icon>
-                  </el-tooltip>
                 </span>
               </template>
             </el-tree>
@@ -187,7 +184,7 @@
         </div>
 
         <div class="rules-list" style="max-height: 40vh; overflow-y: auto; padding-right: 8px;">
-          <RuleGroup v-model="ruleState" :is-root="true" />
+          <RuleGroup v-model="ruleState" :is-root="true" :schema-keys="currentSchemaKeys" />
         </div>
 
         <!-- 规则测试 -->
@@ -260,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled, Filter, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRulesByTag, CheckTagHasRules, ListDatasets, DeleteRule } from '../../wailsjs/go/main/App'
@@ -371,6 +368,18 @@ const selectedTag = ref<any>(null)
 const currentRuleId = ref<number | null>(null)
 const ruleName = ref<string>('')
 const ruleDatasetId = ref<number | null>(null)
+const currentSchemaKeys = computed(() => {
+  if (!ruleDatasetId.value) return []
+  const ds = availableDatasets.value.find(d => d.id === ruleDatasetId.value)
+  if (ds && ds.schema_keys) {
+    try {
+      return JSON.parse(ds.schema_keys)
+    } catch(e) {
+      return []
+    }
+  }
+  return []
+})
 const updatingTag = ref(false)
 const ruleState = ref<any>({
   logic: 'and',
@@ -390,16 +399,38 @@ const showAddRuleDialog = () => {
   ruleDialogVisible.value = true
 }
 
+const parseNeoScanRule = (neoRule: any): any => {
+  if (!neoRule) return { logic: 'and', conditions: [] }
+  if (neoRule.and) {
+    return { logic: 'and', conditions: neoRule.and.map(parseNeoScanRule) }
+  } else if (neoRule.or) {
+    return { logic: 'or', conditions: neoRule.or.map(parseNeoScanRule) }
+  } else if (neoRule.field !== undefined) {
+    // Leaf node
+    const value = (neoRule.operator && ['in', 'not_in', 'list_contains'].includes(neoRule.operator) && Array.isArray(neoRule.value))
+      ? neoRule.value.join(', ')
+      : neoRule.value
+    return {
+      field: neoRule.field,
+      operator: neoRule.operator,
+      value: value,
+      ignore_case: neoRule.ignore_case
+    }
+  }
+  return { logic: 'and', conditions: [] }
+}
+
 const editRule = (rule: any) => {
   currentRuleId.value = rule.id
   ruleName.value = rule.name || ''
   ruleDatasetId.value = rule.dataset_id
   try {
     const parsed = JSON.parse(rule.rule_json)
+    // 如果是旧的带 logic 的格式（直接使用），否则解析 NeoScan 格式
     if (parsed.logic) {
       ruleState.value = parsed
     } else {
-      ruleState.value = { logic: 'and', conditions: [] }
+      ruleState.value = parseNeoScanRule(parsed)
     }
   } catch (e) {
     ruleState.value = { logic: 'and', conditions: [] }
@@ -545,7 +576,9 @@ const handleSaveRule = async () => {
     ruleObj.dataset_id = ruleDatasetId.value
     ruleObj.name = ruleName.value || (selectedTag.value.name + "-Rule")
     
-    ruleObj.rule_json = JSON.stringify(ruleState.value) 
+    // 将 Vue 规则状态转换为后端支持的 NeoScan 格式
+    const neoRule = buildNeoScanRule(ruleState.value)
+    ruleObj.rule_json = JSON.stringify(neoRule) 
     ruleObj.is_enabled = true
     ruleObj.priority = 0
 

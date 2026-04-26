@@ -166,7 +166,7 @@ func (a *App) ImportData(filePath string, selectedSheets []string, datasetID uin
 	return a.dataImport.ImportData(filePath, selectedSheets, datasetID, newDatasetName)
 }
 
-func (a *App) ExportData(batchID uint64, exportPath string) error {
+func (a *App) ExportData(datasetID uint64, exportPath string) error {
 	if exportPath == "" {
 		file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 			Title:           "选择导出路径",
@@ -184,7 +184,7 @@ func (a *App) ExportData(batchID uint64, exportPath string) error {
 		}
 		exportPath = file
 	}
-	return a.dataImport.ExportData(batchID, exportPath)
+	return a.dataImport.ExportData(datasetID, exportPath)
 }
 
 type PagedData struct {
@@ -648,6 +648,10 @@ func (a *App) SaveRule(rule model.SysMatchRule) error {
 
 func (a *App) GetRulesByTag(tagID uint64) ([]model.SysMatchRule, error) {
 	return a.tagLogic.GetRulesByTagID(tagID)
+}
+
+func (a *App) GetRulesByDataset(datasetID uint64) ([]model.SysMatchRule, error) {
+	return a.tagLogic.GetRulesByDataset(datasetID)
 }
 
 func (a *App) DeleteRule(id uint64) error {

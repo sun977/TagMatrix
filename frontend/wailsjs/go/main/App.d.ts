@@ -47,6 +47,8 @@ export function GetDashboardStats():Promise<model.DashboardStats>;
 
 export function GetRawDataList(arg1:number,arg2:number,arg3:number,arg4:string,arg5:string):Promise<main.PagedData>;
 
+export function GetRulesByDataset(arg1:number):Promise<Array<model.SysMatchRule>>;
+
 export function GetRulesByTag(arg1:number):Promise<Array<model.SysMatchRule>>;
 
 export function GetTagTree():Promise<Array<model.TagTreeNode>>;
