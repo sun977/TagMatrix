@@ -83,9 +83,9 @@
                 </el-tooltip>
               </label>
               <el-select v-model="taskForm.tagMode" class="w-100">
-                <el-option label="多标签模式 (允许多个标签)" value="multiple" />
-                <el-option label="单标签模式 (仅取最高优先级)" value="single" />
-                <el-option label="混合模式 (最高优先级为主标签)" value="mixed" />
+                <el-option label="多标签模式(默认)" value="multiple" />
+                <el-option label="单标签模式" value="single" />
+                <el-option label="混合模式" value="mixed" />
               </el-select>
             </div>
           </el-col>
