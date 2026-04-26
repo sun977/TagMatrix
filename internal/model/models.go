@@ -13,9 +13,18 @@ type BaseModel struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;comment:更新时间"`
 }
 
+// SysDataset 数据集管理表
+type SysDataset struct {
+	BaseModel
+	Name        string `json:"name" gorm:"size:100;not null;uniqueIndex;comment:数据集名称"`
+	Description string `json:"description" gorm:"size:255;comment:描述"`
+	SchemaKeys  string `json:"schema_keys" gorm:"type:text;comment:JSON格式的表头字段数组"`
+}
+
 // RawDataRecord 原始数据表，用于动态存储导入的 Excel/CSV 数据
 type RawDataRecord struct {
 	BaseModel
+	DatasetID uint64         `json:"dataset_id" gorm:"index;not null;comment:关联的数据集ID"`
 	BatchID   uint64         `json:"batch_id" gorm:"index;comment:导入时的批次 ID"`
 	Data      string         `json:"data" gorm:"type:text;comment:动态列数据 (建议存储 JSON 字符串)"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index;comment:软删除时间"`
