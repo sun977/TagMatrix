@@ -45,6 +45,7 @@ type SysTag struct {
 // SysMatchRule 自动打标规则表
 type SysMatchRule struct {
 	BaseModel
+	DatasetID uint64         `json:"dataset_id" gorm:"index;not null;comment:关联的数据集ID"`
 	TagID     uint64         `json:"tag_id" gorm:"index;not null;comment:关联的标签ID"`
 	Name      string         `json:"name" gorm:"size:100;comment:规则名称"`
 	Priority  int            `json:"priority" gorm:"default:0;comment:优先级 (越大越先匹配)"`
@@ -56,6 +57,7 @@ type SysMatchRule struct {
 // TagTaskBatch 打标任务批次表，用于记录打标版本和回退
 type TagTaskBatch struct {
 	BaseModel
+	DatasetID      uint64         `json:"dataset_id" gorm:"index;not null;comment:关联的数据集ID"`
 	Name           string         `json:"name" gorm:"size:100;comment:任务名称，比如 20240101-打标任务"`
 	Status         string         `json:"status" gorm:"size:20;index;comment:状态：running, completed, failed, rolled_back"`
 	TotalProcessed int            `json:"total_processed" gorm:"default:0;comment:总处理条数"`

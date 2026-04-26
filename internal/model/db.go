@@ -37,6 +37,7 @@ func InitDB(dbPath string) error {
 
 func autoMigrate() error {
 	return DB.AutoMigrate(
+		&SysDataset{},
 		&RawDataRecord{},
 		&SysTag{},
 		&SysMatchRule{},

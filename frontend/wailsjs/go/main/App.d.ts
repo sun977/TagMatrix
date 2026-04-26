@@ -11,7 +11,11 @@ export function ChatWithAI(arg1:string):Promise<string>;
 
 export function CheckTagHasRules(arg1:number):Promise<boolean>;
 
+export function CreateDataset(arg1:string,arg2:string):Promise<model.SysDataset>;
+
 export function CreateTag(arg1:model.SysTag):Promise<void>;
+
+export function DeleteDataset(arg1:number):Promise<void>;
 
 export function DeleteRawData(arg1:Array<number>):Promise<void>;
 
@@ -39,7 +43,7 @@ export function GetAvailableDataSources():Promise<Array<model.DataSourceOption>>
 
 export function GetDashboardStats():Promise<model.DashboardStats>;
 
-export function GetRawDataList(arg1:number,arg2:number,arg3:string,arg4:string):Promise<main.PagedData>;
+export function GetRawDataList(arg1:number,arg2:number,arg3:number,arg4:string,arg5:string):Promise<main.PagedData>;
 
 export function GetRuleByTag(arg1:number):Promise<model.SysMatchRule>;
 
@@ -51,9 +55,11 @@ export function GetTaskBatches():Promise<Array<model.TagTaskBatch>>;
 
 export function GetTaskLogs(arg1:number):Promise<Array<model.TagTaskLogDto>>;
 
-export function ImportData(arg1:string,arg2:Array<string>):Promise<number>;
+export function ImportData(arg1:string,arg2:Array<string>,arg3:number,arg4:string):Promise<number>;
 
 export function ImportTags(arg1:string):Promise<void>;
+
+export function ListDatasets():Promise<Array<model.SysDataset>>;
 
 export function RollbackTask(arg1:number):Promise<void>;
 
@@ -62,5 +68,7 @@ export function RunTaggingTask(arg1:Array<number>,arg2:string,arg3:boolean,arg4:
 export function SaveAppConfig(arg1:config.AppConfig):Promise<void>;
 
 export function SaveRule(arg1:model.SysMatchRule):Promise<void>;
+
+export function UpdateDataset(arg1:number,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateTag(arg1:model.SysTag):Promise<void>;

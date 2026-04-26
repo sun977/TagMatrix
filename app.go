@@ -14,6 +14,7 @@ import (
 	"TagMatrix/internal/model"
 	"TagMatrix/internal/service/aiengine"
 	"TagMatrix/internal/service/dataimport"
+	"TagMatrix/internal/service/dataset"
 	"TagMatrix/internal/service/taglogic"
 	"TagMatrix/internal/service/taskengine"
 
@@ -23,6 +24,7 @@ import (
 // App struct
 type App struct {
 	ctx        context.Context
+	dataset    *dataset.DatasetService
 	dataImport *dataimport.DataImportService
 	tagLogic   *taglogic.TagLogicService
 	taskEngine *taskengine.TaskEngineService
@@ -75,6 +77,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	// 3. 初始化所有的 Service
+	a.dataset = dataset.NewDatasetService()
 	a.dataImport = dataimport.NewDataImportService()
 	a.tagLogic = taglogic.NewTagLogicService()
 	a.taskEngine = taskengine.NewTaskEngineService(ctx)
@@ -117,6 +120,28 @@ func (a *App) GetDashboardStats() (*model.DashboardStats, error) {
 	return &stats, nil
 }
 
+// ----------------- Dataset API -----------------
+
+// ListDatasets 获取所有数据集
+func (a *App) ListDatasets() ([]model.SysDataset, error) {
+	return a.dataset.ListDatasets()
+}
+
+// CreateDataset 创建数据集
+func (a *App) CreateDataset(name, description string) (*model.SysDataset, error) {
+	return a.dataset.CreateDataset(name, description)
+}
+
+// UpdateDataset 更新数据集
+func (a *App) UpdateDataset(id uint64, name, description string) error {
+	return a.dataset.UpdateDataset(id, name, description)
+}
+
+// DeleteDataset 删除数据集
+func (a *App) DeleteDataset(id uint64) error {
+	return a.dataset.DeleteDataset(id)
+}
+
 // ----------------- Data Import/Export API -----------------
 
 // AnalyzeDataFile 分析文件并返回表信息 (前端用来做多 Sheet 选择)
@@ -137,8 +162,8 @@ func (a *App) AnalyzeDataFile() (*model.FileAnalysisResult, error) {
 	return a.dataImport.AnalyzeFile(file)
 }
 
-func (a *App) ImportData(filePath string, selectedSheets []string) (int, error) {
-	return a.dataImport.ImportData(filePath, selectedSheets)
+func (a *App) ImportData(filePath string, selectedSheets []string, datasetID uint64, newDatasetName string) (int, error) {
+	return a.dataImport.ImportData(filePath, selectedSheets, datasetID, newDatasetName)
 }
 
 func (a *App) ExportData(batchID uint64, exportPath string) error {
@@ -167,11 +192,11 @@ type PagedData struct {
 	Records []model.RawDataRecord
 }
 
-func (a *App) GetRawDataList(page, pageSize int, searchCol, keyword string) (*PagedData, error) {
+func (a *App) GetRawDataList(datasetID uint64, page, pageSize int, searchCol, keyword string) (*PagedData, error) {
 	var records []model.RawDataRecord
 	var total int64
 
-	db := model.DB.Model(&model.RawDataRecord{})
+	db := model.DB.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
 
 	if keyword != "" {
 		if searchCol != "" {

@@ -170,7 +170,7 @@ func (s *DataImportService) AnalyzeFile(filePath string) (*model.FileAnalysisRes
 
 // ImportData 导入 Excel 或 CSV 文件
 // 返回导入的记录数和错误
-func (s *DataImportService) ImportData(filePath string, selectedSheets []string) (int, error) {
+func (s *DataImportService) ImportData(filePath string, selectedSheets []string, datasetID uint64, newDatasetName string) (int, error) {
 	if s.db == nil {
 		return 0, fmt.Errorf("database not initialized")
 	}
@@ -196,8 +196,61 @@ func (s *DataImportService) ImportData(filePath string, selectedSheets []string)
 		return 0, fmt.Errorf("no data found in file")
 	}
 
-	// 批量插入数据库
-	return s.batchInsertRecords(records)
+	// 开启事务
+	return len(records), s.db.Transaction(func(tx *gorm.DB) error {
+		var targetDatasetID = datasetID
+		
+		// 1. 如果没有选择已有数据集，则创建新的数据集
+		if targetDatasetID == 0 {
+			if newDatasetName == "" {
+				return fmt.Errorf("dataset name cannot be empty when creating new dataset")
+			}
+			newDataset := &model.SysDataset{
+				Name:        newDatasetName,
+				Description: "Imported from " + filepath.Base(filePath),
+				SchemaKeys:  "[]",
+			}
+			if err := tx.Create(newDataset).Error; err != nil {
+				return fmt.Errorf("failed to create dataset: %w", err)
+			}
+			targetDatasetID = newDataset.ID
+		}
+
+		// 2. 收集所有出现过的列作为 SchemaKeys
+		headerMap := make(map[string]bool)
+		var headers []string
+
+		// 先加载现有 schema
+		var existingDataset model.SysDataset
+		if err := tx.First(&existingDataset, targetDatasetID).Error; err == nil {
+			var existingHeaders []string
+			if existingDataset.SchemaKeys != "" {
+				_ = json.Unmarshal([]byte(existingDataset.SchemaKeys), &existingHeaders)
+				for _, h := range existingHeaders {
+					headerMap[h] = true
+					headers = append(headers, h)
+				}
+			}
+		}
+
+		// 追加新出现的列
+		for _, rec := range records {
+			for k := range rec {
+				if !headerMap[k] && k != "数据来源" {
+					headerMap[k] = true
+					headers = append(headers, k)
+				}
+			}
+		}
+
+		schemaJSON, _ := json.Marshal(headers)
+		if err := tx.Model(&model.SysDataset{}).Where("id = ?", targetDatasetID).Update("schema_keys", string(schemaJSON)).Error; err != nil {
+			return fmt.Errorf("failed to update dataset schema: %w", err)
+		}
+
+		// 3. 批量插入记录
+		return s.batchInsertRecordsTx(tx, records, targetDatasetID)
+	})
 }
 
 // parseCSV 解析 CSV 文件
@@ -295,39 +348,34 @@ func (s *DataImportService) parseExcel(filePath string, selectedSheets []string)
 	return allRecords, nil
 }
 
-// batchInsertRecords 批量将数据序列化并入库
-func (s *DataImportService) batchInsertRecords(records []map[string]interface{}) (int, error) {
-	// 生成一个统一的批次 ID，这里简单使用时间戳，实际中可以使用 UUID
+// batchInsertRecordsTx 批量将数据序列化并入库
+func (s *DataImportService) batchInsertRecordsTx(tx *gorm.DB, records []map[string]interface{}, datasetID uint64) error {
+	// 生成一个统一的批次 ID，这里简单使用时间戳
 	batchID := uint64(time.Now().UnixNano())
 
 	// 分批插入，避免内存或 SQL 语句过大
 	batchSize := 1000
-	insertedCount := 0
 
-	err := s.db.Transaction(func(tx *gorm.DB) error {
-		var batchData []model.RawDataRecord
+	var batchData []model.RawDataRecord
 
-		for i, record := range records {
-			jsonData, err := json.Marshal(record)
-			if err != nil {
-				return fmt.Errorf("failed to marshal record to JSON: %w", err)
-			}
-
-			batchData = append(batchData, model.RawDataRecord{
-				BatchID: batchID,
-				Data:    string(jsonData),
-			})
-
-			if len(batchData) >= batchSize || i == len(records)-1 {
-				if err := tx.Create(&batchData).Error; err != nil {
-					return fmt.Errorf("failed to batch insert records: %w", err)
-				}
-				insertedCount += len(batchData)
-				batchData = batchData[:0] // 清空切片
-			}
+	for i, record := range records {
+		jsonData, err := json.Marshal(record)
+		if err != nil {
+			return fmt.Errorf("failed to marshal record to JSON: %w", err)
 		}
-		return nil
-	})
 
-	return insertedCount, err
+		batchData = append(batchData, model.RawDataRecord{
+			DatasetID: datasetID,
+			BatchID:   batchID,
+			Data:      string(jsonData),
+		})
+
+		if len(batchData) >= batchSize || i == len(records)-1 {
+			if err := tx.Create(&batchData).Error; err != nil {
+				return fmt.Errorf("failed to batch insert records: %w", err)
+			}
+			batchData = batchData[:0] // 清空切片
+		}
+	}
+	return nil
 }

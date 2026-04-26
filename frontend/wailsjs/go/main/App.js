@@ -14,8 +14,16 @@ export function CheckTagHasRules(arg1) {
   return window['go']['main']['App']['CheckTagHasRules'](arg1);
 }
 
+export function CreateDataset(arg1, arg2) {
+  return window['go']['main']['App']['CreateDataset'](arg1, arg2);
+}
+
 export function CreateTag(arg1) {
   return window['go']['main']['App']['CreateTag'](arg1);
+}
+
+export function DeleteDataset(arg1) {
+  return window['go']['main']['App']['DeleteDataset'](arg1);
 }
 
 export function DeleteRawData(arg1) {
@@ -70,8 +78,8 @@ export function GetDashboardStats() {
   return window['go']['main']['App']['GetDashboardStats']();
 }
 
-export function GetRawDataList(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['GetRawDataList'](arg1, arg2, arg3, arg4);
+export function GetRawDataList(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['GetRawDataList'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function GetRuleByTag(arg1) {
@@ -94,12 +102,16 @@ export function GetTaskLogs(arg1) {
   return window['go']['main']['App']['GetTaskLogs'](arg1);
 }
 
-export function ImportData(arg1, arg2) {
-  return window['go']['main']['App']['ImportData'](arg1, arg2);
+export function ImportData(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ImportData'](arg1, arg2, arg3, arg4);
 }
 
 export function ImportTags(arg1) {
   return window['go']['main']['App']['ImportTags'](arg1);
+}
+
+export function ListDatasets() {
+  return window['go']['main']['App']['ListDatasets']();
 }
 
 export function RollbackTask(arg1) {
@@ -116,6 +128,10 @@ export function SaveAppConfig(arg1) {
 
 export function SaveRule(arg1) {
   return window['go']['main']['App']['SaveRule'](arg1);
+}
+
+export function UpdateDataset(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateDataset'](arg1, arg2, arg3);
 }
 
 export function UpdateTag(arg1) {
