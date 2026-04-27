@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"TagMatrix/internal/model"
 	"TagMatrix/internal/pkg/matcher"
@@ -448,4 +449,80 @@ func (s *TagLogicService) DryRunRule(ruleJSON string, limit int, datasetID uint6
 	}
 
 	return results, nil
+}
+
+// MoveTag 移动标签到新的父节点下，支持拖拽层级结构变化
+func (s *TagLogicService) MoveTag(tagID uint64, newParentID uint64) error {
+	if tagID == 0 {
+		return fmt.Errorf("tag id cannot be empty")
+	}
+	if tagID == newParentID {
+		return fmt.Errorf("cannot move tag to itself")
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var currentTag model.SysTag
+		if err := tx.First(&currentTag, tagID).Error; err != nil {
+			return fmt.Errorf("tag not found: %w", err)
+		}
+
+		oldPath := currentTag.Path
+		oldLevel := currentTag.Level
+
+		var newParentPath string
+		var newLevel int
+
+		if newParentID > 0 {
+			var parent model.SysTag
+			if err := tx.First(&parent, newParentID).Error; err != nil {
+				return fmt.Errorf("parent tag not found: %w", err)
+			}
+			// 防环校验：不能将父节点移动到它的子孙节点下面
+			if strings.HasPrefix(parent.Path, oldPath) {
+				return fmt.Errorf("cannot move a tag into its own descendant")
+			}
+			newParentPath = parent.Path
+			newLevel = parent.Level + 1
+		} else {
+			newParentPath = ""
+			newLevel = 0
+		}
+
+		// 计算当前节点的新 Path
+		newPath := fmt.Sprintf("%s/%s/", strings.TrimSuffix(newParentPath, "/"), currentTag.Name)
+		if newParentPath == "" {
+			newPath = fmt.Sprintf("/%s/", currentTag.Name)
+		}
+		newPath = strings.ReplaceAll(newPath, "//", "/") // 安全处理多余斜杠
+
+		// 1. 更新当前节点
+		if err := tx.Model(&currentTag).Updates(map[string]interface{}{
+			"parent_id": newParentID,
+			"path":      newPath,
+			"level":     newLevel,
+		}).Error; err != nil {
+			return fmt.Errorf("failed to update tag: %w", err)
+		}
+
+		// 2. 查找并级联更新所有子孙节点
+		var descendants []model.SysTag
+		if err := tx.Where("path LIKE ? AND id != ?", oldPath+"%", tagID).Find(&descendants).Error; err != nil {
+			return fmt.Errorf("failed to find descendants: %w", err)
+		}
+
+		for _, desc := range descendants {
+			// 替换路径前缀
+			descNewPath := strings.Replace(desc.Path, oldPath, newPath, 1)
+			descNewLevel := desc.Level + (newLevel - oldLevel)
+
+			if err := tx.Model(&desc).Updates(map[string]interface{}{
+				"path":  descNewPath,
+				"level": descNewLevel,
+			}).Error; err != nil {
+				return fmt.Errorf("failed to cascade update descendant %d: %w", desc.ID, err)
+			}
+		}
+
+		return nil
+	})
 }

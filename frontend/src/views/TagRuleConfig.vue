@@ -37,6 +37,8 @@
               @node-click="handleNodeClick"
               :highlight-current="true"
               :expand-on-click-node="false"
+              draggable
+              @node-drop="handleNodeDrop"
             >
               <template #default="{ node, data }">
                 <span class="custom-tree-node" :class="{ 'is-active': selectedTag?.id === data.id }">
@@ -270,7 +272,7 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled, Filter, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRulesByTag, CheckTagHasRules, ListDatasets, DeleteRule } from '../../wailsjs/go/main/App'
+import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRulesByTag, CheckTagHasRules, ListDatasets, DeleteRule, MoveTag } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import RuleGroup from '../components/RuleGroup.vue'
 
@@ -287,6 +289,29 @@ const handleNodeExpand = (data: any) => {
 
 const handleNodeCollapse = (data: any) => {
   expandedKeys.value = expandedKeys.value.filter(id => id !== data.id)
+}
+
+const handleNodeDrop = async (draggingNode: any, dropNode: any, dropType: string, ev: any) => {
+  let newParentId = 0
+  if (dropType === 'inner') {
+    newParentId = dropNode.data.id
+  } else if (dropType === 'before' || dropType === 'after') {
+    if (dropNode.parent && dropNode.parent.data && dropNode.parent.data.id !== undefined) {
+      newParentId = dropNode.parent.data.id
+    } else {
+      newParentId = 0 // Root level
+    }
+  }
+
+  loadingTags.value = true
+  try {
+    await MoveTag(draggingNode.data.id, newParentId)
+    ElMessage.success('层级调整成功')
+  } catch (e: any) {
+    ElMessage.error('层级调整失败: ' + String(e))
+  } finally {
+    fetchTags()
+  }
 }
 
 // --- 左侧标签树逻辑 ---

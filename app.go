@@ -659,6 +659,10 @@ func (a *App) UpdateTag(tag model.SysTag) error {
 	return a.tagLogic.UpdateTag(&tag)
 }
 
+func (a *App) MoveTag(tagID uint64, newParentID uint64) error {
+	return a.tagLogic.MoveTag(tagID, newParentID)
+}
+
 func (a *App) DeleteTag(id uint64) error {
 	return a.tagLogic.DeleteTag(id)
 }

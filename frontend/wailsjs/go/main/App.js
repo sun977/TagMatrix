@@ -130,6 +130,10 @@ export function ListDatasets() {
   return window['go']['main']['App']['ListDatasets']();
 }
 
+export function MoveTag(arg1, arg2) {
+  return window['go']['main']['App']['MoveTag'](arg1, arg2);
+}
+
 export function RollbackTask(arg1) {
   return window['go']['main']['App']['RollbackTask'](arg1);
 }

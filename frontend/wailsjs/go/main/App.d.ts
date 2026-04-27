@@ -69,6 +69,8 @@ export function ImportTags(arg1:string):Promise<void>;
 
 export function ListDatasets():Promise<Array<model.SysDataset>>;
 
+export function MoveTag(arg1:number,arg2:number):Promise<void>;
+
 export function RollbackTask(arg1:number):Promise<void>;
 
 export function RunTaggingTask(arg1:number,arg2:Array<number>,arg3:string,arg4:boolean,arg5:string,arg6:string):Promise<number>;
