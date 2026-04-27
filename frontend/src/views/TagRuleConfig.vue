@@ -87,9 +87,9 @@
                     <div class="swatch" style="background: #e056fd" @click="selectedTag.color = '#e056fd'"></div>
                   </div>
                 </div>
-                <div class="form-item inline" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0; flex: 1; min-width: 200px;">
-                  <label style="margin-bottom: 0; white-space: nowrap;">标签描述</label>
-                  <el-input v-model="selectedTag.description" placeholder="输入标签描述..." />
+                <div class="form-item inline" style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 0; flex: 1; min-width: 200px;">
+                  <label style="margin-bottom: 0; white-space: nowrap; margin-top: 5px;">标签描述</label>
+                  <el-input type="textarea" :autosize="{ minRows: 1, maxRows: 6 }" resize="vertical" v-model="selectedTag.description" placeholder="输入标签描述..." />
                 </div>
               </div>
             </div>
