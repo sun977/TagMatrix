@@ -241,10 +241,17 @@
       </template>
     </el-dialog>
     <!-- JSON 预览对话框 -->
-    <el-dialog v-model="previewDialogVisible" title="规则 JSON 预览" width="500px">
-      <pre class="json-preview">{{ previewJsonStr }}</pre>
+    <el-dialog v-model="previewDialogVisible" title="规则 JSON 预览" width="600px">
+      <div class="detail-content-wrapper">
+        <pre class="json-preview">{{ previewJsonStr }}</pre>
+      </div>
       <template #footer>
-        <el-button @click="previewDialogVisible = false">关闭</el-button>
+        <span class="dialog-footer">
+          <el-button @click="previewDialogVisible = false">关闭</el-button>
+          <el-button type="primary" class="action-btn-green" @click="copyRuleJson" :icon="DocumentCopy">
+            复制 JSON
+          </el-button>
+        </span>
       </template>
     </el-dialog>
 
@@ -607,6 +614,16 @@ const handleUpdateTag = async () => {
 }
 
 const savingRule = ref(false)
+
+const copyRuleJson = async () => {
+  try {
+    await navigator.clipboard.writeText(previewJsonStr.value)
+    ElMessage.success('JSON 已复制到剪贴板')
+  } catch (err) {
+    ElMessage.error('复制失败，请手动选择复制')
+  }
+}
+
 const handleSaveRule = async () => {
   if (!ruleDatasetId.value) {
     ElMessage.warning('请选择目标数据集')
@@ -1156,5 +1173,21 @@ onMounted(() => {
   padding: 2px 6px;
   border-radius: 4px;
   color: var(--tm-text-regular);
+}
+.detail-content-wrapper {
+  max-height: 50vh;
+  overflow-y: auto;
+  background-color: #f5f7fa;
+  border-radius: var(--tm-border-radius-sm);
+  padding: 16px;
+  border: 1px solid var(--tm-border-color);
+}
+.json-preview {
+  margin: 0;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  color: var(--tm-text-primary);
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 </style>
