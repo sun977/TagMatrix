@@ -84,7 +84,7 @@ func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, b
 	}
 
 	// 2. 生成任务批次
-	batchID := uint64(time.Now().UnixNano())
+	batchID := uint64(time.Now().UnixMilli())
 	if batchName == "" {
 		batchName = fmt.Sprintf("AutoTag_%d", batchID)
 	}

@@ -359,7 +359,7 @@ func (s *DataImportService) parseExcel(filePath string, selectedSheets []string)
 // batchInsertRecordsTx 批量将数据序列化并入库
 func (s *DataImportService) batchInsertRecordsTx(tx *gorm.DB, records []map[string]interface{}, datasetID uint64) error {
 	// 生成一个统一的批次 ID，这里简单使用时间戳
-	batchID := uint64(time.Now().UnixNano())
+	batchID := uint64(time.Now().UnixMilli())
 
 	// 分批插入，避免内存或 SQL 语句过大
 	batchSize := 1000

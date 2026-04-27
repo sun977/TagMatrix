@@ -118,7 +118,7 @@ func TestTagLogicService_DryRunRule(t *testing.T) {
 		{"id": 3, "name": "Charlie", "age": 30},
 	}
 
-	batchID := uint64(time.Now().UnixNano())
+	batchID := uint64(time.Now().UnixMilli())
 	for _, rec := range testRecords {
 		jsonData, _ := json.Marshal(rec)
 		model.DB.Create(&model.RawDataRecord{
