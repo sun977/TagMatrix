@@ -241,14 +241,19 @@
       </template>
     </el-dialog>
     <!-- JSON 预览对话框 -->
-    <el-dialog v-model="previewDialogVisible" title="规则 JSON 预览" width="600px">
-      <div class="detail-content-wrapper">
-        <pre class="json-preview">{{ previewJsonStr }}</pre>
-      </div>
+    <el-dialog v-model="previewDialogVisible" title="规则 JSON 预览 (支持编辑)" width="600px">
+      <el-input 
+        v-model="previewJsonStr" 
+        type="textarea" 
+        :rows="15" 
+        class="json-editor-input"
+        placeholder="在此输入或粘贴自定义 JSON 规则..."
+      />
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="previewDialogVisible = false">关闭</el-button>
-          <el-button type="primary" class="action-btn-green" @click="copyRuleJson" :icon="DocumentCopy">
+          <el-button @click="previewDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="applyRuleJson">识别并应用</el-button>
+          <el-button type="success" class="action-btn-green" @click="copyRuleJson" :icon="DocumentCopy">
             复制 JSON
           </el-button>
         </span>
@@ -574,6 +579,21 @@ const previewRuleJson = () => {
   const neoRule = buildNeoScanRule(ruleState.value)
   previewJsonStr.value = JSON.stringify(neoRule, null, 2)
   previewDialogVisible.value = true
+}
+
+const applyRuleJson = () => {
+  try {
+    const parsed = JSON.parse(previewJsonStr.value)
+    if (parsed.logic) {
+      ruleState.value = parsed
+    } else {
+      ruleState.value = parseNeoScanRule(parsed)
+    }
+    previewDialogVisible.value = false
+    ElMessage.success('规则 JSON 已成功应用')
+  } catch (e) {
+    ElMessage.error('JSON 格式有误，解析失败！请检查语法')
+  }
 }
 
 const handleNodeClick = async (data: any) => {
@@ -1189,5 +1209,14 @@ onMounted(() => {
   color: var(--tm-text-primary);
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+.json-editor-input :deep(.el-textarea__inner) {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  background-color: #f5f7fa;
+  border-radius: var(--tm-border-radius-sm);
+  color: var(--tm-text-primary);
+  padding: 12px;
 }
 </style>
