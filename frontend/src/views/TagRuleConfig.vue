@@ -30,7 +30,9 @@
               :data="tagTreeData"
               :props="defaultProps"
               node-key="id"
-              default-expand-all
+              :default-expanded-keys="expandedKeys"
+              @node-expand="handleNodeExpand"
+              @node-collapse="handleNodeCollapse"
               :filter-node-method="filterNode"
               @node-click="handleNodeClick"
               :highlight-current="true"
@@ -274,6 +276,18 @@ import RuleGroup from '../components/RuleGroup.vue'
 
 const filterText = ref('')
 const treeRef = ref<any>()
+
+const expandedKeys = ref<number[]>([])
+
+const handleNodeExpand = (data: any) => {
+  if (!expandedKeys.value.includes(data.id)) {
+    expandedKeys.value.push(data.id)
+  }
+}
+
+const handleNodeCollapse = (data: any) => {
+  expandedKeys.value = expandedKeys.value.filter(id => id !== data.id)
+}
 
 // --- 左侧标签树逻辑 ---
 const loadingTags = ref(false)
@@ -683,6 +697,9 @@ const tagForm = ref({
 const showAddTagDialog = (parentId: number) => {
   tagForm.value = { name: '', description: '', color: '#52c48f', parentId }
   dialogVisible.value = true
+  if (parentId > 0 && !expandedKeys.value.includes(parentId)) {
+    expandedKeys.value.push(parentId)
+  }
 }
 
 const submitAddTag = async () => {
