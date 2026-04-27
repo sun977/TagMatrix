@@ -177,7 +177,7 @@ func (s *TagLogicService) DeleteTag(id uint64) error {
 				return err
 			}
 			// 删除相关的打标结果关联 (sys_entity_tags)
-			if err := tx.Where("tag_id IN ?", tagIDs).Delete(&model.SysEntityTag{}).Error; err != nil {
+			if err := tx.Unscoped().Where("tag_id IN ?", tagIDs).Delete(&model.SysEntityTag{}).Error; err != nil {
 				return err
 			}
 		}

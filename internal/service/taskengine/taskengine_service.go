@@ -312,7 +312,7 @@ func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDa
 	// 批量插入数据库
 	if len(recordIDsToClear) > 0 {
 		// 在覆盖模式下，清除这些记录之前打上的自动规则标签
-		s.db.Where("record_id IN ? AND source = 'auto_rule'", recordIDsToClear).Delete(&model.SysEntityTag{})
+		s.db.Unscoped().Where("record_id IN ? AND source = 'auto_rule'", recordIDsToClear).Delete(&model.SysEntityTag{})
 	}
 	if len(tags) > 0 {
 		// 为了防止主键冲突，可以使用事务或 OnConflict
@@ -337,7 +337,7 @@ func (s *TaskEngineService) RollbackTask(ctx context.Context, batchID uint64) er
 		}
 
 		// 1. 删除该批次打上的标签
-		if err := tx.Where("batch_id = ?", batchID).Delete(&model.SysEntityTag{}).Error; err != nil {
+		if err := tx.Unscoped().Where("batch_id = ?", batchID).Delete(&model.SysEntityTag{}).Error; err != nil {
 			return fmt.Errorf("failed to delete entity tags: %w", err)
 		}
 
