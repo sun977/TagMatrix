@@ -18,8 +18,10 @@ func main() {
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:  "TagMatrix - Author Sun977",
-		Width:  1024,
-		Height: 768,
+		Width:  1440,  // 初始宽度
+		Height: 900,   // 初始高度
+		MinWidth:  1024,  // 最小宽度限制
+		MinHeight: 768,   // 最小高度限制
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
