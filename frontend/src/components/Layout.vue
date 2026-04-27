@@ -40,7 +40,7 @@
 
         <!-- 软件版本信息 -->
         <div class="version-info" v-if="!isCollapsed">
-          © 2026 Sun977 | v3.0.3
+          © 2026 {{ authorName }} | v{{ appVersion }}
         </div>
       </div>
 
@@ -74,6 +74,9 @@ import { useRouter } from 'vue-router'
 import SettingsDialog from './SettingsDialog.vue'
 
 const router = useRouter()
+
+const appVersion = __APP_VERSION__
+const authorName = __APP_AUTHOR__
 
 const isSettingsOpen = ref(false)
 
