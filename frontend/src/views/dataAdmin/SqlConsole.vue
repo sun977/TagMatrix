@@ -3,23 +3,43 @@
     <div class="editor-section" :style="{ height: editorHeight + 'px' }">
       <div class="editor-toolbar">
         <div class="toolbar-left">
-          <el-button type="primary" @click="executeSQL" :loading="isExecuting">
-            <el-icon><VideoPlay /></el-icon> 执行查询
+          <el-button type="primary" @click="executeSQL" :loading="isExecuting" class="toolbar-btn">
+            <el-icon><CaretRight /></el-icon> 执行语句
           </el-button>
-          <el-button @click="clearSQL">
+          <el-button @click="clearSQL" class="toolbar-btn">
             <el-icon><Delete /></el-icon> 清空
           </el-button>
-          <el-button @click="openSaveDialog">
-            <el-icon><Download /></el-icon> 保存查询
+          <el-button @click="formatSQL" class="toolbar-btn">
+            <el-icon><Document /></el-icon> 格式化
           </el-button>
-
-          <el-button @click="openTemplateDialog" type="info" plain style="margin-left: 8px;">
-            常用模板 <el-icon class="el-icon--right"><List /></el-icon>
+          <el-button @click="openSaveDialog" class="toolbar-btn">
+            <el-icon><FolderAdd /></el-icon> 保存查询
           </el-button>
-
+        </div>
+        <div class="toolbar-right">
+          <el-button @click="openTemplateDialog" class="toolbar-btn">
+            <el-icon><DocumentCopy /></el-icon> 快捷模板
+          </el-button>
+          <el-button @click="openHistoryDialog" class="toolbar-btn">
+            <el-icon><Clock /></el-icon> 查询历史
+          </el-button>
         </div>
       </div>
-      <div class="codemirror-wrapper">
+      
+      <div class="editor-header">
+        <div class="editor-title">
+          <el-icon><Setting /></el-icon> SQL 编辑器
+        </div>
+        <div class="editor-options">
+          <span class="option-label">语法高亮</span>
+          <el-switch v-model="syntaxHighlight" size="small" />
+          <el-button link class="fullscreen-btn" @click="toggleFullscreen">
+            <el-icon><FullScreen /></el-icon>
+          </el-button>
+        </div>
+      </div>
+
+      <div class="codemirror-wrapper" :class="{ 'is-fullscreen': isFullscreen }">
         <codemirror
           v-model="sqlQuery"
           placeholder="请输入 SQL 语句..."
@@ -27,7 +47,7 @@
           :autofocus="true"
           :indent-with-tab="true"
           :tab-size="2"
-          :extensions="extensions"
+          :extensions="activeExtensions"
           @keydown.f5.prevent="executeSQL"
         />
       </div>
@@ -143,13 +163,40 @@
         </span>
       </template>
     </el-dialog>
+    <!-- 历史记录管理对话框 -->
+    <el-dialog v-model="historyDialogVisible" title="查询历史" width="700px" destroy-on-close>
+      <div class="template-dialog-toolbar" style="margin-bottom: 16px; display: flex; justify-content: flex-end;">
+        <el-button type="danger" plain @click="clearHistory" :disabled="queryHistory.length === 0">
+          清空历史记录
+        </el-button>
+      </div>
+
+      <el-table :data="queryHistory" style="width: 100%" max-height="400" border stripe>
+        <el-table-column prop="time" label="执行时间" width="180" />
+        <el-table-column prop="query" label="SQL 语句" show-overflow-tooltip>
+          <template #default="scope">
+            <span style="font-family: monospace; font-size: 12px;">{{ scope.row.query }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right" align="center">
+          <template #default="scope">
+            <el-button type="primary" link size="small" @click="applyHistory(scope.row.query)">应用</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="historyDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { List, Search, VideoPlay, Delete, Download } from '@element-plus/icons-vue'
+import { List, Search, VideoPlay, Delete, Download, CaretRight, Document, FolderAdd, DocumentCopy, Clock, FullScreen, Setting } from '@element-plus/icons-vue'
 import { Codemirror } from 'vue-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { ExecuteRawSQL, GetSqlTemplates, SaveSqlTemplate, DeleteSqlTemplate } from '../../../wailsjs/go/main/App'
@@ -165,6 +212,62 @@ const sqlTemplates = ref<any[]>([])
 const saveDialogVisible = ref(false)
 const isSaving = ref(false)
 const saveForm = ref({ name: '' })
+
+// 语法高亮
+const syntaxHighlight = ref(true)
+const activeExtensions = computed(() => {
+  return syntaxHighlight.value ? extensions : []
+})
+
+// 全屏
+const isFullscreen = ref(false)
+const toggleFullscreen = () => {
+  isFullscreen.value = !isFullscreen.value
+}
+
+// 格式化
+const formatSQL = () => {
+  let formatted = sqlQuery.value
+    .replace(/\s+/g, ' ')
+    .replace(/\b(select|from|where|and|or|order by|group by|limit|insert into|update|set|delete from)\b/gi, match => '\n' + match.toUpperCase())
+  sqlQuery.value = formatted.trim()
+}
+
+// 历史记录
+const historyDialogVisible = ref(false)
+const queryHistory = ref<any[]>([])
+
+const loadHistory = () => {
+  const h = localStorage.getItem('sql_query_history')
+  if (h) {
+    try { queryHistory.value = JSON.parse(h) } catch (e) {}
+  }
+}
+
+const saveToHistory = (q: string) => {
+  if (!q.trim()) return
+  queryHistory.value = queryHistory.value.filter(item => item.query !== q)
+  queryHistory.value.unshift({ query: q, time: new Date().toLocaleString() })
+  if (queryHistory.value.length > 50) {
+    queryHistory.value = queryHistory.value.slice(0, 50)
+  }
+  localStorage.setItem('sql_query_history', JSON.stringify(queryHistory.value))
+}
+
+const openHistoryDialog = () => {
+  loadHistory()
+  historyDialogVisible.value = true
+}
+
+const applyHistory = (q: string) => {
+  sqlQuery.value = q
+  historyDialogVisible.value = false
+}
+
+const clearHistory = () => {
+  queryHistory.value = []
+  localStorage.removeItem('sql_query_history')
+}
 
 // 模板管理相关状态
 const templateDialogVisible = ref(false)
@@ -329,6 +432,7 @@ const executeSQL = async () => {
     const res = await ExecuteRawSQL(sqlQuery.value)
     resultData.value = res
     lastDuration.value = res.duration
+    saveToHistory(sqlQuery.value)
   } catch (err: any) {
     errorMessage.value = err.message || err.toString()
   } finally {
@@ -350,7 +454,6 @@ onMounted(() => {
   .editor-section {
     display: flex;
     flex-direction: column;
-    border-bottom: 1px solid var(--tm-border-color);
     background-color: var(--tm-bg-card);
     flex-shrink: 0;
     
@@ -358,19 +461,77 @@ onMounted(() => {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 8px 16px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--tm-border-color);
       
-      .toolbar-left {
+      .toolbar-left, .toolbar-right {
         display: flex;
-        gap: 8px;
+        gap: 12px;
         align-items: center;
+      }
+      
+      .toolbar-btn {
+        border-radius: 6px;
+        padding: 8px 16px;
+        font-weight: 500;
+        
+        :deep(.el-icon) {
+          margin-right: 4px;
+        }
+      }
+    }
+    
+    .editor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 16px;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid var(--tm-border-color);
+      
+      .editor-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--tm-text-primary);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      
+      .editor-options {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        
+        .option-label {
+          font-size: 13px;
+          color: var(--tm-text-secondary);
+        }
+        
+        .fullscreen-btn {
+          color: var(--tm-text-secondary);
+          &:hover {
+            color: var(--tm-text-primary);
+          }
+        }
       }
     }
     
     .codemirror-wrapper {
       flex: 1;
       overflow: hidden;
+      border-bottom: 1px solid var(--tm-border-color);
+      
+      &.is-fullscreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 9999;
+        height: 100vh !important;
+        background: #fff;
+      }
       
       :deep(.cm-editor) {
         height: 100%;
