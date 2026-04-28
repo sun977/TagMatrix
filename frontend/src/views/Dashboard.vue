@@ -227,10 +227,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { Loading, Setting, Coin, PriceTag, Collection, Document, UploadFilled, ArrowRight } from '@element-plus/icons-vue'
 import { GetDashboardStats, GetTaskBatches, GetAllTags, GetAllRules, GetTaskLogs, ExportTaskLogsCSV, ListDatasets } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { ElMessage } from 'element-plus'
 
 const stats = ref<model.DashboardStats>({
@@ -357,14 +358,35 @@ const loadDashboardData = async () => {
     // 只取前5条
     const recent = batches.slice(0, 5)
     recentTasks.value = recent.map((b: model.TagTaskBatch) => {
+      const isRunning = b.status === 'running'
+      let timeStr = '-'
+      if (b.finished_at && b.created_at) {
+        const diff = new Date(b.finished_at).getTime() - new Date(b.created_at).getTime()
+        if (diff >= 0) {
+          const seconds = Math.floor(diff / 1000)
+          if (seconds < 60) timeStr = `${seconds > 0 ? seconds : '<1'}秒`
+          else if (seconds < 3600) timeStr = `${Math.floor(seconds/60)}分${seconds%60}秒`
+          else timeStr = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+        }
+      } else if (isRunning && b.created_at) {
+        const diff = Date.now() - new Date(b.created_at).getTime()
+        if (diff >= 0) {
+          const seconds = Math.floor(diff / 1000)
+          if (seconds < 60) timeStr = `${seconds > 0 ? seconds : '<1'}秒`
+          else if (seconds < 3600) timeStr = `${Math.floor(seconds/60)}分${seconds%60}秒`
+          else timeStr = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+        }
+      }
+
       return {
         id: b.id,
         name: b.name,
         statusType: b.status,
-        statusText: b.status === 'running' ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : '未知')),
+        statusText: isRunning ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : (b.status === 'rolled_back' ? '已回退' : '未知'))),
         processed: `${b.total_processed}`,
-        time: '-',
-        createTime: new Date(b.created_at || Date.now()).toLocaleString()
+        time: timeStr,
+        createTime: new Date(b.created_at || Date.now()).toLocaleString(),
+        rawTime: new Date(b.created_at || Date.now()).getTime()
       }
     })
   } catch (e) {
@@ -376,6 +398,51 @@ const loadDashboardData = async () => {
 
 onMounted(() => {
   loadDashboardData()
+
+  // 监听后端推送的任务进度事件，保持与任务看板同步的实时更新
+  EventsOn('taskProgress', (data: any) => {
+    const batchIndex = recentTasks.value.findIndex(b => b.id === data.batchID)
+    if (batchIndex !== -1) {
+      const batch = recentTasks.value[batchIndex]
+      const oldStatus = batch.statusType
+      batch.statusType = data.status
+      
+      let statusText = '未知'
+      if (data.status === 'running') statusText = '执行中'
+      else if (data.status === 'completed') statusText = '已完成'
+      else if (data.status === 'rolled_back') statusText = '已回退'
+      else if (data.status === 'failed') statusText = '失败'
+
+      batch.statusText = statusText
+      batch.processed = `${data.processed}`
+
+      if (data.status === 'running') {
+        const diff = Date.now() - batch.rawTime
+        if (diff >= 0) {
+          const seconds = Math.floor(diff / 1000)
+          if (seconds < 60) batch.time = `${seconds > 0 ? seconds : '<1'}秒`
+          else if (seconds < 3600) batch.time = `${Math.floor(seconds/60)}分${seconds%60}秒`
+          else batch.time = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+        }
+      }
+
+      recentTasks.value[batchIndex] = { ...batch }
+
+      if (oldStatus === 'running' && (data.status === 'completed' || data.status === 'failed')) {
+        // 完成后刷新面板数据，获取最终时间并更新统计卡片
+        loadDashboardData()
+      }
+    } else {
+      // 刚发起的任务
+      if (data.status === 'running' && data.progress === 0) {
+        loadDashboardData()
+      }
+    }
+  })
+})
+
+onUnmounted(() => {
+  EventsOff('taskProgress')
 })
 </script>
 
