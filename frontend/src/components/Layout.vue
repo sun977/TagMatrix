@@ -57,10 +57,10 @@
       </router-view>
     </div>
 
-    <!-- 右下角 AI 助手悬浮按钮 -->
-    <div class="ai-assistant-btn" @click="toggleAIPanel">
+    <!-- 右下角 AI 助手悬浮按钮 (暂时隐藏，等开发AI功能时再开启) -->
+    <!-- <div class="ai-assistant-btn" @click="toggleAIPanel">
       <el-icon :size="24"><Service /></el-icon>
-    </div>
+    </div> -->
 
     <!-- 全局设置模态框 -->
     <SettingsDialog v-model="isSettingsOpen" />
