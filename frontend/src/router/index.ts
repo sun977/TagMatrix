@@ -17,7 +17,7 @@ const routes: Array<RouteRecordRaw> = [
         path: 'data-source',
         name: 'DataSource',
         component: () => import('../views/DataSource.vue'),
-        meta: { title: '数据源管理', icon: 'Coin' }
+        meta: { title: '数据集管理', icon: 'Folder' }
       },
       {
         path: 'tag-rule',
