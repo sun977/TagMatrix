@@ -97,7 +97,7 @@
                   v-model:current-page="currentPage"
                   v-model:page-size="pageSize"
                   :page-sizes="[10, 20, 50, 100, 200, 500]"
-                  layout="total, sizes, prev, pager, next, jumper"
+                  layout="total, sizes, prev, pager, next"
                   :total="totalRows"
                 />
               </div>
@@ -674,13 +674,16 @@ onMounted(() => {
   
     .bottom-section {
       flex: 1;
+      height: 0;
       min-height: 0;
       display: flex;
       overflow: hidden;
+      position: relative;
 
       .result-panel {
         flex: 1;
         min-height: 0;
+        height: 100%;
         display: flex;
         flex-direction: column;
         background-color: var(--tm-bg-card);
@@ -714,25 +717,24 @@ onMounted(() => {
         }
       }
       
-    .result-content {
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      
-      .result-data-wrapper {
+      .result-content {
         flex: 1;
-        min-height: 0;
+        position: relative;
         overflow: hidden;
-        display: flex;
-        flex-direction: column;
         
-        .table-wrapper {
-          flex: 1;
-          min-height: 0;
-          overflow: hidden;
-        }
+        .result-data-wrapper {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          display: flex;
+          flex-direction: column;
+          
+          .table-wrapper {
+            flex: 1;
+            overflow: hidden;
+          }
       
       .pagination-wrapper {
         padding: 8px 12px;
