@@ -28,6 +28,8 @@ export function DeleteRule(arg1:number):Promise<void>;
 
 export function DeleteSqlTemplate(arg1:number):Promise<void>;
 
+export function DeleteSystemTableRecord(arg1:string,arg2:any):Promise<void>;
+
 export function DeleteTag(arg1:number):Promise<void>;
 
 export function DeleteTaskBatches(arg1:Array<number>):Promise<void>;
@@ -88,6 +90,10 @@ export function ImportExternalDatabase():Promise<void>;
 
 export function ImportTags(arg1:string):Promise<void>;
 
+export function InsertSystemTableRecord(arg1:string,arg2:Record<string, any>):Promise<void>;
+
+export function InsertVirtualRecord(arg1:number,arg2:Record<string, any>):Promise<void>;
+
 export function ListBackups():Promise<Array<dataadmin.BackupInfo>>;
 
 export function ListDatasets():Promise<Array<model.SysDataset>>;
@@ -107,6 +113,8 @@ export function SaveRule(arg1:model.SysMatchRule):Promise<void>;
 export function SaveSqlTemplate(arg1:number,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateDataset(arg1:number,arg2:string,arg3:string):Promise<void>;
+
+export function UpdateSystemTableRecord(arg1:string,arg2:any,arg3:Record<string, any>):Promise<void>;
 
 export function UpdateTag(arg1:model.SysTag):Promise<void>;
 

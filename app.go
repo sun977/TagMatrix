@@ -870,6 +870,22 @@ func (a *App) GetVirtualDatasetData(datasetId uint, offset, limit int) (*dataadm
 	return a.dataAdmin.GetVirtualDatasetData(datasetId, offset, limit)
 }
 
+func (a *App) InsertSystemTableRecord(tableName string, payload map[string]interface{}) error {
+	return a.dataAdmin.InsertSystemTableRecord(tableName, payload)
+}
+
+func (a *App) UpdateSystemTableRecord(tableName string, recordId interface{}, payload map[string]interface{}) error {
+	return a.dataAdmin.UpdateSystemTableRecord(tableName, recordId, payload)
+}
+
+func (a *App) DeleteSystemTableRecord(tableName string, recordId interface{}) error {
+	return a.dataAdmin.DeleteSystemTableRecord(tableName, recordId)
+}
+
+func (a *App) InsertVirtualRecord(datasetId uint, payload map[string]interface{}) error {
+	return a.dataAdmin.InsertVirtualRecord(datasetId, payload)
+}
+
 func (a *App) UpdateVirtualRecord(recordId uint, payload map[string]interface{}) error {
 	return a.dataAdmin.UpdateVirtualRecord(recordId, payload)
 }

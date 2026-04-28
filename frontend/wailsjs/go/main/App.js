@@ -46,6 +46,10 @@ export function DeleteSqlTemplate(arg1) {
   return window['go']['main']['App']['DeleteSqlTemplate'](arg1);
 }
 
+export function DeleteSystemTableRecord(arg1, arg2) {
+  return window['go']['main']['App']['DeleteSystemTableRecord'](arg1, arg2);
+}
+
 export function DeleteTag(arg1) {
   return window['go']['main']['App']['DeleteTag'](arg1);
 }
@@ -166,6 +170,14 @@ export function ImportTags(arg1) {
   return window['go']['main']['App']['ImportTags'](arg1);
 }
 
+export function InsertSystemTableRecord(arg1, arg2) {
+  return window['go']['main']['App']['InsertSystemTableRecord'](arg1, arg2);
+}
+
+export function InsertVirtualRecord(arg1, arg2) {
+  return window['go']['main']['App']['InsertVirtualRecord'](arg1, arg2);
+}
+
 export function ListBackups() {
   return window['go']['main']['App']['ListBackups']();
 }
@@ -204,6 +216,10 @@ export function SaveSqlTemplate(arg1, arg2, arg3) {
 
 export function UpdateDataset(arg1, arg2, arg3) {
   return window['go']['main']['App']['UpdateDataset'](arg1, arg2, arg3);
+}
+
+export function UpdateSystemTableRecord(arg1, arg2, arg3) {
+  return window['go']['main']['App']['UpdateSystemTableRecord'](arg1, arg2, arg3);
 }
 
 export function UpdateTag(arg1) {

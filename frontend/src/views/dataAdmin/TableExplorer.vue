@@ -34,9 +34,9 @@
           <el-button type="primary" size="small" @click="fetchData" :disabled="!currentTable && !currentDatasetId">
             <el-icon><Refresh /></el-icon> 刷新
           </el-button>
-          <el-button type="success" size="small" :disabled="true">
-            <el-icon><Plus /></el-icon> 新增行
-          </el-button>
+<el-button type="success" size="small" @click="handleAddRow" :disabled="!currentTable && !currentDatasetId">
+  <el-icon><Plus /></el-icon> 新增行
+</el-button>
         </div>
       </div>
 
@@ -75,13 +75,30 @@
         />
       </div>
     </div>
+
+    <!-- 新增行对话框 -->
+    <el-dialog v-model="addRowDialogVisible" :title="tabMode === 'system' ? '新增物理表记录' : '新增业务数据'" width="500px">
+      <el-form :model="newRowForm" label-width="120px">
+        <template v-for="col in columns" :key="col">
+          <el-form-item :label="col" v-if="col !== 'id'">
+            <el-input v-model="newRowForm[col]" placeholder="请输入内容" />
+          </el-form-item>
+        </template>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="addRowDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="submitAddRow" :loading="loading">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { GetSystemTables, GetTableData, ListDatasets, GetVirtualDatasetData, UpdateVirtualRecord, DeleteVirtualRecord } from '../../../wailsjs/go/main/App'
+import { GetSystemTables, GetTableData, ListDatasets, GetVirtualDatasetData, UpdateVirtualRecord, DeleteVirtualRecord, UpdateSystemTableRecord, DeleteSystemTableRecord, InsertSystemTableRecord, InsertVirtualRecord } from '../../../wailsjs/go/main/App'
 
 const tabMode = ref('system')
 const systemTables = ref<{name: string}[]>([])
@@ -178,9 +195,12 @@ const handleCurrentChange = () => {
 }
 
 const handleRowDblClick = (row: any, column: any) => {
-  if (tabMode.value === 'system') {
-    ElMessage.warning('物理表暂不支持内联编辑')
-    return
+  if (tabMode.value === 'system' && (!row.id || !column.property || column.property === 'id')) {
+    // Only warn if we cannot identify the row by id
+    if (!row.id) {
+      ElMessage.warning('当前物理表没有 id 列，暂不支持内联编辑')
+      return
+    }
   }
   // Ignore operation column and ID column
   if (!column.property || column.property === 'id') return
@@ -200,7 +220,11 @@ const saveCellEdit = async (row: any, col: string) => {
   
   loading.value = true
   try {
-    await UpdateVirtualRecord(row.id, { [col]: row[col] })
+    if (tabMode.value === 'system') {
+      await UpdateSystemTableRecord(currentTable.value, row.id, { [col]: row[col] })
+    } else {
+      await UpdateVirtualRecord(row.id, { [col]: row[col] })
+    }
     ElMessage.success('更新成功')
   } catch (e: any) {
     ElMessage.error(e.message || '更新失败')
@@ -217,8 +241,12 @@ const deleteRecord = (row: any) => {
     loading.value = true
     try {
       if (tabMode.value === 'system') {
-        // Implement physical delete if needed
-        ElMessage.warning('物理表暂不支持删除操作')
+        if (!row.id) {
+          throw new Error("当前物理表没有 id 列，无法删除")
+        }
+        await DeleteSystemTableRecord(currentTable.value, row.id)
+        ElMessage.success('删除成功')
+        fetchData()
       } else {
         await DeleteVirtualRecord(row.id)
         ElMessage.success('删除成功')

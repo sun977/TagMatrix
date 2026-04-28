@@ -227,6 +227,42 @@ func (s *DataAdminService) DeleteVirtualRecord(recordId uint) error {
 	return s.db.Table("raw_data_records").Where("id = ?", recordId).Delete(nil).Error
 }
 
+// InsertSystemTableRecord 插入系统物理表记录
+func (s *DataAdminService) InsertSystemTableRecord(tableName string, payload map[string]interface{}) error {
+	if tableName == "" || strings.HasPrefix(strings.ToLower(tableName), "sqlite_") {
+		return fmt.Errorf("invalid table name")
+	}
+	return s.db.Table(tableName).Create(payload).Error
+}
+
+// UpdateSystemTableRecord 更新系统物理表记录
+func (s *DataAdminService) UpdateSystemTableRecord(tableName string, recordId interface{}, payload map[string]interface{}) error {
+	if tableName == "" || strings.HasPrefix(strings.ToLower(tableName), "sqlite_") {
+		return fmt.Errorf("invalid table name")
+	}
+	return s.db.Table(tableName).Where("id = ?", recordId).Updates(payload).Error
+}
+
+// DeleteSystemTableRecord 删除系统物理表记录
+func (s *DataAdminService) DeleteSystemTableRecord(tableName string, recordId interface{}) error {
+	if tableName == "" || strings.HasPrefix(strings.ToLower(tableName), "sqlite_") {
+		return fmt.Errorf("invalid table name")
+	}
+	return s.db.Table(tableName).Where("id = ?", recordId).Delete(nil).Error
+}
+
+// InsertVirtualRecord 插入虚拟业务数据集记录
+func (s *DataAdminService) InsertVirtualRecord(datasetId uint, payload map[string]interface{}) error {
+	newData, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	return s.db.Table("raw_data_records").Create(map[string]interface{}{
+		"dataset_id": datasetId,
+		"data":       string(newData),
+	}).Error
+}
+
 type SysSqlTemplate struct {
 	ID    uint64 `json:"id"`
 	Name  string `json:"name"`
