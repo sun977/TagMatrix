@@ -127,6 +127,14 @@
           </div>
           <el-switch v-model="form.debugMode" />
         </div>
+
+        <div class="setting-item flex-between">
+          <div class="item-text">
+            <label>开发者模式</label>
+            <div class="help-text">开启后允许进入系统数据库管理的高级操作界面</div>
+          </div>
+          <el-switch v-model="form.developerMode" />
+        </div>
       </div>
     </div>
 
@@ -181,7 +189,8 @@ const defaultForm = {
   previewRows: 20,
   concurrency: 5,
   retries: 3,
-  debugMode: false
+  debugMode: false,
+  developerMode: false
 }
 
 const form = reactive({ ...defaultForm })
@@ -206,6 +215,7 @@ const loadSettings = async () => {
       form.concurrency = cfg.adv.concurrency || 5
       form.retries = cfg.adv.retries || 3
       form.debugMode = cfg.adv.debug_mode
+      form.developerMode = cfg.adv.developer_mode
     }
   } catch (e) {
     console.error('Failed to load settings:', e)
@@ -237,9 +247,13 @@ const saveSettings = async () => {
     newCfg.adv.concurrency = form.concurrency
     newCfg.adv.retries = form.retries
     newCfg.adv.debug_mode = form.debugMode
+    newCfg.adv.developer_mode = form.developerMode
 
     await SaveAppConfig(newCfg)
     ElMessage.success('设置已保存')
+    setTimeout(() => {
+      window.location.reload()
+    }, 500)
     dialogVisible.value = false
   } catch (e) {
     console.error('Failed to save settings:', e)

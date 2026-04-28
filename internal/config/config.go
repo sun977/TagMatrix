@@ -34,9 +34,10 @@ type SystemConfig struct {
 
 // AdvConfig 定义了高级配置
 type AdvConfig struct {
-	Concurrency int  `json:"concurrency"`
-	Retries     int  `json:"retries"`
-	DebugMode   bool `json:"debug_mode"`
+	Concurrency   int  `json:"concurrency"`
+	Retries       int  `json:"retries"`
+	DebugMode     bool `json:"debug_mode"`
+	DeveloperMode bool `json:"developer_mode"`	// 开发者模式
 }
 
 var (

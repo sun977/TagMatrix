@@ -36,6 +36,12 @@ const routes: Array<RouteRecordRaw> = [
         name: 'TaggedData',
         component: () => import('../views/TaggedData.vue'),
         meta: { title: '打标数据看板', icon: 'DataBoard' }
+      },
+      {
+        path: 'database-admin',
+        name: 'DatabaseAdmin',
+        component: () => import('../views/dataAdmin/DatabaseAdmin.vue'),
+        meta: { title: '数据库管理', icon: 'Platform', requireDev: true }
       }
     ]
   }

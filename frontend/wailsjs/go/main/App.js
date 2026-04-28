@@ -14,12 +14,20 @@ export function CheckTagHasRules(arg1) {
   return window['go']['main']['App']['CheckTagHasRules'](arg1);
 }
 
+export function CreateBackup(arg1) {
+  return window['go']['main']['App']['CreateBackup'](arg1);
+}
+
 export function CreateDataset(arg1, arg2) {
   return window['go']['main']['App']['CreateDataset'](arg1, arg2);
 }
 
 export function CreateTag(arg1) {
   return window['go']['main']['App']['CreateTag'](arg1);
+}
+
+export function DeleteBackup(arg1) {
+  return window['go']['main']['App']['DeleteBackup'](arg1);
 }
 
 export function DeleteDataset(arg1) {
@@ -42,8 +50,16 @@ export function DeleteTaskBatches(arg1) {
   return window['go']['main']['App']['DeleteTaskBatches'](arg1);
 }
 
+export function DeleteVirtualRecord(arg1) {
+  return window['go']['main']['App']['DeleteVirtualRecord'](arg1);
+}
+
 export function DryRunRule(arg1, arg2, arg3) {
   return window['go']['main']['App']['DryRunRule'](arg1, arg2, arg3);
+}
+
+export function ExecuteRawSQL(arg1) {
+  return window['go']['main']['App']['ExecuteRawSQL'](arg1);
 }
 
 export function ExportData(arg1, arg2) {
@@ -98,6 +114,14 @@ export function GetRulesByTag(arg1) {
   return window['go']['main']['App']['GetRulesByTag'](arg1);
 }
 
+export function GetSystemTables() {
+  return window['go']['main']['App']['GetSystemTables']();
+}
+
+export function GetTableData(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetTableData'](arg1, arg2, arg3);
+}
+
 export function GetTagTree() {
   return window['go']['main']['App']['GetTagTree']();
 }
@@ -114,6 +138,10 @@ export function GetTaskLogs(arg1) {
   return window['go']['main']['App']['GetTaskLogs'](arg1);
 }
 
+export function GetVirtualDatasetData(arg1, arg2, arg3) {
+  return window['go']['main']['App']['GetVirtualDatasetData'](arg1, arg2, arg3);
+}
+
 export function ImportData(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['ImportData'](arg1, arg2, arg3, arg4);
 }
@@ -122,8 +150,16 @@ export function ImportDatasetWithRules(arg1) {
   return window['go']['main']['App']['ImportDatasetWithRules'](arg1);
 }
 
+export function ImportExternalDatabase() {
+  return window['go']['main']['App']['ImportExternalDatabase']();
+}
+
 export function ImportTags(arg1) {
   return window['go']['main']['App']['ImportTags'](arg1);
+}
+
+export function ListBackups() {
+  return window['go']['main']['App']['ListBackups']();
 }
 
 export function ListDatasets() {
@@ -132,6 +168,10 @@ export function ListDatasets() {
 
 export function MoveTag(arg1, arg2) {
   return window['go']['main']['App']['MoveTag'](arg1, arg2);
+}
+
+export function RestoreDatabase(arg1) {
+  return window['go']['main']['App']['RestoreDatabase'](arg1);
 }
 
 export function RollbackTask(arg1) {
@@ -156,4 +196,8 @@ export function UpdateDataset(arg1, arg2, arg3) {
 
 export function UpdateTag(arg1) {
   return window['go']['main']['App']['UpdateTag'](arg1);
+}
+
+export function UpdateVirtualRecord(arg1, arg2) {
+  return window['go']['main']['App']['UpdateVirtualRecord'](arg1, arg2);
 }

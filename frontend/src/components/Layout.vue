@@ -68,10 +68,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onUnmounted } from 'vue'
+import { computed, ref, onUnmounted, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 // @ts-ignore: Vetur / TS plugin issue with script setup
 import SettingsDialog from './SettingsDialog.vue'
+import { GetAppConfig } from '../../wailsjs/go/main/App'
+import { config } from '../../wailsjs/go/models'
 
 const router = useRouter()
 
@@ -79,11 +81,24 @@ const appVersion = __APP_VERSION__
 const authorName = __APP_AUTHOR__
 
 const isSettingsOpen = ref(false)
+const appConfig = ref<config.AppConfig | null>(null)
+
+onMounted(async () => {
+  try {
+    appConfig.value = await GetAppConfig()
+  } catch (e) {
+    console.error('Failed to load app config in Layout', e)
+  }
+})
 
 // 过滤出要在菜单中显示的路由
 const menuRoutes = computed(() => {
   const mainRoute = router.options.routes.find(r => r.path === '/')
-  return mainRoute?.children?.filter(r => r.meta && r.meta.title) || []
+  const allRoutes = mainRoute?.children?.filter(r => r.meta && r.meta.title) || []
+  if (appConfig.value && appConfig.value.adv && appConfig.value.adv.developer_mode) {
+    return allRoutes
+  }
+  return allRoutes.filter(r => !r.meta?.requireDev)
 })
 
 const openSettings = () => {

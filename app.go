@@ -14,6 +14,7 @@ import (
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
 	"TagMatrix/internal/service/aiengine"
+	"TagMatrix/internal/service/dataadmin"
 	"TagMatrix/internal/service/dataimport"
 	"TagMatrix/internal/service/dataset"
 	"TagMatrix/internal/service/taglogic"
@@ -30,6 +31,8 @@ type App struct {
 	tagLogic   *taglogic.TagLogicService
 	taskEngine *taskengine.TaskEngineService
 	aiEngine   *aiengine.AIEngineService
+	dataAdmin  *dataadmin.DataAdminService
+	backupSvc  *dataadmin.BackupService
 }
 
 // NewApp creates a new App application struct
@@ -83,6 +86,8 @@ func (a *App) startup(ctx context.Context) {
 	a.tagLogic = taglogic.NewTagLogicService()
 	a.taskEngine = taskengine.NewTaskEngineService(ctx)
 	a.aiEngine = aiengine.NewAIEngineService()
+	a.dataAdmin = dataadmin.NewDataAdminService(model.DB)
+	a.backupSvc = dataadmin.NewBackupService(model.DB, appDir)
 }
 
 // ----------------- Config API -----------------
@@ -845,4 +850,65 @@ func (a *App) ExportTaskLogsCSV(batchID uint64) (string, error) {
 
 func (a *App) ChatWithAI(message string) (string, error) {
 	return a.aiEngine.ChatWithAI(a.ctx, message)
+}
+
+// ----------------- Data Admin API -----------------
+
+func (a *App) ExecuteRawSQL(query string) (*dataadmin.RawSQLResult, error) {
+	return a.dataAdmin.ExecuteRawSQL(query)
+}
+
+func (a *App) GetSystemTables() ([]string, error) {
+	return a.dataAdmin.GetSystemTables()
+}
+
+func (a *App) GetTableData(tableName string, offset, limit int) (*dataadmin.PagedTableData, error) {
+	return a.dataAdmin.GetTableData(tableName, offset, limit)
+}
+
+func (a *App) GetVirtualDatasetData(datasetId uint, offset, limit int) (*dataadmin.PagedTableData, error) {
+	return a.dataAdmin.GetVirtualDatasetData(datasetId, offset, limit)
+}
+
+func (a *App) UpdateVirtualRecord(recordId uint, payload map[string]interface{}) error {
+	return a.dataAdmin.UpdateVirtualRecord(recordId, payload)
+}
+
+func (a *App) DeleteVirtualRecord(recordId uint) error {
+	return a.dataAdmin.DeleteVirtualRecord(recordId)
+}
+
+// ----------------- Backup Service API -----------------
+
+func (a *App) ListBackups() ([]dataadmin.BackupInfo, error) {
+	return a.backupSvc.ListBackups()
+}
+
+func (a *App) CreateBackup(note string) error {
+	return a.backupSvc.CreateBackup(note)
+}
+
+func (a *App) DeleteBackup(backupPath string) error {
+	return a.backupSvc.DeleteBackup(backupPath)
+}
+
+func (a *App) RestoreDatabase(backupPath string) error {
+	return a.backupSvc.RestoreDatabase(backupPath)
+}
+
+func (a *App) ImportExternalDatabase() error {
+	filepath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "选择要导入的数据库文件",
+		Filters: []runtime.FileFilter{
+			{DisplayName: "SQLite 数据库 (*.db)", Pattern: "*.db"},
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to open file dialog: %v", err)
+	}
+	if filepath == "" {
+		return fmt.Errorf("cancelled")
+	}
+
+	return a.backupSvc.RestoreDatabase(filepath)
 }

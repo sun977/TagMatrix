@@ -24,6 +24,7 @@ export namespace config {
 	    concurrency: number;
 	    retries: number;
 	    debug_mode: boolean;
+	    developer_mode: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AdvConfig(source);
@@ -34,6 +35,7 @@ export namespace config {
 	        this.concurrency = source["concurrency"];
 	        this.retries = source["retries"];
 	        this.debug_mode = source["debug_mode"];
+	        this.developer_mode = source["developer_mode"];
 	    }
 	}
 	export class SystemConfig {
@@ -87,6 +89,67 @@ export namespace config {
 		    }
 		    return a;
 		}
+	}
+
+}
+
+export namespace dataadmin {
+	
+	export class BackupInfo {
+	    name: string;
+	    path: string;
+	    size: number;
+	    created_at: string;
+	    note: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BackupInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.path = source["path"];
+	        this.size = source["size"];
+	        this.created_at = source["created_at"];
+	        this.note = source["note"];
+	    }
+	}
+	export class PagedTableData {
+	    columns: string[];
+	    rows: any[];
+	    total: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new PagedTableData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.columns = source["columns"];
+	        this.rows = source["rows"];
+	        this.total = source["total"];
+	    }
+	}
+	export class RawSQLResult {
+	    columns: string[];
+	    rows: any[];
+	    affected: number;
+	    duration: string;
+	    is_select: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new RawSQLResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.columns = source["columns"];
+	        this.rows = source["rows"];
+	        this.affected = source["affected"];
+	        this.duration = source["duration"];
+	        this.is_select = source["is_select"];
+	    }
 	}
 
 }

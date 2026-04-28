@@ -9,10 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@codemirror/lang-sql": "^6.10.0",
     "@element-plus/icons-vue": "^2.3.2",
     "element-plus": "^2.13.7",
     "pinia": "^3.0.4",
     "vue": "^3.2.37",
+    "vue-codemirror": "^6.1.1",
     "vue-router": "^5.0.6"
   },
   "devDependencies": {
