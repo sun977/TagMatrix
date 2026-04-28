@@ -26,6 +26,8 @@ export function DeleteRawData(arg1:Array<number>):Promise<void>;
 
 export function DeleteRule(arg1:number):Promise<void>;
 
+export function DeleteSqlTemplate(arg1:number):Promise<void>;
+
 export function DeleteTag(arg1:number):Promise<void>;
 
 export function DeleteTaskBatches(arg1:Array<number>):Promise<void>;
@@ -61,6 +63,8 @@ export function GetRawDataList(arg1:number,arg2:number,arg3:number,arg4:string,a
 export function GetRulesByDataset(arg1:number):Promise<Array<model.SysMatchRule>>;
 
 export function GetRulesByTag(arg1:number):Promise<Array<model.SysMatchRule>>;
+
+export function GetSqlTemplates():Promise<Array<dataadmin.SysSqlTemplate>>;
 
 export function GetSystemTables():Promise<Array<string>>;
 
@@ -99,6 +103,8 @@ export function RunTaggingTask(arg1:number,arg2:Array<number>,arg3:string,arg4:b
 export function SaveAppConfig(arg1:config.AppConfig):Promise<void>;
 
 export function SaveRule(arg1:model.SysMatchRule):Promise<void>;
+
+export function SaveSqlTemplate(arg1:number,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateDataset(arg1:number,arg2:string,arg3:string):Promise<void>;
 

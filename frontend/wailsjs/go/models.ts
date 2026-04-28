@@ -151,6 +151,22 @@ export namespace dataadmin {
 	        this.is_select = source["is_select"];
 	    }
 	}
+	export class SysSqlTemplate {
+	    id: number;
+	    name: string;
+	    query: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SysSqlTemplate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.query = source["query"];
+	    }
+	}
 
 }
 

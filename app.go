@@ -878,6 +878,18 @@ func (a *App) DeleteVirtualRecord(recordId uint) error {
 	return a.dataAdmin.DeleteVirtualRecord(recordId)
 }
 
+func (a *App) GetSqlTemplates() ([]dataadmin.SysSqlTemplate, error) {
+	return a.dataAdmin.GetSqlTemplates()
+}
+
+func (a *App) SaveSqlTemplate(id uint64, name, query string) error {
+	return a.dataAdmin.SaveSqlTemplate(id, name, query)
+}
+
+func (a *App) DeleteSqlTemplate(id uint64) error {
+	return a.dataAdmin.DeleteSqlTemplate(id)
+}
+
 // ----------------- Backup Service API -----------------
 
 func (a *App) ListBackups() ([]dataadmin.BackupInfo, error) {

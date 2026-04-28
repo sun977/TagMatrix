@@ -88,3 +88,10 @@ type SysEntityTag struct {
 	BatchID   uint64 `json:"batch_id" gorm:"index;comment:记录是哪个批次打上的，用于回退"`
 	RuleID    uint64 `json:"rule_id" gorm:"default:0;comment:如果是 auto_rule，记录命中的规则ID"`
 }
+
+// SysSqlTemplate 系统SQL查询模板表
+type SysSqlTemplate struct {
+	BaseModel
+	Name  string `json:"name" gorm:"size:100;not null;comment:模板名称"`
+	Query string `json:"query" gorm:"type:text;not null;comment:SQL 语句"`
+}

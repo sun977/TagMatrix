@@ -226,3 +226,40 @@ func (s *DataAdminService) UpdateVirtualRecord(recordId uint, payload map[string
 func (s *DataAdminService) DeleteVirtualRecord(recordId uint) error {
 	return s.db.Table("raw_data_records").Where("id = ?", recordId).Delete(nil).Error
 }
+
+type SysSqlTemplate struct {
+	ID    uint64 `json:"id"`
+	Name  string `json:"name"`
+	Query string `json:"query"`
+}
+
+// GetSqlTemplates 获取所有保存的SQL模板
+func (s *DataAdminService) GetSqlTemplates() ([]SysSqlTemplate, error) {
+	var templates []SysSqlTemplate
+	err := s.db.Table("sys_sql_templates").Select("id, name, query").Find(&templates).Error
+	return templates, err
+}
+
+// SaveSqlTemplate 保存或更新SQL模板
+func (s *DataAdminService) SaveSqlTemplate(id uint64, name, query string) error {
+	if name == "" || query == "" {
+		return fmt.Errorf("模板名称和查询语句不能为空")
+	}
+
+	if id > 0 {
+		return s.db.Table("sys_sql_templates").Where("id = ?", id).Updates(map[string]interface{}{
+			"name":  name,
+			"query": query,
+		}).Error
+	}
+
+	return s.db.Table("sys_sql_templates").Create(map[string]interface{}{
+		"name":  name,
+		"query": query,
+	}).Error
+}
+
+// DeleteSqlTemplate 删除SQL模板
+func (s *DataAdminService) DeleteSqlTemplate(id uint64) error {
+	return s.db.Table("sys_sql_templates").Where("id = ?", id).Delete(nil).Error
+}

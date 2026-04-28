@@ -1,21 +1,28 @@
 <template>
   <div class="database-admin-container">
     <div class="page-header">
-      <div class="header-left">
-        <h2>系统数据库管理 <el-tag type="danger" effect="dark" size="small">开发者模式</el-tag></h2>
-        <p class="subtitle">高危操作：此界面提供对底层 SQLite 数据库及系统文件的直接控制。</p>
+      <div class="header-top">
+        <h2>系统数据库管理</h2>
+        <span class="dev-mode-text">开发者模式</span>
       </div>
+      <el-alert
+        v-if="showWarning"
+        title="注意：此界面提供对底层 SQLite 数据库及系统文件的直接控制。"
+        type="warning"
+        show-icon
+        @close="showWarning = false"
+      />
     </div>
     
     <div class="page-content">
       <el-tabs v-model="activeTab" class="admin-tabs">
-        <el-tab-pane label="SQL 查询终端" name="sql">
+        <el-tab-pane label="SQL查询终端" name="sql">
           <SqlConsole />
         </el-tab-pane>
-        <el-tab-pane label="可视化表结构与数据" name="table">
+        <el-tab-pane label="表结构与数据管理" name="table">
           <TableExplorer />
         </el-tab-pane>
-        <el-tab-pane label="备份与还原" name="backup">
+        <el-tab-pane label="备份与还原中心" name="backup">
           <BackupRestore />
         </el-tab-pane>
       </el-tabs>
@@ -30,6 +37,7 @@ import TableExplorer from './TableExplorer.vue'
 import BackupRestore from './BackupRestore.vue'
 
 const activeTab = ref('sql')
+const showWarning = ref(true)
 </script>
 
 <style scoped lang="scss">
@@ -44,25 +52,25 @@ const activeTab = ref('sql')
 
   .page-header {
     margin-bottom: 24px;
-    padding: 16px;
-    background-color: #fff2f0;
-    border: 1px solid #ffccc7;
-    border-radius: var(--tm-border-radius-md);
 
-    .header-left {
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+
       h2 {
-        margin: 0 0 8px;
-        font-size: 20px;
-        color: #cf1322;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .subtitle {
         margin: 0;
-        font-size: 14px;
-        color: #cf1322;
-        opacity: 0.8;
+        font-size: 20px;
+        color: var(--tm-text-primary);
+      }
+
+      .dev-mode-text {
+        font-size: 13px;
+        color: var(--tm-text-secondary);
+        background-color: var(--tm-bg-hover);
+        padding: 4px 12px;
+        border-radius: 12px;
       }
     }
   }

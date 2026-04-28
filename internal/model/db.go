@@ -44,5 +44,6 @@ func autoMigrate() error {
 		&TagTaskBatch{},
 		&TagTaskLog{},
 		&SysEntityTag{},
+		&SysSqlTemplate{},
 	)
 }

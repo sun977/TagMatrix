@@ -42,6 +42,10 @@ export function DeleteRule(arg1) {
   return window['go']['main']['App']['DeleteRule'](arg1);
 }
 
+export function DeleteSqlTemplate(arg1) {
+  return window['go']['main']['App']['DeleteSqlTemplate'](arg1);
+}
+
 export function DeleteTag(arg1) {
   return window['go']['main']['App']['DeleteTag'](arg1);
 }
@@ -112,6 +116,10 @@ export function GetRulesByDataset(arg1) {
 
 export function GetRulesByTag(arg1) {
   return window['go']['main']['App']['GetRulesByTag'](arg1);
+}
+
+export function GetSqlTemplates() {
+  return window['go']['main']['App']['GetSqlTemplates']();
 }
 
 export function GetSystemTables() {
@@ -188,6 +196,10 @@ export function SaveAppConfig(arg1) {
 
 export function SaveRule(arg1) {
   return window['go']['main']['App']['SaveRule'](arg1);
+}
+
+export function SaveSqlTemplate(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveSqlTemplate'](arg1, arg2, arg3);
 }
 
 export function UpdateDataset(arg1, arg2, arg3) {

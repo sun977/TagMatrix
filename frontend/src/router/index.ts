@@ -41,7 +41,7 @@ const routes: Array<RouteRecordRaw> = [
         path: 'database-admin',
         name: 'DatabaseAdmin',
         component: () => import('../views/dataAdmin/DatabaseAdmin.vue'),
-        meta: { title: '数据库管理', icon: 'Platform', requireDev: true }
+        meta: { title: '数据库管理', icon: 'Coin', requireDev: true }
       }
     ]
   }
