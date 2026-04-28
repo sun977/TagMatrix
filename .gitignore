@@ -46,3 +46,7 @@ release/
 
 # Logs
 *.log
+
+# db
+data.db
+data-bak.db
