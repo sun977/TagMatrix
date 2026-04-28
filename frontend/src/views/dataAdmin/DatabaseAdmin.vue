@@ -1,18 +1,22 @@
 <template>
-  <div class="database-admin-container">
-    <div class="page-header">
-      <div class="header-top">
-        <h2>系统数据库管理</h2>
-        <span class="dev-mode-text">开发者模式</span>
+  <div class="page-container">
+    <header class="page-header">
+      <div class="header-left">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+          <h1 class="page-title" style="margin: 0;">系统数据库管理</h1>
+          <span class="dev-mode-text">开发者模式</span>
+        </div>
+        <p class="page-subtitle">管理底层 SQLite 数据库及系统文件，支持 SQL 查询、表结构浏览和备份还原。</p>
       </div>
       <el-alert
         v-if="showWarning"
-        title="注意：此界面提供对底层 SQLite 数据库及系统文件的直接控制。"
+        title="警告：此界面具有直接修改底层数据的最高权限，请谨慎操作以免造成数据损坏或丢失。"
         type="warning"
         show-icon
         @close="showWarning = false"
+        style="margin-top: 16px;"
       />
-    </div>
+    </header>
     
     <div class="page-content">
       <el-tabs v-model="activeTab" class="admin-tabs">
@@ -41,49 +45,53 @@ const showWarning = ref(true)
 </script>
 
 <style scoped lang="scss">
-.database-admin-container {
-  height: 100%;
+.page-container {
+  padding: 24px 32px 40px;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 24px;
   box-sizing: border-box;
-  background-color: var(--tm-bg-main);
   overflow: hidden;
 
   .page-header {
     margin-bottom: 24px;
+    flex-shrink: 0;
 
-    .header-top {
+    .header-left {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
+      flex-direction: column;
+    }
 
-      h2 {
-        margin: 0;
-        font-size: 20px;
-        color: var(--tm-text-primary);
-      }
+    .page-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--tm-text-primary);
+    }
 
-      .dev-mode-text {
-        font-size: 13px;
-        color: var(--tm-text-secondary);
-        background-color: var(--tm-bg-hover);
-        padding: 4px 12px;
-        border-radius: 12px;
-      }
+    .page-subtitle {
+      font-size: 14px;
+      color: var(--tm-text-secondary);
+      margin: 0;
+    }
+
+    .dev-mode-text {
+      font-size: 13px;
+      color: #e6a23c;
+      background-color: #fdf5e6;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid #faecd8;
     }
   }
 
   .page-content {
     flex: 1;
-    background-color: var(--tm-bg-card);
-    border-radius: var(--tm-border-radius-md);
+    background-color: #ffffff;
+    border-radius: var(--tm-border-radius);
     border: 1px solid var(--tm-border-color);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
   }
 
   .admin-tabs {
@@ -94,7 +102,7 @@ const showWarning = ref(true)
     :deep(.el-tabs__header) {
       margin-bottom: 0;
       padding: 0 20px;
-      background-color: var(--tm-bg-card);
+      background-color: #ffffff;
       border-bottom: 1px solid var(--tm-border-color);
     }
     
