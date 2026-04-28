@@ -1,6 +1,6 @@
 <template>
   <div class="sql-console-container">
-    <div class="editor-section">
+    <div class="editor-section" :style="{ height: editorHeight + 'px' }">
       <div class="editor-toolbar">
         <div class="toolbar-left">
           <el-button type="primary" @click="executeSQL" :loading="isExecuting">
@@ -9,12 +9,35 @@
           <el-button @click="clearSQL">
             <el-icon><Delete /></el-icon> 清空
           </el-button>
-          <!-- <el-button @click="formatSQL">
-            <el-icon><Document /></el-icon> 格式化
-          </el-button> -->
           <el-button @click="openSaveDialog">
             <el-icon><Download /></el-icon> 保存查询
           </el-button>
+
+          <el-dropdown @command="handleTemplateCommand" trigger="click" style="margin-left: 8px;">
+            <el-button type="info" plain>
+              常用模板 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            </el-button>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item 
+                  v-for="tpl in sqlTemplates" 
+                  :key="tpl.id" 
+                  :command="tpl"
+                >
+                  <div class="tpl-dropdown-item">
+                    <span class="tpl-name">{{ tpl.name }}</span>
+                    <el-button link type="danger" size="small" @click.stop="deleteTemplate(tpl.id)" style="margin-left: auto; padding: 0;">
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </div>
+                </el-dropdown-item>
+                <el-dropdown-item v-if="sqlTemplates.length === 0" disabled>
+                  暂无保存的模板
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+
         </div>
       </div>
       <div class="codemirror-wrapper">
@@ -31,32 +54,11 @@
       </div>
     </div>
     
-    <div class="bottom-section">
-      <div class="templates-panel">
-        <div class="panel-header">
-          常用 SQL 模板
-        </div>
-        <div class="templates-list">
-          <div 
-            v-for="tpl in sqlTemplates" 
-            :key="tpl.id" 
-            class="template-item"
-            @click="useTemplate(tpl)"
-          >
-            <div class="tpl-content">
-              <div class="tpl-name">{{ tpl.name }}</div>
-              <div class="tpl-query">{{ tpl.query }}</div>
-            </div>
-            <div class="tpl-actions" @click.stop>
-              <el-button link type="danger" size="small" @click="deleteTemplate(tpl.id)">
-                <el-icon><Delete /></el-icon>
-              </el-button>
-            </div>
-          </div>
-          <el-empty v-if="sqlTemplates.length === 0" description="暂无保存的模板" :image-size="60" />
-        </div>
-      </div>
+    <div class="resize-handle" @mousedown="startDrag">
+      <div class="handle-line"></div>
+    </div>
 
+    <div class="bottom-section">
       <div class="result-panel">
         <div class="panel-header result-header-row">
           <div class="result-title">
@@ -117,8 +119,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { ArrowDown } from '@element-plus/icons-vue'
 import { Codemirror } from 'vue-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { ExecuteRawSQL, GetSqlTemplates, SaveSqlTemplate, DeleteSqlTemplate } from '../../../wailsjs/go/main/App'
@@ -134,6 +137,47 @@ const sqlTemplates = ref<any[]>([])
 const saveDialogVisible = ref(false)
 const isSaving = ref(false)
 const saveForm = ref({ name: '' })
+
+const editorHeight = ref(300)
+let isDragging = false
+let startY = 0
+let startHeight = 0
+
+const startDrag = (e: MouseEvent) => {
+  isDragging = true
+  startY = e.clientY
+  startHeight = editorHeight.value
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+  document.body.style.cursor = 'row-resize'
+  document.body.style.userSelect = 'none'
+}
+
+const onDrag = (e: MouseEvent) => {
+  if (!isDragging) return
+  const dy = e.clientY - startY
+  const newHeight = startHeight + dy
+  if (newHeight > 100 && newHeight < window.innerHeight - 200) {
+    editorHeight.value = newHeight
+  }
+}
+
+const stopDrag = () => {
+  isDragging = false
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+  document.body.style.cursor = ''
+  document.body.style.userSelect = ''
+}
+
+onUnmounted(() => {
+  document.removeEventListener('mousemove', onDrag)
+  document.removeEventListener('mouseup', stopDrag)
+})
+
+const handleTemplateCommand = (tpl: any) => {
+  useTemplate(tpl)
+}
 
 const loadTemplates = async () => {
   try {
@@ -224,11 +268,11 @@ onMounted(() => {
   height: 100%;
   
   .editor-section {
-    flex: 0 0 40%;
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid var(--tm-border-color);
     background-color: var(--tm-bg-card);
+    flex-shrink: 0;
     
     .editor-toolbar {
       display: flex;
@@ -240,6 +284,7 @@ onMounted(() => {
       .toolbar-left {
         display: flex;
         gap: 8px;
+        align-items: center;
       }
     }
     
@@ -259,79 +304,32 @@ onMounted(() => {
       }
     }
   }
+
+  .resize-handle {
+    height: 10px;
+    background-color: var(--tm-bg-main);
+    cursor: row-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background-color: #e4e7ed;
+    }
+
+    .handle-line {
+      width: 40px;
+      height: 4px;
+      background-color: #dcdfe6;
+      border-radius: 2px;
+    }
+  }
   
   .bottom-section {
     flex: 1;
     display: flex;
     overflow: hidden;
-    
-    .templates-panel {
-      flex: 0 0 280px;
-      border-right: 1px solid var(--tm-border-color);
-      display: flex;
-      flex-direction: column;
-      background-color: var(--tm-bg-main);
-      
-      .panel-header {
-        padding: 12px 16px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--tm-text-primary);
-        border-bottom: 1px solid var(--tm-border-color);
-        background-color: var(--tm-bg-hover);
-      }
-      
-      .templates-list {
-        flex: 1;
-        overflow-y: auto;
-        padding: 8px 0;
-        
-        .template-item {
-          padding: 12px 16px;
-          cursor: pointer;
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          transition: background-color 0.2s;
-          border-bottom: 1px solid var(--tm-border-color-light);
-          
-          &:hover {
-            background-color: var(--tm-bg-hover);
-          }
-          
-          .tpl-content {
-            flex: 1;
-            overflow: hidden;
-            
-            .tpl-name {
-              font-size: 14px;
-              font-weight: 500;
-              color: var(--tm-text-primary);
-              margin-bottom: 4px;
-            }
-            
-            .tpl-query {
-              font-size: 12px;
-              color: var(--tm-text-secondary);
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
-              font-family: monospace;
-            }
-          }
-          
-          .tpl-actions {
-            margin-left: 8px;
-            opacity: 0;
-            transition: opacity 0.2s;
-          }
-          
-          &:hover .tpl-actions {
-            opacity: 1;
-          }
-        }
-      }
-    }
     
     .result-panel {
       flex: 1;
@@ -395,6 +393,22 @@ onMounted(() => {
         }
       }
     }
+  }
+}
+
+.tpl-dropdown-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 200px;
+
+  .tpl-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--tm-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 </style>
