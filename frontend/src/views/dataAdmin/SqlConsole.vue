@@ -43,6 +43,14 @@
       </div>
 
       <div class="codemirror-wrapper" :class="{ 'is-fullscreen': isFullscreen }">
+        <div v-if="isFullscreen" class="fullscreen-header">
+          <div class="header-title">
+            <el-icon><Monitor /></el-icon> SQL 编辑器 (全屏模式)
+          </div>
+          <el-button link @click="toggleFullscreen" class="exit-btn">
+            退出
+          </el-button>
+        </div>
         <codemirror
           v-model="sqlQuery"
           placeholder="请输入 SQL 语句..."
@@ -192,7 +200,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { List, Search, VideoPlay, Delete, Download, CaretRight, Document, FolderAdd, DocumentCopy, Clock, FullScreen, Monitor, Timer } from '@element-plus/icons-vue'
+import { List, Search, VideoPlay, Delete, Download, CaretRight, Document, FolderAdd, DocumentCopy, Clock, FullScreen, Monitor, Timer, Close } from '@element-plus/icons-vue'
 import { Codemirror } from 'vue-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { tags as t } from '@lezer/highlight'
@@ -249,7 +257,22 @@ const activeExtensions = computed(() => {
 const isFullscreen = ref(false)
 const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value
+  if (isFullscreen.value) {
+    window.addEventListener('keydown', handleEsc)
+  } else {
+    window.removeEventListener('keydown', handleEsc)
+  }
 }
+
+const handleEsc = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    toggleFullscreen()
+  }
+}
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEsc)
+})
 
 // 格式化
 const formatSQL = () => {
@@ -570,6 +593,36 @@ onMounted(() => {
         z-index: 9999;
         height: 100vh !important;
         background: #fff;
+        display: flex;
+        flex-direction: column;
+        
+        .fullscreen-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 16px;
+          background-color: var(--tm-bg-card);
+          border-bottom: 1px solid var(--tm-border-color);
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+          
+          .header-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--tm-text-primary);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          
+          .exit-btn {
+            font-size: 14px;
+            color: var(--tm-text-secondary);
+            
+            &:hover {
+              color: var(--el-color-danger);
+            }
+          }
+        }
       }
       
       :deep(.cm-editor) {
