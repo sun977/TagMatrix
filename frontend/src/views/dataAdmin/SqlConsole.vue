@@ -28,7 +28,10 @@
       
       <div class="editor-header">
         <div class="editor-title">
-          <el-icon><Setting /></el-icon> SQL 编辑器
+          SQL 编辑器
+          <span v-if="lastDuration" class="duration-info">
+            耗时: {{ lastDuration }}
+          </span>
         </div>
         <div class="editor-options">
           <span class="option-label">语法高亮</span>
@@ -54,17 +57,10 @@
     </div>
     
     <div class="resize-handle" @mousedown="startDrag">
-      <div class="handle-line"></div>
     </div>
 
     <div class="bottom-section">
       <div class="result-panel">
-        <div class="panel-header result-header-row">
-          <div class="result-title">
-            <el-icon><List /></el-icon> 查询结果
-            <span v-if="lastDuration" class="duration-badge">耗时: {{ lastDuration }}</span>
-          </div>
-        </div>
         <div class="result-content" v-loading="isExecuting">
           <el-alert
             v-if="errorMessage"
@@ -196,7 +192,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { List, Search, VideoPlay, Delete, Download, CaretRight, Document, FolderAdd, DocumentCopy, Clock, FullScreen, Setting } from '@element-plus/icons-vue'
+import { List, Search, VideoPlay, Delete, Download, CaretRight, Document, FolderAdd, DocumentCopy, Clock, FullScreen, Monitor, Timer } from '@element-plus/icons-vue'
 import { Codemirror } from 'vue-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { tags as t } from '@lezer/highlight'
@@ -526,13 +522,26 @@ onMounted(() => {
         display: flex;
         align-items: center;
         gap: 6px;
+
+        .duration-info {
+          margin-left: 8px;
+          font-size: 12px;
+          font-weight: normal;
+          color: var(--el-color-success);
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          background: var(--el-color-success-light-9);
+          padding: 2px 8px;
+          border-radius: 4px;
+        }
       }
       
       .editor-options {
         display: flex;
         align-items: center;
         gap: 12px;
-        
+
         .option-label {
           font-size: 13px;
           color: var(--tm-text-secondary);
@@ -577,23 +586,13 @@ onMounted(() => {
   }
 
   .resize-handle {
-    height: 10px;
+    height: 6px;
     background-color: var(--tm-bg-main);
     cursor: row-resize;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     transition: background-color 0.2s;
-
+    
     &:hover {
-      background-color: #e4e7ed;
-    }
-
-    .handle-line {
-      width: 40px;
-      height: 4px;
-      background-color: #dcdfe6;
-      border-radius: 2px;
+      background-color: var(--el-color-primary-light-8);
     }
   }
   
