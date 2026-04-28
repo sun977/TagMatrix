@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
 import Layout from '../components/Layout.vue'
+import { GetAppConfig } from '../../wailsjs/go/main/App'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -51,6 +52,23 @@ const router = createRouter({
   // Wails 推荐使用 Hash 模式
   history: createWebHashHistory(),
   routes
+})
+
+router.beforeEach(async (to, from, next) => {
+  if (to.meta.requireDev) {
+    try {
+      const cfg = await GetAppConfig()
+      if (cfg && cfg.adv && cfg.adv.developer_mode) {
+        next()
+      } else {
+        next('/dashboard')
+      }
+    } catch (e) {
+      next('/dashboard')
+    }
+  } else {
+    next()
+  }
 })
 
 export default router

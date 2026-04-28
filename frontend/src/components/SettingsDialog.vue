@@ -162,6 +162,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
+  (e: 'saved'): void
 }>()
 
 const dialogVisible = ref(props.modelValue)
@@ -251,9 +252,8 @@ const saveSettings = async () => {
 
     await SaveAppConfig(newCfg)
     ElMessage.success('设置已保存')
-    setTimeout(() => {
-      window.location.reload()
-    }, 500)
+    
+    emit('saved')
     dialogVisible.value = false
   } catch (e) {
     console.error('Failed to save settings:', e)

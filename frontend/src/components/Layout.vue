@@ -63,7 +63,7 @@
     </div> -->
 
     <!-- 全局设置模态框 -->
-    <SettingsDialog v-model="isSettingsOpen" />
+    <SettingsDialog v-model="isSettingsOpen" @saved="handleSettingsSaved" />
   </div>
 </template>
 
@@ -103,6 +103,18 @@ const menuRoutes = computed(() => {
 
 const openSettings = () => {
   isSettingsOpen.value = true
+}
+
+const handleSettingsSaved = async () => {
+  try {
+    appConfig.value = await GetAppConfig()
+    // 权限回收判断：如果关了开发者模式且当前在数据库管理页，丝滑退回首页
+    if (!appConfig.value?.adv?.developer_mode && router.currentRoute.value.meta.requireDev) {
+      router.replace('/dashboard')
+    }
+  } catch (e) {
+    console.error('Failed to reload app config after save', e)
+  }
 }
 
 const toggleAIPanel = () => {
