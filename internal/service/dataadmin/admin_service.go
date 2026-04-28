@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"TagMatrix/internal/model"
+
 	"gorm.io/gorm"
 )
 
@@ -263,16 +265,10 @@ func (s *DataAdminService) InsertVirtualRecord(datasetId uint, payload map[strin
 	}).Error
 }
 
-type SysSqlTemplate struct {
-	ID    uint64 `json:"id"`
-	Name  string `json:"name"`
-	Query string `json:"query"`
-}
-
 // GetSqlTemplates 获取所有保存的SQL模板
-func (s *DataAdminService) GetSqlTemplates() ([]SysSqlTemplate, error) {
-	var templates []SysSqlTemplate
-	err := s.db.Table("sys_sql_templates").Select("id, name, query").Find(&templates).Error
+func (s *DataAdminService) GetSqlTemplates() ([]model.SysSqlTemplate, error) {
+	var templates []model.SysSqlTemplate
+	err := s.db.Find(&templates).Error
 	return templates, err
 }
 
@@ -283,19 +279,19 @@ func (s *DataAdminService) SaveSqlTemplate(id uint64, name, query string) error 
 	}
 
 	if id > 0 {
-		return s.db.Table("sys_sql_templates").Where("id = ?", id).Updates(map[string]interface{}{
+		return s.db.Model(&model.SysSqlTemplate{}).Where("id = ?", id).Updates(map[string]interface{}{
 			"name":  name,
 			"query": query,
 		}).Error
 	}
 
-	return s.db.Table("sys_sql_templates").Create(map[string]interface{}{
-		"name":  name,
-		"query": query,
+	return s.db.Create(&model.SysSqlTemplate{
+		Name:  name,
+		Query: query,
 	}).Error
 }
 
 // DeleteSqlTemplate 删除SQL模板
 func (s *DataAdminService) DeleteSqlTemplate(id uint64) error {
-	return s.db.Table("sys_sql_templates").Where("id = ?", id).Delete(nil).Error
+	return s.db.Delete(&model.SysSqlTemplate{}, id).Error
 }

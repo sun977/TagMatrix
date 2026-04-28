@@ -894,7 +894,7 @@ func (a *App) DeleteVirtualRecord(recordId uint) error {
 	return a.dataAdmin.DeleteVirtualRecord(recordId)
 }
 
-func (a *App) GetSqlTemplates() ([]dataadmin.SysSqlTemplate, error) {
+func (a *App) GetSqlTemplates() ([]model.SysSqlTemplate, error) {
 	return a.dataAdmin.GetSqlTemplates()
 }
 

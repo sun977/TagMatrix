@@ -66,7 +66,7 @@ export function GetRulesByDataset(arg1:number):Promise<Array<model.SysMatchRule>
 
 export function GetRulesByTag(arg1:number):Promise<Array<model.SysMatchRule>>;
 
-export function GetSqlTemplates():Promise<Array<dataadmin.SysSqlTemplate>>;
+export function GetSqlTemplates():Promise<Array<model.SysSqlTemplate>>;
 
 export function GetSystemTables():Promise<Array<string>>;
 

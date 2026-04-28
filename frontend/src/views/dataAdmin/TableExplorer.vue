@@ -118,6 +118,44 @@ const pageSize = ref(50)
 
 const editingCell = ref({ rowId: null, col: '' })
 
+const addRowDialogVisible = ref(false)
+const newRowForm = ref<Record<string, any>>({})
+
+const handleAddRow = () => {
+  newRowForm.value = {}
+  for (const col of columns.value) {
+    if (col !== 'id') {
+      newRowForm.value[col] = ''
+    }
+  }
+  addRowDialogVisible.value = true
+}
+
+const submitAddRow = async () => {
+  loading.value = true
+  try {
+    const payload = { ...newRowForm.value }
+    for (const k in payload) {
+      if (payload[k] === '') {
+        delete payload[k]
+      }
+    }
+    
+    if (tabMode.value === 'system') {
+      await InsertSystemTableRecord(currentTable.value, payload)
+    } else {
+      await InsertVirtualRecord(currentDatasetId.value, payload)
+    }
+    ElMessage.success('新增成功')
+    addRowDialogVisible.value = false
+    fetchData()
+  } catch (e: any) {
+    ElMessage.error(e.message || '新增失败')
+  } finally {
+    loading.value = false
+  }
+}
+
 const loadSidebar = async () => {
   if (tabMode.value === 'system') {
     try {

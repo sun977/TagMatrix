@@ -151,22 +151,6 @@ export namespace dataadmin {
 	        this.is_select = source["is_select"];
 	    }
 	}
-	export class SysSqlTemplate {
-	    id: number;
-	    name: string;
-	    query: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new SysSqlTemplate(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.id = source["id"];
-	        this.name = source["name"];
-	        this.query = source["query"];
-	    }
-	}
 
 }
 
@@ -558,6 +542,46 @@ export namespace model {
 	        this.priority = source["priority"];
 	        this.rule_json = source["rule_json"];
 	        this.is_enabled = source["is_enabled"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SysSqlTemplate {
+	    id: number;
+	    // Go type: time
+	    created_at: any;
+	    // Go type: time
+	    updated_at: any;
+	    name: string;
+	    query: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SysSqlTemplate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.created_at = this.convertValues(source["created_at"], null);
+	        this.updated_at = this.convertValues(source["updated_at"], null);
+	        this.name = source["name"];
+	        this.query = source["query"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

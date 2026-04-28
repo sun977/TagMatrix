@@ -13,30 +13,9 @@
             <el-icon><Download /></el-icon> 保存查询
           </el-button>
 
-          <el-dropdown @command="handleTemplateCommand" trigger="click" style="margin-left: 8px;">
-            <el-button type="info" plain>
-              常用模板 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <el-dropdown-item 
-                  v-for="tpl in sqlTemplates" 
-                  :key="tpl.id" 
-                  :command="tpl"
-                >
-                  <div class="tpl-dropdown-item">
-                    <span class="tpl-name">{{ tpl.name }}</span>
-                    <el-button link type="danger" size="small" @click.stop="deleteTemplate(tpl.id)" style="margin-left: auto; padding: 0;">
-                      <el-icon><Delete /></el-icon>
-                    </el-button>
-                  </div>
-                </el-dropdown-item>
-                <el-dropdown-item v-if="sqlTemplates.length === 0" disabled>
-                  暂无保存的模板
-                </el-dropdown-item>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
+          <el-button @click="openTemplateDialog" type="info" plain style="margin-left: 8px;">
+            常用模板 <el-icon class="el-icon--right"><List /></el-icon>
+          </el-button>
 
         </div>
       </div>
@@ -115,13 +94,62 @@
         </span>
       </template>
     </el-dialog>
+    <!-- 常用模板管理对话框 -->
+    <el-dialog v-model="templateDialogVisible" title="常用 SQL 模板管理" width="700px" destroy-on-close>
+      <div class="template-dialog-toolbar" style="margin-bottom: 16px; display: flex; justify-content: flex-end;">
+        <el-input v-model="templateSearchKeyword" placeholder="模糊搜索模板名称或内容" style="width: 250px" clearable>
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+      </div>
+
+      <el-table :data="filteredTemplates" style="width: 100%" max-height="400" border stripe>
+        <el-table-column prop="name" label="模板名称" width="150" show-overflow-tooltip />
+        <el-table-column prop="query" label="SQL 语句" show-overflow-tooltip>
+          <template #default="scope">
+            <span style="font-family: monospace; font-size: 12px;">{{ scope.row.query }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="200" fixed="right" align="center">
+          <template #default="scope">
+            <el-button type="primary" link size="small" @click="applyTemplate(scope.row)">应用</el-button>
+            <el-button type="warning" link size="small" @click="editTemplate(scope.row)">编辑</el-button>
+            <el-button type="danger" link size="small" @click="deleteTemplate(scope.row.id)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="templateDialogVisible = false">关闭</el-button>
+        </span>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑模板对话框 -->
+    <el-dialog v-model="editTemplateDialogVisible" title="编辑 SQL 模板" width="500px">
+      <el-form :model="editTemplateForm" label-width="80px">
+        <el-form-item label="模板名称">
+          <el-input v-model="editTemplateForm.name" placeholder="请输入模板名称" maxlength="50" show-word-limit />
+        </el-form-item>
+        <el-form-item label="SQL 语句">
+          <el-input v-model="editTemplateForm.query" type="textarea" :rows="6" placeholder="请输入 SQL 语句" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="editTemplateDialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="saveEditTemplate" :loading="isSavingEdit">保存</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { List, Search, VideoPlay, Delete, Download } from '@element-plus/icons-vue'
 import { Codemirror } from 'vue-codemirror'
 import { sql } from '@codemirror/lang-sql'
 import { ExecuteRawSQL, GetSqlTemplates, SaveSqlTemplate, DeleteSqlTemplate } from '../../../wailsjs/go/main/App'
@@ -137,6 +165,58 @@ const sqlTemplates = ref<any[]>([])
 const saveDialogVisible = ref(false)
 const isSaving = ref(false)
 const saveForm = ref({ name: '' })
+
+// 模板管理相关状态
+const templateDialogVisible = ref(false)
+const templateSearchKeyword = ref('')
+const editTemplateDialogVisible = ref(false)
+const isSavingEdit = ref(false)
+const editTemplateForm = ref({ id: 0, name: '', query: '' })
+
+const filteredTemplates = computed(() => {
+  if (!templateSearchKeyword.value) {
+    return sqlTemplates.value
+  }
+  const keyword = templateSearchKeyword.value.toLowerCase()
+  return sqlTemplates.value.filter(tpl => 
+    tpl.name.toLowerCase().includes(keyword) || 
+    tpl.query.toLowerCase().includes(keyword)
+  )
+})
+
+const openTemplateDialog = () => {
+  templateSearchKeyword.value = ''
+  templateDialogVisible.value = true
+}
+
+const applyTemplate = (tpl: any) => {
+  sqlQuery.value = tpl.query
+  templateDialogVisible.value = false
+  ElMessage.success('已应用模板')
+}
+
+const editTemplate = (tpl: any) => {
+  editTemplateForm.value = { ...tpl }
+  editTemplateDialogVisible.value = true
+}
+
+const saveEditTemplate = async () => {
+  if (!editTemplateForm.value.name.trim() || !editTemplateForm.value.query.trim()) {
+    ElMessage.warning('名称和内容不能为空')
+    return
+  }
+  isSavingEdit.value = true
+  try {
+    await SaveSqlTemplate(editTemplateForm.value.id, editTemplateForm.value.name, editTemplateForm.value.query)
+    ElMessage.success('保存成功')
+    editTemplateDialogVisible.value = false
+    loadTemplates()
+  } catch (e: any) {
+    ElMessage.error('保存失败: ' + e.message)
+  } finally {
+    isSavingEdit.value = false
+  }
+}
 
 const editorHeight = ref(300)
 let isDragging = false
