@@ -1,21 +1,23 @@
 <template>
   <div class="page-container">
     <header class="page-header">
-      <div class="header-left">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-          <h1 class="page-title" style="margin: 0;">系统数据库管理</h1>
-          <span class="dev-mode-text">开发者模式</span>
+      <div class="header-top-row">
+        <div class="header-left">
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+            <h1 class="page-title" style="margin: 0;">系统数据库管理</h1>
+            <span class="dev-mode-text">开发者模式</span>
+          </div>
+          <p class="page-subtitle">管理底层 SQLite 数据库及系统文件，支持 SQL 查询、表结构浏览和备份还原。</p>
         </div>
-        <p class="page-subtitle">管理底层 SQLite 数据库及系统文件，支持 SQL 查询、表结构浏览和备份还原。</p>
+        <el-alert
+          v-if="showWarning"
+          title="提示：此界面具有直接修改底层数据的最高权限，请谨慎操作以免造成数据损坏或丢失。"
+          type="warning"
+          show-icon
+          @close="handleWarningClose"
+          class="inline-warning"
+        />
       </div>
-      <el-alert
-        v-if="showWarning"
-        title="警告：此界面具有直接修改底层数据的最高权限，请谨慎操作以免造成数据损坏或丢失。"
-        type="warning"
-        show-icon
-        @close="showWarning = false"
-        style="margin-top: 16px;"
-      />
     </header>
     
     <div class="page-content">
@@ -35,13 +37,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import SqlConsole from './SqlConsole.vue'
 import TableExplorer from './TableExplorer.vue'
 import BackupRestore from './BackupRestore.vue'
 
 const activeTab = ref('sql')
-const showWarning = ref(true)
+const showWarning = ref(false)
+
+onMounted(() => {
+  if (!localStorage.getItem('sys_db_warning_dismissed')) {
+    showWarning.value = true
+  }
+})
+
+const handleWarningClose = () => {
+  showWarning.value = false
+  localStorage.setItem('sys_db_warning_dismissed', 'true')
+}
 </script>
 
 <style scoped lang="scss">
@@ -53,16 +66,31 @@ const showWarning = ref(true)
   box-sizing: border-box;
   overflow: hidden;
 
-  .page-header {
-    margin-bottom: 24px;
-    flex-shrink: 0;
+.page-header {
+  margin-bottom: 24px;
+  flex-shrink: 0;
 
-    .header-left {
-      display: flex;
-      flex-direction: column;
-    }
+  .header-top-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 20px;
+    width: 100%;
+  }
 
-    .page-title {
+  .header-left {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .inline-warning {
+    margin: 0;
+    width: auto;
+    flex-shrink: 1;
+    max-width: 60%;
+  }
+
+  .page-title {
       font-size: 20px;
       font-weight: 600;
       color: var(--tm-text-primary);
