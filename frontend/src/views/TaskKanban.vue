@@ -496,6 +496,26 @@ const fetchBatches = async () => {
       else if (isCompleted) statusText = b.status === 'rolled_back' ? '已回退' : '已完成'
       else if (isFailed) statusText = '失败'
 
+      let timeStr = '-'
+      if (b.finished_at && b.created_at) {
+        const diff = new Date(b.finished_at).getTime() - new Date(b.created_at).getTime()
+        if (diff >= 0) {
+          const seconds = Math.floor(diff / 1000)
+          if (seconds < 60) timeStr = `${seconds > 0 ? seconds : '<1'}秒`
+          else if (seconds < 3600) timeStr = `${Math.floor(seconds/60)}分${seconds%60}秒`
+          else timeStr = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+        }
+      } else if (isRunning && b.created_at) {
+        // 如果还在运行中，计算已运行时间
+        const diff = Date.now() - new Date(b.created_at).getTime()
+        if (diff >= 0) {
+          const seconds = Math.floor(diff / 1000)
+          if (seconds < 60) timeStr = `${seconds > 0 ? seconds : '<1'}秒`
+          else if (seconds < 3600) timeStr = `${Math.floor(seconds/60)}分${seconds%60}秒`
+          else timeStr = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+        }
+      }
+
       return {
         id: b.id,
         name: b.name,
@@ -504,7 +524,7 @@ const fetchBatches = async () => {
         statusText: statusText,
         progress: isCompleted ? 100 : (isRunning ? 0 : 0), // 运行中的进度交给WebSocket推送
         processed: `${b.total_processed} 条`,
-        time: '-',
+        time: timeStr,
         creator: '系统',
         createTime: new Date(b.created_at || Date.now()).toLocaleString(),
         rawTime: new Date(b.created_at || Date.now()).getTime()
@@ -573,6 +593,7 @@ onMounted(() => {
     const batchIndex = taskHistory.value.findIndex(b => b.id === data.batchID)
     if (batchIndex !== -1) {
       const batch = taskHistory.value[batchIndex]
+      const oldStatus = batch.statusType
       batch.statusType = data.status
       
       let statusText = '未知'
@@ -585,7 +606,22 @@ onMounted(() => {
       batch.progress = data.progress
       batch.processed = `${data.processed} 条` // data.total 如果需要可以拼接
 
+      if (data.status === 'running') {
+        const diff = Date.now() - batch.rawTime
+        if (diff >= 0) {
+          const seconds = Math.floor(diff / 1000)
+          if (seconds < 60) batch.time = `${seconds > 0 ? seconds : '<1'}秒`
+          else if (seconds < 3600) batch.time = `${Math.floor(seconds/60)}分${seconds%60}秒`
+          else batch.time = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+        }
+      }
+
       taskHistory.value[batchIndex] = { ...batch }
+      
+      if (oldStatus === 'running' && (data.status === 'completed' || data.status === 'failed')) {
+        // Fetch to get real finished_at time
+        fetchBatches()
+      }
     } else {
       // 也有可能是新创建的任务（刚发起还没重新fetch的）
       if (data.status === 'running' && data.progress === 0) {
