@@ -199,10 +199,40 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { List, Search, VideoPlay, Delete, Download, CaretRight, Document, FolderAdd, DocumentCopy, Clock, FullScreen, Setting } from '@element-plus/icons-vue'
 import { Codemirror } from 'vue-codemirror'
 import { sql } from '@codemirror/lang-sql'
+import { tags as t } from '@lezer/highlight'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { EditorView } from '@codemirror/view'
 import { ExecuteRawSQL, GetSqlTemplates, SaveSqlTemplate, DeleteSqlTemplate } from '../../../wailsjs/go/main/App'
 
 const sqlQuery = ref('SELECT * FROM sys_datasets;')
-const extensions = [sql()]
+
+const customTheme = EditorView.theme({
+  "&": {
+    fontSize: "15px",
+  },
+  ".cm-content": {
+    fontFamily: "'Consolas', 'Courier New', monospace",
+    letterSpacing: "0.5px",
+    lineHeight: "1.6"
+  }
+})
+
+const myHighlightStyle = HighlightStyle.define([
+  { tag: t.keyword, color: '#005cc5', fontWeight: 'bold' }, 
+  { tag: t.operator, color: '#d73a49', fontWeight: 'bold' }, 
+  { tag: t.string, color: '#22863a', fontWeight: 'bold' }, 
+  { tag: t.number, color: '#005cc5', fontWeight: 'bold' }, 
+  { tag: t.comment, color: '#6a737d', fontStyle: 'italic' }, 
+  { tag: t.punctuation, color: '#24292e', fontWeight: 'bold' }, 
+  { tag: t.variableName, color: '#e36209', fontWeight: 'bold' }, 
+  { tag: t.function(t.variableName), color: '#6f42c1', fontWeight: 'bold' }, 
+  { tag: t.typeName, color: '#6f42c1', fontWeight: 'bold' },
+  { tag: t.null, color: '#005cc5', fontWeight: 'bold' }
+])
+
+const baseExtensions = [sql(), customTheme]
+const highlightExtensions = [syntaxHighlighting(myHighlightStyle)]
+
 const isExecuting = ref(false)
 const errorMessage = ref('')
 const resultData = ref<any>(null)
@@ -216,7 +246,7 @@ const saveForm = ref({ name: '' })
 // 语法高亮
 const syntaxHighlight = ref(true)
 const activeExtensions = computed(() => {
-  return syntaxHighlight.value ? extensions : []
+  return syntaxHighlight.value ? [...baseExtensions, ...highlightExtensions] : baseExtensions
 })
 
 // 全屏
