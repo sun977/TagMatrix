@@ -79,17 +79,29 @@
             class="error-alert"
           />
           <div v-else-if="resultData" class="result-data-wrapper">
-            <div v-if="resultData.is_select" class="table-wrapper">
-              <el-table :data="resultData.rows" style="width: 100%" height="100%" border stripe size="small">
-                <el-table-column 
-                  v-for="col in resultData.columns" 
-                  :key="col" 
-                  :prop="col" 
-                  :label="col" 
-                  show-overflow-tooltip 
+            <template v-if="resultData.is_select">
+              <div class="table-wrapper">
+                <el-table :data="paginatedRows" style="width: 100%" height="100%" border stripe size="small">
+                  <el-table-column
+                    v-for="col in resultData.columns"
+                    :key="col"
+                    :prop="col"
+                    :label="col"
+                    min-width="150"
+                    show-overflow-tooltip
+                  />
+                </el-table>
+              </div>
+              <div class="pagination-wrapper">
+                <el-pagination
+                  v-model:current-page="currentPage"
+                  v-model:page-size="pageSize"
+                  :page-sizes="[10, 20, 50, 100, 200, 500]"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  :total="totalRows"
                 />
-              </el-table>
-            </div>
+              </div>
+            </template>
             <el-alert
               v-else
               :title="`执行成功。受影响行数: ${resultData.affected}`"
@@ -241,6 +253,16 @@ const isExecuting = ref(false)
 const errorMessage = ref('')
 const resultData = ref<any>(null)
 const lastDuration = ref('')
+
+// 分页状态
+const currentPage = ref(1)
+const pageSize = ref(50)
+const totalRows = computed(() => resultData.value?.rows?.length || 0)
+const paginatedRows = computed(() => {
+  if (!resultData.value?.rows) return []
+  const start = (currentPage.value - 1) * pageSize.value
+  return resultData.value.rows.slice(start, start + pageSize.value)
+})
 
 const sqlTemplates = ref<any[]>([])
 const saveDialogVisible = ref(false)
@@ -480,6 +502,7 @@ const executeSQL = async () => {
   try {
     const res = await ExecuteRawSQL(sqlQuery.value)
     resultData.value = res
+    currentPage.value = 1
     lastDuration.value = res.duration
     saveToHistory(sqlQuery.value)
   } catch (err: any) {
@@ -649,17 +672,19 @@ onMounted(() => {
     }
   }
   
-  .bottom-section {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
-    
-    .result-panel {
+    .bottom-section {
       flex: 1;
+      min-height: 0;
       display: flex;
-      flex-direction: column;
-      background-color: var(--tm-bg-card);
       overflow: hidden;
+
+      .result-panel {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+        background-color: var(--tm-bg-card);
+        overflow: hidden;
       
       .result-header-row {
         display: flex;
@@ -689,23 +714,34 @@ onMounted(() => {
         }
       }
       
-      .result-content {
+    .result-content {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      
+      .result-data-wrapper {
         flex: 1;
+        min-height: 0;
         overflow: hidden;
         display: flex;
         flex-direction: column;
         
-        .result-data-wrapper {
-          flex: 1;
-          overflow: hidden;
-          display: flex;
-          flex-direction: column;
-        }
-        
         .table-wrapper {
           flex: 1;
+          min-height: 0;
           overflow: hidden;
         }
+      
+      .pagination-wrapper {
+        padding: 8px 12px;
+        display: flex;
+        justify-content: flex-end;
+        background-color: var(--tm-bg-card);
+        border-top: 1px solid var(--tm-border-color);
+      }
+    }
         
         .error-alert, .success-alert {
           margin: 16px;
