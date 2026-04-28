@@ -40,18 +40,19 @@
         </div>
       </div>
 
-      <div class="table-area" v-loading="loading">
+    <div class="table-area" v-loading="loading">
+      <div class="table-absolute-wrapper">
         <el-table :data="tableData" style="width: 100%" height="100%" border stripe size="small" @row-dblclick="handleRowDblClick">
           <el-table-column v-for="col in columns" :key="col" :prop="col" :label="col" show-overflow-tooltip>
             <template #default="scope">
               <span v-if="!scope.row._editing || editingCell.rowId !== scope.row.id || editingCell.col !== col">{{ scope.row[col] }}</span>
-              <el-input 
-                v-else 
-                v-model="scope.row[col]" 
-                size="small" 
+              <el-input
+                v-else
+                v-model="scope.row[col]"
+                size="small"
                 ref="editInput"
-                @blur="saveCellEdit(scope.row, col)" 
-                @keyup.enter="saveCellEdit(scope.row, col)" 
+                @blur="saveCellEdit(scope.row, col)"
+                @keyup.enter="saveCellEdit(scope.row, col)"
               />
             </template>
           </el-table-column>
@@ -62,6 +63,7 @@
           </el-table-column>
         </el-table>
       </div>
+    </div>
 
       <div class="pagination-area">
         <el-pagination
@@ -363,6 +365,7 @@ onMounted(() => {
   
   .main-content {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -394,12 +397,23 @@ onMounted(() => {
       }
     }
     
-    .table-area {
-      flex: 1;
-      padding: 16px;
-      overflow: hidden;
-      
-      :deep(.el-table) {
+  .table-area {
+    flex: 1;
+    position: relative;
+    min-height: 0;
+    overflow: hidden;
+    
+    .table-absolute-wrapper {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      right: 16px;
+      bottom: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    :deep(.el-table) {
         border-radius: var(--tm-border-radius-sm);
         border: 1px solid var(--tm-border-color);
         
