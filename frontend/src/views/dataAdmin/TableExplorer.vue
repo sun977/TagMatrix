@@ -65,17 +65,35 @@
       </div>
     </div>
 
-      <div class="pagination-area">
-        <el-pagination
-          v-model:current-page="currentPage"
-          v-model:page-size="pageSize"
-          :page-sizes="[50, 100, 200]"
-          layout="total, sizes, prev, pager, next"
-          :total="totalRecords"
-          @size-change="handleSizeChange"
-          @current-change="handleCurrentChange"
-        />
+    <div class="pagination-area">
+      <div class="table-actions-left">
+        <el-upload
+          class="inline-upload"
+          action="#"
+          :auto-upload="false"
+          :show-file-list="false"
+          accept=".csv"
+          :on-change="handleImportCSV"
+          :disabled="!currentTable && !currentDatasetId"
+        >
+          <el-button size="small" type="primary" plain :disabled="!currentTable && !currentDatasetId">
+            <el-icon><Upload /></el-icon> 导入 CSV
+          </el-button>
+        </el-upload>
+        <el-button size="small" plain @click="exportToCSV" :disabled="tableData.length === 0">
+          <el-icon><Download /></el-icon> 导出当前页
+        </el-button>
       </div>
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="[50, 100, 200]"
+        layout="total, sizes, prev, pager, next"
+        :total="totalRecords"
+        @size-change="handleSizeChange"
+        @current-change="handleCurrentChange"
+      />
+    </div>
     </div>
 
     <!-- 新增行对话框 -->
@@ -99,7 +117,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
+import { DataBoard, Folder, Refresh, Plus, Download, Upload } from '@element-plus/icons-vue'
 import { GetSystemTables, GetTableData, ListDatasets, GetVirtualDatasetData, UpdateVirtualRecord, DeleteVirtualRecord, UpdateSystemTableRecord, DeleteSystemTableRecord, InsertSystemTableRecord, InsertVirtualRecord } from '../../../wailsjs/go/main/App'
 
 const tabMode = ref('system')
@@ -232,6 +251,122 @@ const handleSizeChange = () => {
 
 const handleCurrentChange = () => {
   fetchData()
+}
+
+// ========================
+// 导入导出 CSV
+// ========================
+
+const exportToCSV = () => {
+  if (tableData.value.length === 0) {
+    ElMessage.warning('当前没有数据可以导出')
+    return
+  }
+
+  const escapeCSV = (field: any) => {
+    if (field === null || field === undefined) return ''
+    const str = String(field)
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return str
+  }
+
+  const headers = columns.value.map(col => escapeCSV(col)).join(',')
+  const body = tableData.value.map((row: any) => {
+    return columns.value.map(col => escapeCSV(row[col])).join(',')
+  }).join('\n')
+
+  const csvContent = '\uFEFF' + headers + '\n' + body
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  
+  const now = new Date()
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+  const fileName = currentTable.value ? `sys_table_${currentTable.value}_${timestamp}.csv` : `dataset_${currentDatasetId.value}_${timestamp}.csv`
+  
+  link.download = fileName
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  
+  ElMessage.success('导出成功')
+}
+
+// 解析并插入记录（防脏数据注入）
+const handleImportCSV = (file: UploadFile) => {
+  if (!file.raw) return
+  const reader = new FileReader()
+  
+  reader.onload = async (e) => {
+    const text = e.target?.result as string
+    if (!text) return
+    
+    // 简易 CSV 分行
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+    if (lines.length < 2) {
+      ElMessage.warning('CSV 文件内容为空或缺少表头')
+      return
+    }
+    
+    // 去除 UTF-8 BOM
+    let headerLine = lines[0]
+    if (headerLine.charCodeAt(0) === 0xFEFF) {
+      headerLine = headerLine.substring(1)
+    }
+    
+    const headers = headerLine.split(',').map(h => h.replace(/^"|"$/g, '').trim())
+    
+    let successCount = 0
+    let errorCount = 0
+    
+    loading.value = true
+    try {
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i]
+        // 简易逗号拆分，不涉及复杂的带逗号双引号字符串内包含的情况
+        // 复杂场景需要 PapaParse 等库支持
+        const values = line.split(',').map(v => v.replace(/^"|"$/g, '').trim())
+        const record: Record<string, any> = {}
+        
+        headers.forEach((h, idx) => {
+          // 清洗防护: 跳过 id、deleted_at。 created_at/updated_at 交给后端或者这里跳过。
+          if (['id', 'created_at', 'updated_at', 'deleted_at'].includes(h.toLowerCase())) {
+            return // 跳过内置 ID 和时间戳字段，屏蔽脏数据
+          }
+          const val = values[idx]
+          if (val !== undefined && val !== '') {
+            record[h] = val
+          }
+        })
+        
+        // 空记录拦截
+        if (Object.keys(record).length === 0) continue
+
+        if (tabMode.value === 'system' && currentTable.value) {
+          await InsertSystemTableRecord(currentTable.value, record)
+          successCount++
+        } else if (tabMode.value === 'dataset' && currentDatasetId.value) {
+          await InsertVirtualRecord(currentDatasetId.value, record)
+          successCount++
+        }
+      }
+      
+      ElMessage.success(`导入完成: 成功插入 ${successCount} 条`)
+    } catch (err: any) {
+      console.error('Import error', err)
+      ElMessage.error(`导入出现异常: ${err.message || err.toString()}`)
+    } finally {
+      loading.value = false
+      fetchData()
+    }
+  }
+  
+  reader.readAsText(file.raw)
 }
 
 const handleRowDblClick = (row: any, column: any) => {
@@ -423,13 +558,25 @@ onMounted(() => {
       }
     }
     
-    .pagination-area {
-      padding: 12px 20px;
-      background-color: var(--tm-bg-card);
-      border-top: 1px solid var(--tm-border-color);
+  .pagination-area {
+    padding: 12px 20px;
+    background-color: var(--tm-bg-card);
+    border-top: 1px solid var(--tm-border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .table-actions-left {
       display: flex;
-      justify-content: flex-end;
+      gap: 12px;
+      align-items: center;
+
+      .inline-upload {
+        display: flex;
+        align-items: center;
+      }
     }
+  }
   }
 }
 </style>
