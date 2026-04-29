@@ -7,6 +7,7 @@ import (
 
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
+	"TagMatrix/internal/service/network"
 
 	"github.com/sashabaranov/go-openai"
 	"gorm.io/gorm"
@@ -14,13 +15,15 @@ import (
 
 // AIEngineService 处理与 AI 相关的业务逻辑
 type AIEngineService struct {
-	db *gorm.DB
+	db           *gorm.DB
+	proxyService *network.ProxyService
 }
 
 // NewAIEngineService 创建 AIEngineService 实例
 func NewAIEngineService() *AIEngineService {
 	return &AIEngineService{
-		db: model.DB,
+		db:           model.DB,
+		proxyService: network.NewProxyService(), // 引入网络代理服务
 	}
 }
 
@@ -41,6 +44,8 @@ func (s *AIEngineService) getClient() (*openai.Client, string) {
 	if cfg.BaseURL != "" {
 		openAIConfig.BaseURL = cleanBaseURL(cfg.BaseURL)
 	}
+	// 使用代理
+	openAIConfig.HTTPClient = s.proxyService.GetHTTPClient()
 
 	modelName := cfg.Model
 	if modelName == "" {
@@ -138,6 +143,8 @@ func (s *AIEngineService) TestConnection(ctx context.Context, apiKey, baseUrl, m
 	if baseUrl != "" {
 		openAIConfig.BaseURL = cleanBaseURL(baseUrl)
 	}
+	// 使用代理
+	openAIConfig.HTTPClient = s.proxyService.GetHTTPClient()
 
 	if modelName == "" {
 		modelName = openai.GPT4oMini

@@ -10,9 +10,16 @@ import (
 
 // AppConfig 定义了整个应用的配置结构
 type AppConfig struct {
-	AI     AIConfig     `json:"ai"`
-	System SystemConfig `json:"system"`
-	Adv    AdvConfig    `json:"adv"`
+	AI      AIConfig      `json:"ai"`
+	System  SystemConfig  `json:"system"`
+	Network NetworkConfig `json:"network"`
+	Adv     AdvConfig     `json:"adv"`
+}
+
+// NetworkConfig 定义了网络及代理相关的配置
+type NetworkConfig struct {
+	ProxyMode string `json:"proxy_mode"` // "direct", "system", "custom"
+	ProxyURL  string `json:"proxy_url"`  // custom proxy url, e.g. http://127.0.0.1:7890
 }
 
 // AIConfig 定义了 AI 相关的配置
@@ -74,6 +81,10 @@ func InitConfig(appDataDir string) error {
 				Theme:            "auto",
 				AutoBackup:       true,
 				TaskNotification: true,
+			},
+			Network: NetworkConfig{
+				ProxyMode: "system",
+				ProxyURL:  "",
 			},
 			Adv: AdvConfig{
 				Concurrency: 5,

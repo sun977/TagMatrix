@@ -38,6 +38,20 @@ export namespace config {
 	        this.developer_mode = source["developer_mode"];
 	    }
 	}
+	export class NetworkConfig {
+	    proxy_mode: string;
+	    proxy_url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new NetworkConfig(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.proxy_mode = source["proxy_mode"];
+	        this.proxy_url = source["proxy_url"];
+	    }
+	}
 	export class SystemConfig {
 	    theme: string;
 	    auto_backup: boolean;
@@ -57,6 +71,7 @@ export namespace config {
 	export class AppConfig {
 	    ai: AIConfig;
 	    system: SystemConfig;
+	    network: NetworkConfig;
 	    adv: AdvConfig;
 	
 	    static createFrom(source: any = {}) {
@@ -67,6 +82,7 @@ export namespace config {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.ai = this.convertValues(source["ai"], AIConfig);
 	        this.system = this.convertValues(source["system"], SystemConfig);
+	        this.network = this.convertValues(source["network"], NetworkConfig);
 	        this.adv = this.convertValues(source["adv"], AdvConfig);
 	    }
 	
@@ -88,6 +104,7 @@ export namespace config {
 		    return a;
 		}
 	}
+	
 
 }
 

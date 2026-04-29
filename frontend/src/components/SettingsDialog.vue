@@ -117,6 +117,30 @@
           </div>
         </el-tab-pane>
 
+        <!-- 网络与代理 -->
+        <el-tab-pane label="网络与代理" name="network">
+          <div class="settings-section">
+            <h3>代理设置</h3>
+            <div class="setting-item">
+              <label>代理模式</label>
+              <el-radio-group v-model="form.proxyMode" class="mode-radio-group">
+                <el-radio label="direct" border class="theme-radio">直连</el-radio>
+                <el-radio label="system" border class="theme-radio">系统代理(默认)</el-radio>
+                <el-radio label="custom" border class="theme-radio">自定义代理</el-radio>
+              </el-radio-group>
+            </div>
+
+            <div class="setting-item" v-if="form.proxyMode === 'custom'">
+              <label>代理服务器地址</label>
+              <el-input 
+                v-model="form.proxyUrl" 
+                placeholder="例如：http://127.0.0.1:7890 或 socks5://127.0.0.1:1080"
+              />
+              <div class="help-text">支持 http(s) 或 socks5 代理</div>
+            </div>
+          </div>
+        </el-tab-pane>
+
         <!-- 高级与系统 -->
         <el-tab-pane label="高级与系统" name="advanced">
           <div class="settings-section">
@@ -233,7 +257,9 @@ const defaultForm = {
   concurrency: 5,
   retries: 3,
   debugMode: false,
-  developerMode: false
+  developerMode: false,
+  proxyMode: 'system',
+  proxyUrl: ''
 }
 
 const form = reactive({ ...defaultForm })
@@ -287,6 +313,10 @@ const loadSettings = async () => {
       form.retries = cfg.adv.retries || 3
       form.debugMode = cfg.adv.debug_mode
       form.developerMode = cfg.adv.developer_mode
+    }
+    if (cfg && cfg.network) {
+      form.proxyMode = cfg.network.proxy_mode || 'system'
+      form.proxyUrl = cfg.network.proxy_url || ''
     }
 
     const paths = await GetAppPaths()
@@ -348,6 +378,10 @@ const saveSettings = async () => {
     newCfg.adv.retries = form.retries
     newCfg.adv.debug_mode = form.debugMode
     newCfg.adv.developer_mode = form.developerMode
+
+    newCfg.network = new config.NetworkConfig()
+    newCfg.network.proxy_mode = form.proxyMode
+    newCfg.network.proxy_url = form.proxyUrl
 
     await SaveAppConfig(newCfg)
     ElMessage.success('设置已保存')
