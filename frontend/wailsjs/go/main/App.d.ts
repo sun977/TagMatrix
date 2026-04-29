@@ -56,6 +56,8 @@ export function GetAllTags():Promise<Array<model.SysTag>>;
 
 export function GetAppConfig():Promise<config.AppConfig>;
 
+export function GetAppPaths():Promise<main.AppPaths>;
+
 export function GetAvailableSourceFiles(arg1:number):Promise<Array<model.SourceFileOption>>;
 
 export function GetDashboardStats():Promise<model.DashboardStats>;
@@ -100,6 +102,8 @@ export function ListDatasets():Promise<Array<model.SysDataset>>;
 
 export function MoveTag(arg1:number,arg2:number):Promise<void>;
 
+export function OpenDirectoryInOS(arg1:string):Promise<void>;
+
 export function RestoreDatabase(arg1:string):Promise<void>;
 
 export function RollbackTask(arg1:number):Promise<void>;
@@ -111,6 +115,8 @@ export function SaveAppConfig(arg1:config.AppConfig):Promise<void>;
 export function SaveRule(arg1:model.SysMatchRule):Promise<void>;
 
 export function SaveSqlTemplate(arg1:number,arg2:string,arg3:string):Promise<void>;
+
+export function TestAIConnection(arg1:string,arg2:string,arg3:string):Promise<void>;
 
 export function UpdateDataset(arg1:number,arg2:string,arg3:string):Promise<void>;
 

@@ -102,6 +102,10 @@ export function GetAppConfig() {
   return window['go']['main']['App']['GetAppConfig']();
 }
 
+export function GetAppPaths() {
+  return window['go']['main']['App']['GetAppPaths']();
+}
+
 export function GetAvailableSourceFiles(arg1) {
   return window['go']['main']['App']['GetAvailableSourceFiles'](arg1);
 }
@@ -190,6 +194,10 @@ export function MoveTag(arg1, arg2) {
   return window['go']['main']['App']['MoveTag'](arg1, arg2);
 }
 
+export function OpenDirectoryInOS(arg1) {
+  return window['go']['main']['App']['OpenDirectoryInOS'](arg1);
+}
+
 export function RestoreDatabase(arg1) {
   return window['go']['main']['App']['RestoreDatabase'](arg1);
 }
@@ -212,6 +220,10 @@ export function SaveRule(arg1) {
 
 export function SaveSqlTemplate(arg1, arg2, arg3) {
   return window['go']['main']['App']['SaveSqlTemplate'](arg1, arg2, arg3);
+}
+
+export function TestAIConnection(arg1, arg2, arg3) {
+  return window['go']['main']['App']['TestAIConnection'](arg1, arg2, arg3);
 }
 
 export function UpdateDataset(arg1, arg2, arg3) {

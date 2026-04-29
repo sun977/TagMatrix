@@ -39,7 +39,6 @@ export namespace config {
 	    }
 	}
 	export class SystemConfig {
-	    default_mode: string;
 	    auto_backup: boolean;
 	    task_notification: boolean;
 	    preview_rows: number;
@@ -50,7 +49,6 @@ export namespace config {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.default_mode = source["default_mode"];
 	        this.auto_backup = source["auto_backup"];
 	        this.task_notification = source["task_notification"];
 	        this.preview_rows = source["preview_rows"];
@@ -194,6 +192,20 @@ export namespace gorm {
 
 export namespace main {
 	
+	export class AppPaths {
+	    dbPath: string;
+	    logPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AppPaths(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dbPath = source["dbPath"];
+	        this.logPath = source["logPath"];
+	    }
+	}
 	export class PagedData {
 	    Total: number;
 	    Records: model.RawDataRecord[];

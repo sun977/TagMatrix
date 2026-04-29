@@ -120,3 +120,30 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
 
 	return "", fmt.Errorf("no response from AI")
 }
+
+// TestConnection 测试用户提供的 AI 连通性
+func (s *AIEngineService) TestConnection(ctx context.Context, apiKey, baseUrl, modelName string) error {
+	openAIConfig := openai.DefaultConfig(apiKey)
+	if baseUrl != "" {
+		openAIConfig.BaseURL = baseUrl
+	}
+
+	if modelName == "" {
+		modelName = openai.GPT4oMini
+	}
+
+	client := openai.NewClientWithConfig(openAIConfig)
+	req := openai.ChatCompletionRequest{
+		Model: modelName,
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: "Ping",
+			},
+		},
+		MaxTokens: 5,
+	}
+
+	_, err := client.CreateChatCompletion(ctx, req)
+	return err
+}

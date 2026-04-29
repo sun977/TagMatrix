@@ -103,6 +103,37 @@ func (a *App) SaveAppConfig(newConfig config.AppConfig) error {
 	return config.SaveConfig(newConfig)
 }
 
+type AppPaths struct {
+	DBPath  string `json:"dbPath"`
+	LogPath string `json:"logPath"`
+}
+
+// GetAppPaths 获取应用存储路径
+func (a *App) GetAppPaths() AppPaths {
+	var appDir string
+	env := runtime.Environment(a.ctx)
+	if env.BuildType == "dev" || env.BuildType == "debug" {
+		appDir = "."
+	} else {
+		appDataDir, _ := os.UserConfigDir()
+		appDir = filepath.Join(appDataDir, "TagMatrix")
+	}
+
+	dbPath, _ := filepath.Abs(filepath.Join(appDir, "data.db"))
+	logPath, _ := filepath.Abs(filepath.Join(appDir, "app.log"))
+
+	return AppPaths{
+		DBPath:  dbPath,
+		LogPath: logPath,
+	}
+}
+
+// OpenDirectoryInOS 打开系统目录
+func (a *App) OpenDirectoryInOS(path string) {
+	dir := filepath.Dir(path)
+	runtime.BrowserOpenURL(a.ctx, "file://"+dir)
+}
+
 // ----------------- Dashboard & Stats API -----------------
 
 func (a *App) GetDashboardStats() (*model.DashboardStats, error) {
@@ -851,6 +882,10 @@ func (a *App) ExportTaskLogsCSV(batchID uint64) (string, error) {
 
 func (a *App) ChatWithAI(message string) (string, error) {
 	return a.aiEngine.ChatWithAI(a.ctx, message)
+}
+
+func (a *App) TestAIConnection(apiKey, baseUrl, modelName string) error {
+	return a.aiEngine.TestConnection(a.ctx, apiKey, baseUrl, modelName)
 }
 
 // ----------------- Data Admin API -----------------

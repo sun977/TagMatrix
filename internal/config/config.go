@@ -26,10 +26,9 @@ type AIConfig struct {
 
 // SystemConfig 定义了系统相关的配置
 type SystemConfig struct {
-	DefaultMode      string `json:"default_mode"`
-	AutoBackup       bool   `json:"auto_backup"`
-	TaskNotification bool   `json:"task_notification"`
-	PreviewRows      int    `json:"preview_rows"`
+	AutoBackup       bool `json:"auto_backup"`
+	TaskNotification bool `json:"task_notification"`
+	PreviewRows      int  `json:"preview_rows"`
 }
 
 // AdvConfig 定义了高级配置
@@ -72,7 +71,6 @@ func InitConfig(appDataDir string) error {
 - 给出 SQL 时请使用 markdown 代码块包裹，以便前端渲染。`,
 			},
 			System: SystemConfig{
-				DefaultMode:      "overwrite",
 				AutoBackup:       true,
 				TaskNotification: true,
 				PreviewRows:      20,
