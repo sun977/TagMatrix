@@ -131,7 +131,7 @@
                   </template>
                   <div style="color: #606266; font-size: 13px;">
                     规则配置预览: 
-                    <pre style="margin: 8px 0 0 0; padding: 8px; background: #f5f7fa; border-radius: 4px; max-height: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ rule.rule_json }}</pre>
+                    <pre style="margin: 8px 0 0 0; padding: 8px; background: var(--tm-bg-subtle); border-radius: 4px; max-height: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ rule.rule_json }}</pre>
                   </div>
                 </el-card>
               </div>
@@ -141,7 +141,7 @@
         </template>
 
         <!-- 未选择标签时的空状态 -->
-        <div class="empty-state" v-else style="background: #fff; border-radius: 8px; border: 1px solid var(--tm-border-light); height: 100%; display: flex; align-items: center; justify-content: center;">
+        <div class="empty-state" v-else style="background: var(--tm-bg-main); border-radius: 8px; border: 1px solid var(--tm-border-light); height: 100%; display: flex; align-items: center; justify-content: center;">
           <el-empty description="请在左侧选择一个标签以配置打标规则" />
         </div>
       </div>
@@ -215,7 +215,7 @@
           </div>
 
           <div v-if="hasRunDry" class="test-results">
-            <div class="result-alert" style="margin-bottom: 12px; padding: 8px 12px; background-color: #f0f9eb; color: #67c23a; border-radius: 4px; font-size: 13px;">
+            <div class="result-alert" style="margin-bottom: 12px; padding: 8px 12px; background-color: rgba(103, 194, 58, 0.1); color: #67c23a; border-radius: 4px; font-size: 13px;">
               测试完成！抽样检测了 {{ testSummary.total }} 条数据，其中有 {{ testSummary.matched }} 条数据匹配当前规则，匹配率 {{ testSummary.ratio }}%。
             </div>
 
@@ -832,7 +832,7 @@ onMounted(() => {
 /* --- 左侧区域 --- */
 .left-pane {
   width: 280px;
-  background: #ffffff;
+  background: var(--tm-bg-main);
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
   display: flex;
@@ -916,7 +916,7 @@ onMounted(() => {
 /* --- 右侧区域 --- */
 .right-pane {
   flex: 1;
-  background: #ffffff;
+  background: var(--tm-bg-main);
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
   display: flex;
@@ -951,7 +951,7 @@ onMounted(() => {
     }
 
     .rule-count-pill {
-      background-color: #f5f5f5;
+      background-color: var(--tm-bg-hover);
       color: var(--tm-text-secondary);
       font-size: 12px;
       padding: 4px 10px;
@@ -1050,7 +1050,7 @@ onMounted(() => {
 
   .logic-group {
     display: flex;
-    background-color: #f5f5f5;
+    background-color: var(--tm-bg-hover);
     border-radius: 16px;
     padding: 2px;
 
@@ -1126,7 +1126,7 @@ onMounted(() => {
 
 /* --- 测试结果 --- */
 .result-alert {
-  background-color: #e6f0fa;
+  background-color: rgba(58, 142, 230, 0.1);
   color: #3a8ee6;
   padding: 12px 16px;
   border-radius: var(--tm-border-radius-sm);
@@ -1144,12 +1144,12 @@ onMounted(() => {
   font-weight: 500;
 
   &.matched {
-    background-color: #e8f7f0;
+    background-color: var(--tm-accent-light);
     color: var(--tm-accent-primary);
   }
 
   &.unmatched {
-    background-color: #fef0f0;
+    background-color: rgba(245, 108, 108, 0.1);
     color: #f56c6c;
   }
 }
@@ -1168,7 +1168,7 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  background: #ffffff;
+  background: var(--tm-bg-main);
   border-radius: 0 0 var(--tm-border-radius) var(--tm-border-radius);
 }
 
@@ -1189,7 +1189,7 @@ onMounted(() => {
 }
 .example-text {
   font-family: monospace;
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-subtle);
   padding: 2px 6px;
   border-radius: 4px;
   color: var(--tm-text-regular);
@@ -1197,7 +1197,7 @@ onMounted(() => {
 .detail-content-wrapper {
   max-height: 50vh;
   overflow-y: auto;
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-subtle);
   border-radius: var(--tm-border-radius-sm);
   padding: 16px;
   border: 1px solid var(--tm-border-color);
@@ -1214,7 +1214,7 @@ onMounted(() => {
   font-family: 'Consolas', 'Courier New', monospace;
   font-size: 14px;
   line-height: 1.5;
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-subtle);
   border-radius: var(--tm-border-radius-sm);
   color: var(--tm-text-primary);
   padding: 12px;

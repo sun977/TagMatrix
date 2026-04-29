@@ -207,8 +207,8 @@
                 <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
               </div>
               <div>
-                <el-button size="small" class="action-btn" @click="handleRollback(scope.row.id)" style="color: #67C23A; border-color: #dcdfe6; background-color: #fff;">回退</el-button>
-                <el-button size="small" class="action-btn" @click="handleSingleDelete(scope.row.id)" style="color: #F56C6C; border-color: #dcdfe6; background-color: #fff;">删除</el-button>
+              <el-button size="small" class="action-btn" @click="handleRollback(scope.row.id)" style="color: #67C23A; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color);">回退</el-button>
+              <el-button size="small" class="action-btn" @click="handleSingleDelete(scope.row.id)" style="color: #F56C6C; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color);">删除</el-button>
               </div>
             </template>
             <template v-else-if="scope.row.statusType === 'failed'">
@@ -661,7 +661,7 @@ onUnmounted(() => {
 
 /* --- 发起新任务区域 --- */
 .launch-section {
-  background: #ffffff;
+  background: var(--tm-bg-main);
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
   padding: 24px;
@@ -697,7 +697,7 @@ onUnmounted(() => {
 
 /* --- 任务历史区域 --- */
 .history-section {
-  background: #ffffff;
+  background: var(--tm-bg-main);
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
   padding: 24px;
@@ -729,7 +729,7 @@ onUnmounted(() => {
 /* --- 表格样式 --- */
 .custom-table {
   --el-table-border-color: transparent;
-  --el-table-header-bg-color: #f9fafc;
+  --el-table-header-bg-color: var(--tm-bg-subtle);
   --el-table-header-text-color: var(--tm-text-secondary);
   
   :deep(th.el-table__cell) {
@@ -741,7 +741,7 @@ onUnmounted(() => {
     padding: 16px 0;
     font-size: 14px;
     color: var(--tm-text-regular);
-    border-bottom: 1px solid #fafafa;
+    border-bottom: 1px solid var(--tm-border-color);
   }
 }
 
@@ -767,25 +767,25 @@ onUnmounted(() => {
   }
 
   &.completed {
-    background-color: #e6f0fa;
+    background-color: rgba(58, 142, 230, 0.1);
     color: #3a8ee6;
     .dot { background-color: #3a8ee6; }
   }
 
   &.failed {
-    background-color: #fef0f0;
+    background-color: rgba(245, 108, 108, 0.1);
     color: #f56c6c;
     .dot { background-color: #f56c6c; }
   }
 
   &.rolled_back {
-    background-color: #f4f4f5;
+    background-color: var(--tm-bg-hover);
     color: #909399;
     .dot { background-color: #909399; }
   }
 
   &.pending {
-    background-color: #fdf5e6;
+    background-color: rgba(230, 162, 60, 0.1);
     color: #e6a23c;
     .dot { background-color: #e6a23c; }
   }
@@ -798,7 +798,7 @@ onUnmounted(() => {
   width: 160px;
 
   :deep(.el-progress-bar__outer) {
-    background-color: #f5f5f5;
+    background-color: var(--tm-bg-subtle);
   }
 
   .progress-text {
@@ -815,7 +815,7 @@ onUnmounted(() => {
   &:hover {
     color: var(--tm-text-primary);
     border-color: #dcdfe6;
-    background-color: #f5f7fa;
+    background-color: var(--tm-bg-hover);
   }
   
   &.retry-btn {

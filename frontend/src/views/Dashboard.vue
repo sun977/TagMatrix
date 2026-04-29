@@ -534,7 +534,7 @@ onUnmounted(() => {
   margin-bottom: 40px;
 
   .stat-card {
-    background: #ffffff;
+    background: var(--tm-bg-main);
     border: 1px solid var(--tm-border-color);
     border-radius: var(--tm-border-radius);
     padding: 20px 24px;
@@ -568,19 +568,19 @@ onUnmounted(() => {
         }
 
         &.green-bg {
-          background-color: #e8f7f0;
+          background-color: var(--tm-accent-light);
           color: var(--tm-accent-primary);
         }
         &.blue-bg {
-          background-color: #e6f0fa;
+          background-color: rgba(58, 142, 230, 0.1);
           color: #3a8ee6;
         }
         &.yellow-bg {
-          background-color: #fdf5e6;
+          background-color: rgba(230, 162, 60, 0.1);
           color: #e6a23c;
         }
         &.purple-bg {
-          background-color: #f3e8ff;
+          background-color: rgba(157, 92, 184, 0.1);
           color: #9d5cb8;
         }
       }
@@ -679,7 +679,7 @@ onUnmounted(() => {
 /* --- 表格样式 --- */
 .custom-table {
   --el-table-border-color: var(--tm-border-color);
-  --el-table-header-bg-color: #f9fafc;
+  --el-table-header-bg-color: var(--tm-bg-subtle);
   --el-table-header-text-color: var(--tm-text-secondary);
   
   :deep(th.el-table__cell) {
@@ -716,13 +716,13 @@ onUnmounted(() => {
   }
 
   &.success {
-    background-color: #e6f0fa;
+    background-color: rgba(58, 142, 230, 0.1);
     color: #3a8ee6;
     .dot { background-color: #3a8ee6; }
   }
 
   &.error {
-    background-color: #fef0f0;
+    background-color: rgba(245, 108, 108, 0.1);
     color: #f56c6c;
     .dot { background-color: #f56c6c; }
   }
@@ -735,8 +735,8 @@ onUnmounted(() => {
 
   &:hover {
     color: var(--tm-text-primary);
-    border-color: #dcdfe6;
-    background-color: #f5f7fa;
+    border-color: var(--tm-border-color);
+    background-color: var(--tm-bg-hover);
   }
   
   &.retry-btn {

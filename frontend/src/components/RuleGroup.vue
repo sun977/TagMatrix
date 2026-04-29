@@ -152,7 +152,7 @@ const removeCondition = (index: number | string) => {
 .rule-group {
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius-sm);
-  background-color: #fafafa;
+  background-color: var(--tm-bg-subtle);
   margin-bottom: 8px;
   padding: 12px;
 
@@ -177,13 +177,13 @@ const removeCondition = (index: number | string) => {
     flex-direction: column;
     gap: 8px;
     padding-left: 24px;
-    border-left: 2px solid #e4e7ed;
+    border-left: 2px solid var(--tm-border-color);
 
     .condition-row {
       display: flex;
       align-items: center;
       gap: 8px;
-      background-color: #ffffff;
+      background-color: var(--tm-bg-main);
       padding: 8px 12px;
       border: 1px solid var(--tm-border-color);
       border-radius: 4px;

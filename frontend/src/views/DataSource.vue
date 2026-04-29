@@ -67,7 +67,7 @@
               </div>
               <div style="display: flex; align-items: center; justify-content: flex-end;">
                 <el-button size="small" class="action-btn" @click="handleExportBusinessAsset(scope.row)">导出</el-button>
-                <el-button size="small" class="action-btn" @click="handleDeleteDataset(scope.row)" style="color: #F56C6C; border-color: #dcdfe6; background-color: #fff;">删除</el-button>
+                <el-button size="small" class="action-btn" @click="handleDeleteDataset(scope.row)" style="color: #F56C6C; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color);">删除</el-button>
               </div>
             </template>
           </el-table-column>
@@ -730,7 +730,7 @@ onMounted(() => {
 
 /* --- 数据预览区 --- */
 .table-section {
-  background-color: #ffffff;
+  background-color: var(--tm-bg-main);
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
   padding: 20px 24px;
@@ -755,7 +755,7 @@ onMounted(() => {
     }
 
     .count-pill {
-      background-color: #f5f5f5;
+      background-color: var(--tm-bg-hover);
       color: var(--tm-text-secondary);
       font-size: 12px;
       padding: 2px 10px;
@@ -781,7 +781,7 @@ onMounted(() => {
 /* --- 表格样式 --- */
 .custom-table {
   --el-table-border-color: transparent;
-  --el-table-header-bg-color: #ffffff;
+  --el-table-header-bg-color: var(--tm-bg-main);
   --el-table-header-text-color: var(--tm-text-secondary);
   
   :deep(th.el-table__cell) {
@@ -794,7 +794,7 @@ onMounted(() => {
     padding: 16px 0;
     font-size: 14px;
     color: var(--tm-text-regular);
-    border-bottom: 1px solid #fafafa;
+    border-bottom: 1px solid var(--tm-border-color);
   }
 }
 
@@ -812,19 +812,19 @@ onMounted(() => {
   font-weight: 500;
 
   &.tag-yellow {
-    background-color: #fdf5e6;
+    background-color: rgba(230, 162, 60, 0.1);
     color: #e6a23c;
   }
   &.tag-blue {
-    background-color: #e6f0fa;
+    background-color: rgba(58, 142, 230, 0.1);
     color: #3a8ee6;
   }
   &.tag-gray {
-    background-color: #f4f4f5;
+    background-color: var(--tm-bg-hover);
     color: #909399;
   }
   &.tag-red {
-    background-color: #fef0f0;
+    background-color: rgba(245, 108, 108, 0.1);
     color: #f56c6c;
   }
 }
@@ -832,13 +832,13 @@ onMounted(() => {
 .detail-btn {
   color: var(--tm-text-secondary);
   font-weight: 500;
-  background-color: #f5f5f5;
+  background-color: var(--tm-bg-hover);
   padding: 6px 12px;
   border-radius: 6px;
 
   &:hover {
     color: var(--tm-text-primary);
-    background-color: #e5e5e5;
+    background-color: var(--tm-bg-active);
   }
 }
 
@@ -871,7 +871,7 @@ onMounted(() => {
 .detail-content-wrapper {
   max-height: 50vh;
   overflow-y: auto;
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-subtle);
   border-radius: var(--tm-border-radius-sm);
   padding: 16px;
   border: 1px solid var(--tm-border-color);

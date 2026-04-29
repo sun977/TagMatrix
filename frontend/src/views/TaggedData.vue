@@ -679,7 +679,7 @@ onMounted(async () => {
 .detail-content-wrapper {
   max-height: 50vh;
   overflow-y: auto;
-  background-color: #f5f7fa;
+  background-color: var(--tm-bg-subtle);
   border-radius: var(--tm-border-radius-sm);
   padding: 16px;
   border: 1px solid var(--tm-border-color);
@@ -697,13 +697,13 @@ onMounted(async () => {
 .detail-btn {
   color: var(--tm-text-secondary);
   font-weight: 500;
-  background-color: #f5f5f5;
+  background-color: var(--tm-bg-hover);
   padding: 6px 12px;
   border-radius: 6px;
 
   &:hover {
     color: var(--tm-text-primary);
-    background-color: #e5e5e5;
+    background-color: var(--tm-bg-active);
   }
 }
 </style>

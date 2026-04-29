@@ -609,12 +609,12 @@ onMounted(() => {
       }
     }
     
-    .editor-header {
+      .editor-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       padding: 8px 16px;
-      background-color: #f8f9fa;
+      background-color: var(--tm-bg-hover);
       border-bottom: 1px solid var(--tm-border-color);
       
       .editor-title {
@@ -671,7 +671,7 @@ onMounted(() => {
         bottom: 0;
         z-index: 9999;
         height: 100vh !important;
-        background: #fff;
+        background: var(--tm-bg-main);
         display: flex;
         flex-direction: column;
         

@@ -102,19 +102,19 @@ const handleWarningClose = () => {
       margin: 0;
     }
 
-    .dev-mode-text {
-      font-size: 13px;
-      color: #e6a23c;
-      background-color: #fdf5e6;
-      padding: 2px 8px;
-      border-radius: 4px;
-      border: 1px solid #faecd8;
-    }
+  .dev-mode-text {
+    font-size: 13px;
+    color: #e6a23c;
+    background-color: rgba(230, 162, 60, 0.1);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid rgba(230, 162, 60, 0.2);
+  }
   }
 
   .page-content {
     flex: 1;
-    background-color: #ffffff;
+    background-color: var(--tm-bg-main);
     border-radius: var(--tm-border-radius);
     border: 1px solid var(--tm-border-color);
     overflow: hidden;
@@ -130,7 +130,7 @@ const handleWarningClose = () => {
     :deep(.el-tabs__header) {
       margin-bottom: 0;
       padding: 0 20px;
-      background-color: #ffffff;
+      background-color: var(--tm-bg-main);
       border-bottom: 1px solid var(--tm-border-color);
     }
     
