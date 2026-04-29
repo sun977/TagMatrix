@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -921,7 +922,46 @@ func (a *App) DeleteBackup(backupPath string) error {
 }
 
 func (a *App) RestoreDatabase(backupPath string) error {
-	return a.backupSvc.RestoreDatabase(backupPath)
+	// 1. 关闭现有数据库连接释放文件锁
+	sqlDB, err := model.DB.DB()
+	if err == nil {
+		sqlDB.Close()
+	}
+
+	// 2. 覆盖数据库文件
+	src, err := os.Open(backupPath)
+	if err != nil {
+		return fmt.Errorf("failed to open backup file: %v", err)
+	}
+	defer src.Close()
+
+	// 确定数据存放目录
+	var appDir string
+	env := runtime.Environment(a.ctx)
+	if env.BuildType == "dev" || env.BuildType == "debug" {
+		appDir = "."
+	} else {
+		appDataDir, _ := os.UserConfigDir()
+		appDir = filepath.Join(appDataDir, "TagMatrix")
+	}
+	dbPath := filepath.Join(appDir, "data.db")
+
+	dest, err := os.OpenFile(dbPath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return fmt.Errorf("failed to create target db file: %v", err)
+	}
+	
+	_, err = io.Copy(dest, src)
+	dest.Close() // 复制完立即关闭
+	
+	if err != nil {
+		return fmt.Errorf("failed to restore database file: %v", err)
+	}
+
+	// 3. 重新初始化所有服务和连接
+	a.startup(a.ctx)
+
+	return nil
 }
 
 func (a *App) ImportExternalDatabase() error {

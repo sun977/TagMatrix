@@ -21,7 +21,7 @@ type BackupService struct {
 func NewBackupService(db *gorm.DB, appDataDir string) *BackupService {
 	return &BackupService{
 		db:        db,
-		dbPath:    filepath.Join(appDataDir, "tagmatrix.db"),
+		dbPath:    filepath.Join(appDataDir, "data.db"),
 		backupDir: filepath.Join(appDataDir, "backups"),
 	}
 }
@@ -56,12 +56,28 @@ func (s *BackupService) ListBackups() ([]BackupInfo, error) {
 			continue
 		}
 
+		note := ""
+		name := entry.Name()
+		// filename format: backup_20060102_150405_note.db
+		prefix := "backup_"
+		if strings.HasPrefix(name, prefix) && strings.HasSuffix(name, ".db") {
+			parts := strings.SplitN(strings.TrimSuffix(strings.TrimPrefix(name, prefix), ".db"), "_", 3)
+			if len(parts) == 3 {
+				note = parts[2]
+			} else if len(parts) >= 2 && len(parts[0]) == 8 && len(parts[1]) == 6 {
+				note = "" // handle case where there is no note, or handle any rest string
+				if len(name) > len(prefix)+15+4 { // 15 is YYYYMMDD_HHMMSS, 4 is .db
+					note = name[len(prefix)+16 : len(name)-3]
+				}
+			}
+		}
+		
 		backups = append(backups, BackupInfo{
 			Name:      entry.Name(),
 			Path:      filepath.Join(s.backupDir, entry.Name()),
 			Size:      info.Size(),
 			CreatedAt: info.ModTime().Format("2006-01-02 15:04:05"),
-			Note:      "", // Note can be extracted from filename if encoded, omitted for simplicity
+			Note:      note,
 		})
 	}
 
