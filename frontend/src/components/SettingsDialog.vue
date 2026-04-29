@@ -12,7 +12,17 @@
         <el-tab-pane label="通用设置" name="general">
           <div class="settings-section">
             <h3>通用设置</h3>
-            <div class="setting-item flex-between">
+
+            <div class="setting-item">
+              <label>主题与外观</label>
+              <el-radio-group v-model="form.theme" class="mode-radio-group">
+                <el-radio label="light" border>亮色模式</el-radio>
+                <el-radio label="dark" border>暗色模式</el-radio>
+                <el-radio label="auto" border>跟随系统</el-radio>
+              </el-radio-group>
+            </div>
+
+            <div class="setting-item flex-between mt-4">
               <div class="item-text">
                 <label>自动备份打标结果</label>
                 <div class="help-text">每次打标任务完成后自动备份数据到本地</div>
@@ -208,6 +218,7 @@ watch(() => dialogVisible.value, (newVal) => {
 })
 
 const defaultForm = {
+  theme: 'auto',
   apiKey: '',
   baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-4o-mini',
@@ -266,6 +277,7 @@ const loadSettings = async () => {
       form.systemPrompt = cfg.ai.system_prompt || ''
     }
     if (cfg && cfg.system) {
+      form.theme = cfg.system.theme || 'auto'
       form.autoBackup = cfg.system.auto_backup
       form.taskNotification = cfg.system.task_notification
       form.previewRows = cfg.system.preview_rows || 20
@@ -325,6 +337,7 @@ const saveSettings = async () => {
     newCfg.ai.system_prompt = form.systemPrompt
 
     newCfg.system = new config.SystemConfig()
+    newCfg.system.theme = form.theme
     newCfg.system.auto_backup = form.autoBackup
     newCfg.system.task_notification = form.taskNotification
     newCfg.system.preview_rows = form.previewRows
@@ -338,6 +351,9 @@ const saveSettings = async () => {
     await SaveAppConfig(newCfg)
     ElMessage.success('设置已保存')
     
+    // 派发事件，通知 App.vue 更新主题
+    window.dispatchEvent(new CustomEvent('theme-changed', { detail: form.theme }))
+
     emit('saved')
     dialogVisible.value = false
   } catch (e) {

@@ -39,6 +39,7 @@ export namespace config {
 	    }
 	}
 	export class SystemConfig {
+	    theme: string;
 	    auto_backup: boolean;
 	    task_notification: boolean;
 	    preview_rows: number;
@@ -49,6 +50,7 @@ export namespace config {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.theme = source["theme"];
 	        this.auto_backup = source["auto_backup"];
 	        this.task_notification = source["task_notification"];
 	        this.preview_rows = source["preview_rows"];
