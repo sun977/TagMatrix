@@ -16,9 +16,9 @@
             <div class="setting-item">
               <label>主题与外观</label>
               <el-radio-group v-model="form.theme" class="mode-radio-group">
-                <el-radio label="light" border>亮色模式</el-radio>
-                <el-radio label="dark" border>暗色模式</el-radio>
-                <el-radio label="auto" border>跟随系统</el-radio>
+                <el-radio label="light" border class="theme-radio">亮色模式</el-radio>
+                <el-radio label="dark" border class="theme-radio">暗色模式</el-radio>
+                <el-radio label="auto" border class="theme-radio">跟随系统</el-radio>
               </el-radio-group>
             </div>
 
@@ -36,15 +36,6 @@
                 <div class="help-text">打标任务完成后发送系统通知</div>
               </div>
               <el-switch v-model="form.taskNotification" />
-            </div>
-
-            <div class="setting-item">
-              <label>数据预览默认行数</label>
-              <el-select v-model="form.previewRows" class="w-100">
-                <el-option label="10 行" :value="10" />
-                <el-option label="20 行" :value="20" />
-                <el-option label="50 行" :value="50" />
-              </el-select>
             </div>
           </div>
         </el-tab-pane>
@@ -105,11 +96,11 @@
         </el-tab-pane>
 
         <!-- Prompt 与策略 -->
-        <el-tab-pane label="Prompt 与策略" name="prompts">
+        <el-tab-pane label="Prompt 设置" name="prompts">
           <div class="settings-section">
-            <h3>系统提示词管理</h3>
+            <h3>系统提示词</h3>
             <div class="setting-item">
-              <label>System Prompt</label>
+              <!-- <label>System Prompt</label> -->
               <el-input 
                 v-model="form.systemPrompt" 
                 type="textarea" 
@@ -234,7 +225,6 @@ const defaultForm = {
 - 给出 SQL 时请使用 markdown 代码块包裹，以便前端渲染。`,
   autoBackup: true,
   taskNotification: true,
-  previewRows: 20,
   concurrency: 5,
   retries: 3,
   debugMode: false,
@@ -280,7 +270,6 @@ const loadSettings = async () => {
       form.theme = cfg.system.theme || 'auto'
       form.autoBackup = cfg.system.auto_backup
       form.taskNotification = cfg.system.task_notification
-      form.previewRows = cfg.system.preview_rows || 20
     }
     if (cfg && cfg.adv) {
       form.concurrency = cfg.adv.concurrency || 5
@@ -340,7 +329,6 @@ const saveSettings = async () => {
     newCfg.system.theme = form.theme
     newCfg.system.auto_backup = form.autoBackup
     newCfg.system.task_notification = form.taskNotification
-    newCfg.system.preview_rows = form.previewRows
 
     newCfg.adv = new config.AdvConfig()
     newCfg.adv.concurrency = form.concurrency
@@ -488,6 +476,38 @@ onMounted(() => {
   display: flex;
   gap: 10px;
   align-items: center;
+}
+
+.mode-radio-group {
+  display: flex;
+  width: 100%;
+  gap: 0;
+  
+  .theme-radio {
+    flex: 1;
+    margin-right: 0;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    &:not(:last-child) {
+      border-right: none;
+      border-top-right-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    &:not(:first-child) {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+    }
+
+    :deep(.el-radio__input) {
+      margin-top: 1px;
+    }
+    :deep(.el-radio__label) {
+      padding-left: 6px;
+    }
+  }
 }
 
 .slider-marks {

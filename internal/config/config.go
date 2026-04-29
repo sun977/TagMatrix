@@ -29,7 +29,6 @@ type SystemConfig struct {
 	Theme            string `json:"theme"` // light, dark, auto
 	AutoBackup       bool   `json:"auto_backup"`
 	TaskNotification bool   `json:"task_notification"`
-	PreviewRows      int    `json:"preview_rows"`
 }
 
 // AdvConfig 定义了高级配置
@@ -75,7 +74,6 @@ func InitConfig(appDataDir string) error {
 				Theme:            "auto",
 				AutoBackup:       true,
 				TaskNotification: true,
-				PreviewRows:      20,
 			},
 			Adv: AdvConfig{
 				Concurrency: 5,

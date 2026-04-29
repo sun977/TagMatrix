@@ -42,7 +42,6 @@ export namespace config {
 	    theme: string;
 	    auto_backup: boolean;
 	    task_notification: boolean;
-	    preview_rows: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new SystemConfig(source);
@@ -53,7 +52,6 @@ export namespace config {
 	        this.theme = source["theme"];
 	        this.auto_backup = source["auto_backup"];
 	        this.task_notification = source["task_notification"];
-	        this.preview_rows = source["preview_rows"];
 	    }
 	}
 	export class AppConfig {
