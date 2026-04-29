@@ -88,8 +88,13 @@
             </div>
 
             <div class="setting-item mt-4">
-              <el-button type="primary" plain @click="testAIConnection" :loading="isTesting">
-                测试连接
+              <el-button 
+                :type="testSuccess ? 'success' : 'primary'" 
+                :plain="!testSuccess" 
+                @click="testAIConnection" 
+                :loading="isTesting"
+              >
+                {{ testSuccess ? '连接成功' : '测试连接' }}
               </el-button>
             </div>
           </div>
@@ -233,6 +238,12 @@ const defaultForm = {
 
 const form = reactive({ ...defaultForm })
 const isTesting = ref(false)
+const testSuccess = ref(false)
+
+watch(() => [form.apiKey, form.baseUrl, form.model], () => {
+  testSuccess.value = false
+})
+
 const appPaths = reactive({ dbPath: '', logPath: '' })
 
 // 开发者模式解锁逻辑
@@ -298,8 +309,10 @@ const testAIConnection = async () => {
   try {
     await TestAIConnection(form.apiKey, form.baseUrl, form.model)
     ElMessage.success('连接成功！API 密钥与网络均正常。')
+    testSuccess.value = true
   } catch (err: any) {
-    ElMessage.error('连接失败: ' + err.message)
+    ElMessage.error('连接失败: ' + (err.message || err))
+    testSuccess.value = false
   } finally {
     isTesting.value = false
   }

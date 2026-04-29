@@ -24,13 +24,22 @@ func NewAIEngineService() *AIEngineService {
 	}
 }
 
+// cleanBaseURL 清理 baseURL 确保以 /chat/completions 结尾
+func cleanBaseURL(url string) string {
+	url = strings.TrimSpace(url)
+	if strings.HasSuffix(url, "/chat/completions") {
+		return strings.TrimSuffix(url, "/chat/completions")
+	}
+	return url
+}
+
 // getClient 动态获取最新的 OpenAI Client 实例
 func (s *AIEngineService) getClient() (*openai.Client, string) {
 	cfg := config.GetConfig().AI
 
 	openAIConfig := openai.DefaultConfig(cfg.APIKey)
 	if cfg.BaseURL != "" {
-		openAIConfig.BaseURL = cfg.BaseURL
+		openAIConfig.BaseURL = cleanBaseURL(cfg.BaseURL)
 	}
 
 	modelName := cfg.Model
@@ -127,7 +136,7 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
 func (s *AIEngineService) TestConnection(ctx context.Context, apiKey, baseUrl, modelName string) error {
 	openAIConfig := openai.DefaultConfig(apiKey)
 	if baseUrl != "" {
-		openAIConfig.BaseURL = baseUrl
+		openAIConfig.BaseURL = cleanBaseURL(baseUrl)
 	}
 
 	if modelName == "" {
