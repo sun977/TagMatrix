@@ -7,7 +7,7 @@
     "system_prompt": "你是一个专业的数据分析和打标辅助助手。\n你的主要任务是：\n1. 解答用户关于 TagMatrix 数据打标系统如何使用的问题。\n2. 根据用户提供的需求，生成针对当前 SQLite 数据库的准确查询 SQL。\n3. 帮助用户分析数据特征。\n\n请注意：\n- 用户的原始导入数据存储在 raw_data_records 表的 data 字段中（JSON 格式）。在 SQLite 中查询 JSON 数据请使用 json_extract 函数。\n- 给出 SQL 时请使用 markdown 代码块包裹，以便前端渲染。"
   },
   "system": {
-    "theme": "dark",
+    "theme": "light",
     "auto_backup": false,
     "task_notification": false,
     "preview_rows": 20

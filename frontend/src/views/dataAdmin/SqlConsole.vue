@@ -707,11 +707,23 @@ onMounted(() => {
       :deep(.cm-editor) {
         height: 100%;
         outline: none;
+        background-color: var(--tm-bg-card);
+        color: var(--tm-text-primary);
         
         .cm-scroller {
           font-family: 'Consolas', 'Courier New', monospace;
           font-size: 14px;
           line-height: 1.5;
+        }
+        
+        .cm-gutters {
+          background-color: var(--tm-bg-subtle);
+          color: var(--tm-text-secondary);
+          border-right: 1px solid var(--tm-border-color);
+        }
+
+        .cm-activeLineGutter, .cm-activeLine {
+          background-color: var(--tm-bg-hover);
         }
       }
     }
