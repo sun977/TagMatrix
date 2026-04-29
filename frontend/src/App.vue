@@ -5,6 +5,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import { GetAppConfig } from '../wailsjs/go/main/App'
+import { WindowSetSystemDefaultTheme, WindowSetLightTheme, WindowSetDarkTheme } from '../wailsjs/runtime/runtime'
 
 // 初始化主题
 const applyTheme = async () => {
@@ -16,10 +17,13 @@ const applyTheme = async () => {
 
       if (theme === 'dark') {
         htmlEl.classList.add('dark')
+        WindowSetDarkTheme()
       } else if (theme === 'light') {
         htmlEl.classList.remove('dark')
+        WindowSetLightTheme()
       } else {
         // Auto (跟随系统)
+        WindowSetSystemDefaultTheme()
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
           htmlEl.classList.add('dark')
         } else {
@@ -39,6 +43,7 @@ onMounted(() => {
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', async (e) => {
     const cfg = await GetAppConfig()
     if (cfg && cfg.system && cfg.system.theme === 'auto') {
+      WindowSetSystemDefaultTheme()
       if (e.matches) {
         document.documentElement.classList.add('dark')
       } else {
@@ -54,9 +59,12 @@ window.addEventListener('theme-changed', (e: any) => {
   const htmlEl = document.documentElement
   if (theme === 'dark') {
     htmlEl.classList.add('dark')
+    WindowSetDarkTheme()
   } else if (theme === 'light') {
     htmlEl.classList.remove('dark')
+    WindowSetLightTheme()
   } else {
+    WindowSetSystemDefaultTheme()
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       htmlEl.classList.add('dark')
     } else {

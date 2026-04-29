@@ -707,8 +707,8 @@ onMounted(() => {
       :deep(.cm-editor) {
         height: 100%;
         outline: none;
-        background-color: var(--tm-bg-card);
-        color: var(--tm-text-primary);
+        background-color: var(--tm-bg-card) !important;
+        color: var(--tm-text-primary) !important;
         
         .cm-scroller {
           font-family: 'Consolas', 'Courier New', monospace;
@@ -717,13 +717,13 @@ onMounted(() => {
         }
         
         .cm-gutters {
-          background-color: var(--tm-bg-subtle);
-          color: var(--tm-text-secondary);
-          border-right: 1px solid var(--tm-border-color);
+          background-color: var(--tm-bg-subtle) !important;
+          color: var(--tm-text-secondary) !important;
+          border-right: 1px solid var(--tm-border-color) !important;
         }
 
         .cm-activeLineGutter, .cm-activeLine {
-          background-color: var(--tm-bg-hover);
+          background-color: var(--tm-bg-hover) !important;
         }
       }
     }

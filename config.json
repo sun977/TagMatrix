@@ -10,7 +10,7 @@
     "theme": "light",
     "auto_backup": false,
     "task_notification": false,
-    "preview_rows": 20
+    "preview_rows": 50
   },
   "adv": {
     "concurrency": 5,
