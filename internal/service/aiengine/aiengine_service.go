@@ -95,6 +95,7 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
 	// 将 Schema 附加到系统提示词后
 	fullSystemPrompt := systemPrompt + "\n\n以下是当前系统的数据库结构信息：\n" + schema
 
+	// 构造AI请求(OpenAI协议)
 	req := openai.ChatCompletionRequest{
 		Model: modelName,
 		Messages: []openai.ChatCompletionMessage{
@@ -109,6 +110,7 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
 		},
 	}
 
+	// 发送请求,拿到AI响应
 	resp, err := client.CreateChatCompletion(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("AI response error: %w", err)

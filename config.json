@@ -8,8 +8,8 @@
   },
   "system": {
     "theme": "auto",
-    "auto_backup": false,
-    "task_notification": false
+    "auto_backup": true,
+    "task_notification": true
   },
   "adv": {
     "concurrency": 5,

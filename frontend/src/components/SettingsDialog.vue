@@ -381,6 +381,8 @@ onMounted(() => {
 
 .settings-tabs {
   width: 100%;
+  height: 100%;
+  flex: 1;
   :deep(.el-tabs__header.is-left) {
     margin-right: 0;
     width: 160px;
@@ -393,8 +395,9 @@ onMounted(() => {
     justify-content: flex-start;
   }
   :deep(.el-tabs__content) {
-    padding: 20px 24px;
+    padding: 20px 24px 40px;
     height: 100%;
+    box-sizing: border-box;
     overflow-y: auto;
   }
 }
