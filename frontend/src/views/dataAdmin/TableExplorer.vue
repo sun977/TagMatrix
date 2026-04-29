@@ -99,8 +99,8 @@
     <!-- 新增行对话框 -->
     <el-dialog v-model="addRowDialogVisible" :title="tabMode === 'system' ? '新增物理表记录' : '新增业务数据'" width="500px">
       <el-form :model="newRowForm" label-width="120px">
-        <template v-for="col in columns" :key="col">
-          <el-form-item :label="col" v-if="col !== 'id'">
+        <template v-for="col in editableColumns" :key="col">
+          <el-form-item :label="col">
             <el-input v-model="newRowForm[col]" placeholder="请输入内容" />
           </el-form-item>
         </template>
@@ -116,7 +116,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { ElMessage, ElMessageBox, type UploadFile } from 'element-plus'
 import { DataBoard, Folder, Refresh, Plus, Download, Upload } from '@element-plus/icons-vue'
 import { GetSystemTables, GetTableData, ListDatasets, GetVirtualDatasetData, UpdateVirtualRecord, DeleteVirtualRecord, UpdateSystemTableRecord, DeleteSystemTableRecord, InsertSystemTableRecord, InsertVirtualRecord } from '../../../wailsjs/go/main/App'
@@ -142,12 +142,16 @@ const editingCell = ref({ rowId: null, col: '' })
 const addRowDialogVisible = ref(false)
 const newRowForm = ref<Record<string, any>>({})
 
+// 过滤掉新增行时不需要用户填写的系统自动维护字段
+const editableColumns = computed(() => {
+  const readonlyFields = ['id', 'created_at', 'updated_at', 'deleted_at']
+  return columns.value.filter(col => !readonlyFields.includes(col.toLowerCase()))
+})
+
 const handleAddRow = () => {
   newRowForm.value = {}
-  for (const col of columns.value) {
-    if (col !== 'id') {
-      newRowForm.value[col] = ''
-    }
+  for (const col of editableColumns.value) {
+    newRowForm.value[col] = ''
   }
   addRowDialogVisible.value = true
 }

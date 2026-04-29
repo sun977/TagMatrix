@@ -234,6 +234,16 @@ func (s *DataAdminService) InsertSystemTableRecord(tableName string, payload map
 	if tableName == "" || strings.HasPrefix(strings.ToLower(tableName), "sqlite_") {
 		return fmt.Errorf("invalid table name")
 	}
+	
+	// 为通用 map[string]interface{} 注入时间戳，GORM 的 Create 对于 tableName(map) 形式不会自动触发 BeforeCreate 钩子
+	now := time.Now()
+	if _, ok := payload["created_at"]; !ok {
+		payload["created_at"] = now
+	}
+	if _, ok := payload["updated_at"]; !ok {
+		payload["updated_at"] = now
+	}
+
 	return s.db.Table(tableName).Create(payload).Error
 }
 
@@ -242,6 +252,12 @@ func (s *DataAdminService) UpdateSystemTableRecord(tableName string, recordId in
 	if tableName == "" || strings.HasPrefix(strings.ToLower(tableName), "sqlite_") {
 		return fmt.Errorf("invalid table name")
 	}
+	
+	// 更新时自动注入更新时间戳
+	if _, ok := payload["updated_at"]; !ok {
+		payload["updated_at"] = time.Now()
+	}
+
 	return s.db.Table(tableName).Where("id = ?", recordId).Updates(payload).Error
 }
 
