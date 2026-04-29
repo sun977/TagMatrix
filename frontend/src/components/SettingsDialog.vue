@@ -398,13 +398,13 @@ onMounted(() => {
   flex: 1;
   :deep(.el-tabs__header.is-left) {
     margin-right: 0;
-    width: 160px;
+    width: 130px;
     background-color: var(--tm-bg-subtle);
     padding-top: 10px;
   }
   :deep(.el-tabs__item) {
     text-align: left;
-    padding: 0 20px;
+    padding: 0 16px;
     justify-content: flex-start;
   }
   :deep(.el-tabs__content) {
