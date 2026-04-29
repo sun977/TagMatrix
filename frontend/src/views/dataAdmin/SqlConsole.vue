@@ -93,6 +93,14 @@
                 </el-table>
               </div>
               <div class="pagination-wrapper">
+                <el-button 
+                  size="small" 
+                  plain 
+                  @click="exportToCSV" 
+                  :disabled="!resultData?.rows || resultData.rows.length === 0"
+                >
+                  <el-icon><Download /></el-icon> 导出 CSV
+                </el-button>
                 <el-pagination
                   v-model:current-page="currentPage"
                   v-model:page-size="pageSize"
@@ -263,6 +271,54 @@ const paginatedRows = computed(() => {
   const start = (currentPage.value - 1) * pageSize.value
   return resultData.value.rows.slice(start, start + pageSize.value)
 })
+
+// 导出 CSV 功能
+const exportToCSV = () => {
+  if (!resultData.value?.rows || resultData.value.rows.length === 0) {
+    ElMessage.warning('暂无数据可导出')
+    return
+  }
+
+  const columns = resultData.value.columns
+  const rows = resultData.value.rows
+
+  // 格式化 CSV 单元格内容
+  const escapeCSV = (field: any) => {
+    if (field === null || field === undefined) return ''
+    const str = String(field)
+    // 包含逗号、双引号或换行符的字段，需要用双引号包围，并将内部双引号转义
+    if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return str
+  }
+
+  const headers = columns.map((col: string) => escapeCSV(col)).join(',')
+  const body = rows.map((row: any) => {
+    return columns.map((col: string) => escapeCSV(row[col])).join(',')
+  }).join('\n')
+
+  // 加入 BOM (\uFEFF) 防止 Excel 乱码
+  const csvContent = '\uFEFF' + headers + '\n' + body
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  
+  // 生成时间戳文件名
+  const now = new Date()
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+  link.download = `query_result_${timestamp}.csv`
+  
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+  
+  ElMessage.success('导出成功')
+}
 
 const sqlTemplates = ref<any[]>([])
 const saveDialogVisible = ref(false)
@@ -739,7 +795,8 @@ onMounted(() => {
       .pagination-wrapper {
         padding: 8px 12px;
         display: flex;
-        justify-content: flex-end;
+        align-items: center;
+        justify-content: space-between;
         background-color: var(--tm-bg-card);
         border-top: 1px solid var(--tm-border-color);
       }
