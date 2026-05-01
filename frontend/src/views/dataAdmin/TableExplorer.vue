@@ -85,11 +85,13 @@
         </el-button>
       </div>
       <el-pagination
-        v-model:current-page="currentPage"
-        v-model:page-size="pageSize"
+        :current-page="currentPage"
+        :page-size="pageSize"
         :page-sizes="[50, 100, 200]"
         layout="total, sizes, prev, pager, next"
         :total="totalRecords"
+        @update:current-page="currentPage = $event"
+        @update:page-size="pageSize = $event"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
       />
@@ -99,11 +101,9 @@
     <!-- 新增行对话框 -->
     <el-dialog v-model="addRowDialogVisible" :title="tabMode === 'system' ? '新增物理表记录' : '新增业务数据'" width="500px">
       <el-form :model="newRowForm" label-width="120px">
-        <template v-for="col in editableColumns" :key="col">
-          <el-form-item :label="col">
-            <el-input v-model="newRowForm[col]" placeholder="请输入内容" />
-          </el-form-item>
-        </template>
+        <el-form-item v-for="col in editableColumns" :key="col" :label="col">
+          <el-input v-model="newRowForm[col]" placeholder="请输入内容" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -257,11 +257,13 @@ const handleCurrentChange = () => {
   fetchData()
 }
 
+import { SaveCSVFile } from '../../../wailsjs/go/main/App'
+
 // ========================
 // 导入导出 CSV
 // ========================
 
-const exportToCSV = () => {
+const exportToCSV = async () => {
   if (tableData.value.length === 0) {
     ElMessage.warning('当前没有数据可以导出')
     return
@@ -282,23 +284,22 @@ const exportToCSV = () => {
   }).join('\n')
 
   const csvContent = '\uFEFF' + headers + '\n' + body
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
   
   const now = new Date()
   const pad = (n: number) => n.toString().padStart(2, '0')
   const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
   const fileName = currentTable.value ? `sys_table_${currentTable.value}_${timestamp}.csv` : `dataset_${currentDatasetId.value}_${timestamp}.csv`
   
-  link.download = fileName
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-  
-  ElMessage.success('导出成功')
+  try {
+    const savedPath = await SaveCSVFile(fileName, csvContent)
+    if (savedPath) {
+      ElMessage.success(`导出成功：${savedPath}`)
+    } else {
+      ElMessage.info('已取消导出')
+    }
+  } catch (err: any) {
+    ElMessage.error(`导出失败：${err.message || err}`)
+  }
 }
 
 // 解析并插入记录（防脏数据注入）

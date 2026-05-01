@@ -102,11 +102,13 @@
                   <el-icon><Download /></el-icon> 导出 CSV
                 </el-button>
                 <el-pagination
-                  v-model:current-page="currentPage"
-                  v-model:page-size="pageSize"
+                  :current-page="currentPage"
+                  :page-size="pageSize"
                   :page-sizes="[10, 20, 50, 100, 200, 500]"
                   layout="total, sizes, prev, pager, next"
                   :total="totalRows"
+                  @update:current-page="currentPage = $event"
+                  @update:page-size="pageSize = $event"
                 />
               </div>
             </template>
@@ -272,8 +274,10 @@ const paginatedRows = computed(() => {
   return resultData.value.rows.slice(start, start + pageSize.value)
 })
 
+import { SaveCSVFile } from '../../../wailsjs/go/main/App'
+
 // 导出 CSV 功能
-const exportToCSV = () => {
+const exportToCSV = async () => {
   if (!resultData.value?.rows || resultData.value.rows.length === 0) {
     ElMessage.warning('暂无数据可导出')
     return
@@ -301,23 +305,22 @@ const exportToCSV = () => {
   // 加入 BOM (\uFEFF) 防止 Excel 乱码
   const csvContent = '\uFEFF' + headers + '\n' + body
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  
   // 生成时间戳文件名
   const now = new Date()
   const pad = (n: number) => n.toString().padStart(2, '0')
   const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
-  link.download = `query_result_${timestamp}.csv`
+  const fileName = `query_result_${timestamp}.csv`
   
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
-  
-  ElMessage.success('导出成功')
+  try {
+    const savedPath = await SaveCSVFile(fileName, csvContent)
+    if (savedPath) {
+      ElMessage.success(`导出成功：${savedPath}`)
+    } else {
+      ElMessage.info('已取消导出')
+    }
+  } catch (err: any) {
+    ElMessage.error(`导出失败：${err.message || err}`)
+  }
 }
 
 const sqlTemplates = ref<any[]>([])

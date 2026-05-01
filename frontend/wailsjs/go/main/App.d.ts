@@ -112,6 +112,8 @@ export function RunTaggingTask(arg1:number,arg2:Array<number>,arg3:string,arg4:b
 
 export function SaveAppConfig(arg1:config.AppConfig):Promise<void>;
 
+export function SaveCSVFile(arg1:string,arg2:string):Promise<string>;
+
 export function SaveRule(arg1:model.SysMatchRule):Promise<void>;
 
 export function SaveSqlTemplate(arg1:number,arg2:string,arg3:string):Promise<void>;

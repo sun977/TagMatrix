@@ -878,6 +878,32 @@ func (a *App) ExportTaskLogsCSV(batchID uint64) (string, error) {
 	return filepath, nil
 }
 
+// SaveCSVFile saves a raw CSV string to a file using native dialog
+func (a *App) SaveCSVFile(defaultFilename string, csvContent string) (string, error) {
+	filepath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
+		DefaultFilename: defaultFilename,
+		Title:           "保存 CSV 文件",
+		Filters: []runtime.FileFilter{
+			{
+				DisplayName: "CSV Files (*.csv)",
+				Pattern:     "*.csv",
+			},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to open save dialog: %v", err)
+	}
+	if filepath == "" {
+		return "", nil // User cancelled
+	}
+
+	err = os.WriteFile(filepath, []byte(csvContent), 0644)
+	if err != nil {
+		return "", fmt.Errorf("failed to write file: %v", err)
+	}
+	return filepath, nil
+}
+
 // ----------------- AI Engine API -----------------
 
 func (a *App) ChatWithAI(message string) (string, error) {
@@ -985,10 +1011,10 @@ func (a *App) RestoreDatabase(backupPath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create target db file: %v", err)
 	}
-	
+
 	_, err = io.Copy(dest, src)
 	dest.Close() // 复制完立即关闭
-	
+
 	if err != nil {
 		return fmt.Errorf("failed to restore database file: %v", err)
 	}

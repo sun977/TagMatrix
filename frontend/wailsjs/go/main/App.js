@@ -214,6 +214,10 @@ export function SaveAppConfig(arg1) {
   return window['go']['main']['App']['SaveAppConfig'](arg1);
 }
 
+export function SaveCSVFile(arg1, arg2) {
+  return window['go']['main']['App']['SaveCSVFile'](arg1, arg2);
+}
+
 export function SaveRule(arg1) {
   return window['go']['main']['App']['SaveRule'](arg1);
 }
