@@ -192,8 +192,8 @@
       <div class="dialog-footer">
         <el-button @click="resetDefaults">重置默认值</el-button>
         <div>
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="saveSettings">保存设置</el-button>
+          <el-button @click="dialogVisible = false">关闭</el-button>
+          <el-button type="primary" @click="saveSettings">应用并保存</el-button>
         </div>
       </div>
     </template>
@@ -202,8 +202,8 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
-import { GetAppConfig, SaveAppConfig, TestAIConnection, GetAppPaths, OpenDirectoryInOS } from '../../wailsjs/go/main/App'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { GetAppConfig, SaveAppConfig, TestAIConnection, GetAppPaths, OpenDirectoryInOS, BackupAppConfig } from '../../wailsjs/go/main/App'
 import { config } from '../../wailsjs/go/models'
 
 const props = defineProps<{
@@ -345,7 +345,34 @@ const openDir = async (path: string) => {
 }
 
 const resetDefaults = () => {
-  Object.assign(form, defaultForm)
+  ElMessageBox.confirm(
+    '此操作将恢复所有设置为初始状态，并清除您当前的 API 密钥。为防止数据丢失，系统会自动将您当前的配置备份在本地目录下。\n\n是否确认重置？',
+    '重置默认配置',
+    {
+      confirmButtonText: '确认重置',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(async () => {
+    try {
+      // 1. 调用后端备份当前配置
+      const backupName = await BackupAppConfig()
+      
+      // 2. 覆盖前端表单为默认值并保存
+      Object.assign(form, defaultForm)
+      await saveSettings()
+      
+      // 3. 提示成功并告知备份位置
+      ElMessage({
+        message: `已恢复系统默认配置，原配置已备份为: ${backupName}`,
+        type: 'success',
+        duration: 5000,
+        showClose: true
+      })
+    } catch (e: any) {
+      ElMessage.error('重置失败: ' + (e.message || e))
+    }
+  }).catch(() => {})
 }
 
 const saveSettings = async () => {
@@ -379,7 +406,7 @@ const saveSettings = async () => {
     window.dispatchEvent(new CustomEvent('theme-changed', { detail: form.theme }))
 
     emit('saved')
-    dialogVisible.value = false
+    // 移除 dialogVisible.value = false
   } catch (e) {
     console.error('Failed to save settings:', e)
     ElMessage.error('保存设置失败')

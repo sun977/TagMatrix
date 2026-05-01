@@ -8,6 +8,8 @@ import {main} from '../models';
 
 export function AnalyzeDataFile():Promise<model.FileAnalysisResult>;
 
+export function BackupAppConfig():Promise<string>;
+
 export function ChatWithAI(arg1:string):Promise<string>;
 
 export function CheckTagHasRules(arg1:number):Promise<boolean>;

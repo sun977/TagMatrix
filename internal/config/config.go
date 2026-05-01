@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 )
 
 // AppConfig 定义了整个应用的配置结构
@@ -128,6 +129,34 @@ func SaveConfig(newConfig AppConfig) error {
 
 	configInstance = &newConfig
 	return nil
+}
+
+// BackupConfig 会将当前的 config.json 重命名为带时间戳的备份文件，并返回备份的文件名
+func BackupConfig() (string, error) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	if configPath == "" {
+		return "", fmt.Errorf("config not initialized")
+	}
+
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		return "", fmt.Errorf("config file does not exist")
+	}
+
+	// 构造带时间戳的备份文件名，例如 config-202605011811-bak.json
+	now := time.Now()
+	timestamp := now.Format("200601021504")
+	dir := filepath.Dir(configPath)
+	backupName := fmt.Sprintf("config-%s-bak.json", timestamp)
+	backupPath := filepath.Join(dir, backupName)
+
+	// 执行重命名 (移动文件)
+	if err := os.Rename(configPath, backupPath); err != nil {
+		return "", fmt.Errorf("failed to backup config: %w", err)
+	}
+
+	return backupName, nil
 }
 
 // 内部方法：将配置序列化写入文件

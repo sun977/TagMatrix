@@ -123,6 +123,11 @@ func (a *App) SaveAppConfig(newConfig config.AppConfig) error {
 	return err
 }
 
+// BackupAppConfig 备份当前的配置文件
+func (a *App) BackupAppConfig() (string, error) {
+	return config.BackupConfig()
+}
+
 type AppPaths struct {
 	DBPath  string `json:"dbPath"`
 	LogPath string `json:"logPath"`

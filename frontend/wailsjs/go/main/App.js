@@ -6,6 +6,10 @@ export function AnalyzeDataFile() {
   return window['go']['main']['App']['AnalyzeDataFile']();
 }
 
+export function BackupAppConfig() {
+  return window['go']['main']['App']['BackupAppConfig']();
+}
+
 export function ChatWithAI(arg1) {
   return window['go']['main']['App']['ChatWithAI'](arg1);
 }
