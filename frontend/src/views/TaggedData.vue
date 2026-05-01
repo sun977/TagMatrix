@@ -252,7 +252,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { Search, Download, RefreshRight, Setting, DocumentCopy } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { GetTaggedDataList, ExportTaggedDataList, GetAllTags, GetTaskBatches, GetAvailableSourceFiles, ListDatasets } from '../../wailsjs/go/main/App'
@@ -531,13 +531,32 @@ const loadOptions = async () => {
     const dsList = await ListDatasets()
     if (dsList) availableDatasets.value = dsList
 
-    // TODO: 目前没有指定 dataset_id，获取所有的 data sources
+    // 默认加载所有来源文件，后续随 datasetId 变化而更新
     const ds = await GetAvailableSourceFiles(0)
     if (ds) availableSourceFiles.value = ds
   } catch (e) {
     console.error('加载选项失败', e)
   }
 }
+
+watch(() => filterForm.datasetId, async (newVal) => {
+  if (newVal) {
+    try {
+      const ds = await GetAvailableSourceFiles(Number(newVal))
+      availableSourceFiles.value = ds || []
+      // 切换数据集时，如果当前选择的来源文件不在新列表中，则清空
+      if (filterForm.sourceFile && !availableSourceFiles.value.some((item: any) => item.source_name === filterForm.sourceFile)) {
+        filterForm.sourceFile = ''
+      }
+    } catch (e) {
+      console.error('获取数据集来源文件失败', e)
+    }
+  } else {
+    // 未选择数据集时获取所有
+    const ds = await GetAvailableSourceFiles(0)
+    availableSourceFiles.value = ds || []
+  }
+})
 
 onMounted(async () => {
   await loadOptions()

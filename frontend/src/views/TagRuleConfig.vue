@@ -219,7 +219,7 @@
               测试完成！抽样检测了 {{ testSummary.total }} 条数据，其中有 {{ testSummary.matched }} 条数据匹配当前规则，匹配率 {{ testSummary.ratio }}%。
             </div>
 
-            <el-table :data="mockDryRunData" style="width: 100%" class="custom-table" max-height="250">
+            <el-table :data="DryRunData" style="width: 100%" class="custom-table" max-height="250">
               <el-table-column label="匹配结果" width="100" align="center" fixed="left" prop="_matched" sortable>
                 <template #default="scope">
                   <div class="match-pill" :class="scope.row._matched ? 'matched' : 'unmatched'">
@@ -543,7 +543,7 @@ const operatorHelpData = [
 
 const hasRunDry = ref(false)
 const runningDry = ref(false)
-const mockDryRunData = ref<any[]>([])
+const DryRunData = ref<any[]>([])
 const testLimit = ref<number>(1000)
 const dynamicColumns = ref<string[]>([])
 const testSummary = ref({ total: 0, matched: 0, ratio: '0.0' })
@@ -701,7 +701,7 @@ const handleDryRun = async () => {
     
     if (!results || results.length === 0) {
       ElMessage.warning('当前数据库中没有可供试运行的目标数据，请先导入数据！')
-      mockDryRunData.value = []
+      DryRunData.value = []
       dynamicColumns.value = []
       testSummary.value = { total: 0, matched: 0, ratio: '0.0' }
       hasRunDry.value = true
@@ -711,7 +711,7 @@ const handleDryRun = async () => {
     let matchedCount = 0
     const columnsSet = new Set<string>()
 
-    mockDryRunData.value = results.map((r: any) => {
+    DryRunData.value = results.map((r: any) => {
       if (r.matched) matchedCount++
       
       let d: any = {}
