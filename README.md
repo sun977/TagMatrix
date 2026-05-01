@@ -1,10 +1,17 @@
-# TagMatrix
-
 <div align="center">
-  <img src="./frontend/src/assets/images/appicon.png" alt="TagMatrix Logo" width="120" height="120" />
+  <img src="./frontend/src/assets/images/appicon.png" alt="TagMatrix Logo" width="100" height="100" style="margin-bottom: 10px;" />
+  <h1>TagMatrix</h1>
+  <p><b>一个高性能、可视化、可拓展的跨平台数据打标桌面应用程序。</b></p>
+  <p>
+    <img alt="Go Version" src="https://img.shields.io/badge/Go-1.20+-00ADD8?style=flat-square&logo=go">
+    <img alt="Vue Version" src="https://img.shields.io/badge/Vue.js-3.0-4FC08D?style=flat-square&logo=vuedotjs">
+    <img alt="Wails" src="https://img.shields.io/badge/Wails-v2-ED2024?style=flat-square&logo=wails">
+    <img alt="SQLite" src="https://img.shields.io/badge/SQLite-3-003B57?style=flat-square&logo=sqlite">
+    <img alt="License" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
+  </p>
 </div>
 
-> 一个高性能、可视化、可拓展的跨平台数据打标桌面应用程序。
+<br/>
 
 TagMatrix 是一个致力于解决海量结构化/半结构化数据打标签问题的通用系统。无论是单标签分类、多标签标记，还是主副标签的混合模式，TagMatrix 都能通过其内置的高性能无状态匹配引擎 (`matcher`) 和大语言模型 (AI) 提供极速且精准的自动化打标体验。
 
