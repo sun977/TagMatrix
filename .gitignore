@@ -16,8 +16,8 @@ Thumbs.db
 modules.xml
 vcs.xml
 
-# Trae IDE(放开，方便我自己开发)
-# .trae
+# Trae IDE
+.trae/
 
 # Binaries
 *.exe
