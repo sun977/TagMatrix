@@ -18,7 +18,7 @@
   "adv": {
     "concurrency": 5,
     "retries": 3,
-    "debug_mode": false,
+    "debug_mode": true,
     "developer_mode": true
   }
 }

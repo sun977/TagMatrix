@@ -2,22 +2,28 @@ package model
 
 import (
 	"fmt"
-	"log"
+	"time"
 
+	"TagMatrix/internal/pkg/logger"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
 )
 
-var DB *gorm.DB
+var (
+	DB          *gorm.DB
+	gormZapLog  *logger.GormZapLogger
+)
 
 // InitDB 初始化本地 SQLite 数据库并进行模型迁移
 func InitDB(dbPath string) error {
 	var err error
 
+	// 使用我们的自定义 Zap Logger 接管 GORM
+	gormZapLog = logger.NewGormLogger(logger.Log, 200*time.Millisecond)
+
 	// 配置 GORM 日志
 	gormConfig := &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info), // 开发时可打印SQL
+		Logger: gormZapLog,
 	}
 
 	DB, err = gorm.Open(sqlite.Open(dbPath), gormConfig)
@@ -31,8 +37,15 @@ func InitDB(dbPath string) error {
 		return fmt.Errorf("failed to auto migrate database schemas: %w", err)
 	}
 
-	log.Printf("Successfully connected to SQLite at %s and migrated models", dbPath)
+	logger.Info(fmt.Sprintf("Successfully connected to SQLite at %s and migrated models", dbPath))
 	return nil
+}
+
+// UpdateDBLoggerLevel 用于在界面修改 Debug 模式后同步更新数据库日志级别
+func UpdateDBLoggerLevel(isDebug bool) {
+	if gormZapLog != nil {
+		gormZapLog.UpdateLevel(isDebug)
+	}
 }
 
 func autoMigrate() error {

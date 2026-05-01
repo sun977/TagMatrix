@@ -17,6 +17,7 @@ import (
 
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
+	"TagMatrix/internal/pkg/logger"
 	"TagMatrix/internal/service/aiengine"
 	"TagMatrix/internal/service/dataadmin"
 	"TagMatrix/internal/service/dataimport"
@@ -25,6 +26,7 @@ import (
 	"TagMatrix/internal/service/taskengine"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"go.uber.org/zap"
 )
 
 // App struct
@@ -55,7 +57,7 @@ func (a *App) startup(ctx context.Context) {
 	if env.BuildType == "dev" || env.BuildType == "debug" {
 		// 开发模式：直接使用当前项目根目录
 		appDir = "."
-		fmt.Println("Running in Dev/Debug mode, using current directory for data and config.")
+		// 不再用 fmt，等下面 logger 起来后再打，这里暂时留空或只保留极简输出
 	} else {
 		// 生产打包模式：使用系统标准的 AppData 目录
 		configDir, err := os.UserConfigDir()
@@ -72,16 +74,21 @@ func (a *App) startup(ctx context.Context) {
 
 	dbPath := filepath.Join(appDir, "data.db")
 
-	// 1. 初始化数据库
-	err := model.InitDB(dbPath)
-	if err != nil {
-		fmt.Printf("Failed to initialize database: %v\n", err)
-	}
-
 	// 2. 初始化配置文件
-	err = config.InitConfig(appDir)
+	err := config.InitConfig(appDir)
 	if err != nil {
 		fmt.Printf("Failed to initialize config: %v\n", err)
+	}
+
+	logPath := filepath.Join(appDir, "app.log")
+	cfg := config.GetConfig()
+	logger.InitLogger(logPath, cfg.Adv.DebugMode)
+	logger.Info("TagMatrix application started", zap.String("appDir", appDir))
+
+	// 1. 初始化数据库 (传入 logger)
+	err = model.InitDB(dbPath)
+	if err != nil {
+		logger.Fatal("Failed to initialize database", zap.Error(err))
 	}
 
 	// 3. 初始化所有的 Service
@@ -103,7 +110,17 @@ func (a *App) GetAppConfig() config.AppConfig {
 
 // SaveAppConfig 保存应用的配置
 func (a *App) SaveAppConfig(newConfig config.AppConfig) error {
-	return config.SaveConfig(newConfig)
+	err := config.SaveConfig(newConfig)
+	if err == nil {
+		// 动态更新日志级别
+		logger.SetDebugMode(newConfig.Adv.DebugMode)
+		// 如果有必要，也可以将这个 DebugMode 同步到 GORM Logger，
+		// 但目前我们已经在 logger.SetDebugMode 中处理了底层 Zap，
+		// GORM 可能会自动跟随。稳妥起见，这里也可以通知 model 更新
+		model.UpdateDBLoggerLevel(newConfig.Adv.DebugMode)
+		// 这两行代码的结合，确保了从“数据产生源头（GORM）”到“最终写入端（Zap）”的日志级别是 完全同步、且性能最优的性能损耗最低的 。
+	}
+	return err
 }
 
 type AppPaths struct {
