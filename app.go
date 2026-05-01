@@ -451,8 +451,13 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 				var tags []model.SysTag
 				model.DB.Where("id IN ?", tagIDs).Find(&tags)
 				for _, t := range tags {
+					displayName := t.Path
+					if displayName == "" {
+						displayName = t.Name
+					}
+
 					tagDto := model.TagDto{
-						Name:  t.Name,
+						Name:  displayName,
 						Color: t.Color,
 					}
 					dto.Tags = append(dto.Tags, tagDto)
@@ -636,9 +641,14 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 
 				var tNames []string
 				for _, t := range tags {
-					tNames = append(tNames, t.Name)
+					displayName := t.Path
+					if displayName == "" {
+						displayName = t.Name
+					}
+
+					tNames = append(tNames, displayName)
 					if primaryMap[t.ID] {
-						primaryTagStr = t.Name
+						primaryTagStr = displayName
 					}
 				}
 				if len(tNames) > 0 {

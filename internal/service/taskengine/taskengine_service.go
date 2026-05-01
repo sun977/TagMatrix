@@ -379,7 +379,11 @@ func (s *TaskEngineService) GetTaskLogs(batchID uint64) ([]model.TagTaskLogDto, 
 		var tags []model.SysTag
 		s.db.Where("id IN ?", tagIDs).Find(&tags)
 		for _, t := range tags {
-			tagMap[t.ID] = t.Name
+			if t.Path != "" {
+				tagMap[t.ID] = t.Path
+			} else {
+				tagMap[t.ID] = t.Name
+			}
 		}
 	}
 
