@@ -1,5 +1,9 @@
 # TagMatrix
 
+<div align="center">
+  <img src="./frontend/src/assets/images/appicon.png" alt="TagMatrix Logo" width="120" height="120" />
+</div>
+
 > 一个高性能、可视化、可拓展的跨平台数据打标桌面应用程序。
 
 TagMatrix 是一个致力于解决海量结构化/半结构化数据打标签问题的通用系统。无论是单标签分类、多标签标记，还是主副标签的混合模式，TagMatrix 都能通过其内置的高性能无状态匹配引擎 (`matcher`) 和大语言模型 (AI) 提供极速且精准的自动化打标体验。
