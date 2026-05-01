@@ -8,7 +8,6 @@
   },
   "system": {
     "theme": "auto",
-    "auto_backup": true,
     "task_notification": true
   },
   "network": {

@@ -54,7 +54,6 @@ export namespace config {
 	}
 	export class SystemConfig {
 	    theme: string;
-	    auto_backup: boolean;
 	    task_notification: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -64,7 +63,6 @@ export namespace config {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.theme = source["theme"];
-	        this.auto_backup = source["auto_backup"];
 	        this.task_notification = source["task_notification"];
 	    }
 	}

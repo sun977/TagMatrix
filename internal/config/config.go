@@ -34,7 +34,6 @@ type AIConfig struct {
 // SystemConfig 定义了系统相关的配置
 type SystemConfig struct {
 	Theme            string `json:"theme"` // light, dark, auto
-	AutoBackup       bool   `json:"auto_backup"`
 	TaskNotification bool   `json:"task_notification"`
 }
 
@@ -43,7 +42,7 @@ type AdvConfig struct {
 	Concurrency   int  `json:"concurrency"`
 	Retries       int  `json:"retries"`
 	DebugMode     bool `json:"debug_mode"`
-	DeveloperMode bool `json:"developer_mode"`	// 开发者模式
+	DeveloperMode bool `json:"developer_mode"` // 开发者模式
 }
 
 var (
@@ -79,7 +78,6 @@ func InitConfig(appDataDir string) error {
 			},
 			System: SystemConfig{
 				Theme:            "auto",
-				AutoBackup:       true,
 				TaskNotification: true,
 			},
 			Network: NetworkConfig{

@@ -24,16 +24,8 @@
 
             <div class="setting-item flex-between mt-4">
               <div class="item-text">
-                <label>自动备份打标结果</label>
-                <div class="help-text">每次打标任务完成后自动备份数据到本地</div>
-              </div>
-              <el-switch v-model="form.autoBackup" />
-            </div>
-
-            <div class="setting-item flex-between">
-              <div class="item-text">
                 <label>任务完成通知</label>
-                <div class="help-text">打标任务完成后发送系统通知</div>
+                <div class="help-text">打标任务完成后发送系统横幅通知</div>
               </div>
               <el-switch v-model="form.taskNotification" />
             </div>
@@ -252,7 +244,6 @@ const defaultForm = {
 请注意：
 - 用户的原始导入数据存储在 raw_data_records 表的 data 字段中（JSON 格式）。在 SQLite 中查询 JSON 数据请使用 json_extract 函数。
 - 给出 SQL 时请使用 markdown 代码块包裹，以便前端渲染。`,
-  autoBackup: true,
   taskNotification: true,
   concurrency: 5,
   retries: 3,
@@ -305,7 +296,6 @@ const loadSettings = async () => {
     }
     if (cfg && cfg.system) {
       form.theme = cfg.system.theme || 'auto'
-      form.autoBackup = cfg.system.auto_backup
       form.taskNotification = cfg.system.task_notification
     }
     if (cfg && cfg.adv) {
@@ -370,7 +360,6 @@ const saveSettings = async () => {
 
     newCfg.system = new config.SystemConfig()
     newCfg.system.theme = form.theme
-    newCfg.system.auto_backup = form.autoBackup
     newCfg.system.task_notification = form.taskNotification
 
     newCfg.adv = new config.AdvConfig()

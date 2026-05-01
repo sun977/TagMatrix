@@ -9,8 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
+	"TagMatrix/internal/pkg/logger"
 	"TagMatrix/internal/pkg/matcher"
+
+	"github.com/gen2brain/beeep"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"gorm.io/gorm"
@@ -232,7 +236,19 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	}
 	s.emitProgress(batchID, progress, totalProcessed, totalRecords, status)
 
-	log.Printf("[TaskEngine] Finished batch %d. Processed: %d", batchID, totalProcessed)
+	logger.Info(fmt.Sprintf("[TaskEngine] Finished batch %d. Processed: %d", batchID, totalProcessed))
+
+	// 发送系统通知 (根据配置)
+	appConfig := config.GetConfig()
+	if appConfig.System.TaskNotification {
+		title := "TagMatrix"
+		msg := fmt.Sprintf("打标任务 (批次: %d) 已完成！共处理数据: %d 条", batchID, totalProcessed)
+		if status == "failed" {
+			msg = fmt.Sprintf("打标任务 (批次: %d) 执行失败！", batchID)
+		}
+		// 可以忽略错误，因为不同系统环境下的通知权限或环境支持可能不同，不应该阻塞核心业务
+		_ = beeep.Notify(title, msg, "")
+	}
 }
 
 // processRecords 处理一小批数据（由 Worker 执行）
