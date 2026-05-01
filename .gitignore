@@ -40,9 +40,17 @@ go.work
 # Release builds
 release/
 
-# # Config files with sensitive info
-# .env
-# configs/config.yaml
+# Config files with sensitive info
+.env
+configs/config.yaml
+config.json
+config-init.json
+
+# Design Assets and zips
+docs/UI/
+
+# Wails auto-generated bindings
+frontend/wailsjs/
 
 # Logs
 *.log
