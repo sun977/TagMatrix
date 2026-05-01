@@ -6,8 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	osRuntime "runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -131,7 +134,21 @@ func (a *App) GetAppPaths() AppPaths {
 // OpenDirectoryInOS 打开系统目录
 func (a *App) OpenDirectoryInOS(path string) {
 	dir := filepath.Dir(path)
-	runtime.BrowserOpenURL(a.ctx, "file://"+dir)
+
+	var cmd *exec.Cmd
+	switch osRuntime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", dir)
+	case "darwin":
+		cmd = exec.Command("open", dir)
+	default: // linux, freebsd, etc.
+		cmd = exec.Command("xdg-open", dir)
+	}
+
+	err := cmd.Start()
+	if err != nil {
+		log.Printf("Failed to open directory: %v", err)
+	}
 }
 
 // ----------------- Dashboard & Stats API -----------------

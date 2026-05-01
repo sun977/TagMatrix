@@ -12,7 +12,7 @@
     "task_notification": true
   },
   "network": {
-    "proxy_mode": "custom",
+    "proxy_mode": "system",
     "proxy_url": "http://127.0.0.1:8080"
   },
   "adv": {
