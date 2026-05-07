@@ -6,7 +6,7 @@
       </div>
       <h3 class="empty-title">未配置 AI 引擎</h3>
       <p class="empty-desc">
-        请先在全局设置中配置 OpenAI 或兼容大模型的 API Key，即可开启您的全局智能助手。
+        请先在全局设置中配置 OpenAI 或兼容大模型的 API Key，即可开启您的AI智能助手。
       </p>
       <el-button type="primary" @click="openSettings" color="var(--tm-accent-primary)">立即配置 AI 引擎</el-button>
     </div>
@@ -17,7 +17,7 @@
       </div>
       <h3 class="empty-title">AI Copilot</h3>
       <p class="empty-desc">
-        我是您的全局智能助手。您可以随时向我提问，或者让我帮您提取标签规则、编写 SQL 及正则表达式。
+        我是您的AI智能助手。您可以随时向我提问，或者让我帮您提取标签规则、编写 SQL 及正则表达式。
       </p>
       
       <!-- 预设问题 (快捷气泡) -->

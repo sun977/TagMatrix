@@ -22,7 +22,7 @@
         ref="textareaRef"
         v-model="inputText"
         class="auto-resize-textarea"
-        placeholder="发送消息... (Enter 发送, Shift+Enter 换行, / 唤出快捷指令)"
+        placeholder="发送消息... ([/] 唤出快捷指令)"
         rows="1"
         :disabled="disabled"
         @input="handleInput"
@@ -38,9 +38,9 @@
         <el-icon><Promotion v-if="!disabled" /><Loading v-else class="is-loading" /></el-icon>
       </div>
     </div>
-    <div class="footer-tips">
+    <!-- <div class="footer-tips">
       AI 生成内容仅供参考，执行操作前请确认。
-    </div>
+    </div> -->
   </div>
 </template>
 
@@ -320,7 +320,7 @@ const sendMessage = () => {
     .send-btn {
       position: absolute;
       right: 8px;
-      bottom: 8px;
+      bottom: calc(50% - 16px);
       display: flex;
       align-items: center;
       justify-content: center;

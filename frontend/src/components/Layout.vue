@@ -62,7 +62,7 @@
 
     <!-- 右上角全局布局控制栏 (Layout Controls) -->
     <div class="layout-controls" :class="{ 'is-shifted': aiStore.isOpen }">
-      <el-tooltip content="全局智能助手" placement="bottom" :show-after="300">
+      <el-tooltip content="AI助手" placement="bottom" :show-after="300">
         <div class="control-btn" :class="{ 'is-active': aiStore.isOpen }" @click="toggleAIPanel">
           <el-icon><Service /></el-icon>
         </div>
