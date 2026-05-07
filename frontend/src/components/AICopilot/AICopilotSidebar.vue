@@ -99,7 +99,9 @@ const handleSend = async (text: string) => {
 
   // 加上页面 Context (如果开启了且有)
   if (aiStore.isContextAwareness && aiStore.pageContext && payloadMsgs.length > 0) {
-    const lastUserMsgIdx = payloadMsgs.findLastIndex(m => m.role === 'user')
+    const reversedMsgs = [...payloadMsgs].reverse()
+    const lastUserMsgIdxReversed = reversedMsgs.findIndex((m: any) => m.role === 'user')
+    const lastUserMsgIdx = lastUserMsgIdxReversed >= 0 ? payloadMsgs.length - 1 - lastUserMsgIdxReversed : -1
     if (lastUserMsgIdx !== -1) {
       // 防止上下文过长导致 Token 浪费，截断处理
       let ctxString = aiStore.pageContext

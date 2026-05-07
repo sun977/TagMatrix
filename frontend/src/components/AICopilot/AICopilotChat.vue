@@ -89,15 +89,13 @@ renderer.code = (token: any) => {
 
   const encodedCode = encodeURIComponent(code)
   
-  return `
-    <div class="code-block-wrapper">
+  return `<div class="code-block-wrapper">
       <div class="code-block-header">
         <span class="code-lang">${language}</span>
         <button class="copy-btn" data-code="${encodedCode}">复制</button>
       </div>
       <pre><code class="hljs language-${language}">${highlightedCode}</code></pre>
-    </div>
-  `
+    </div>`
 }
 
 marked.setOptions({
@@ -129,10 +127,7 @@ const renderMarkdown = (text: string) => {
         
       const safeQuery = encodeURIComponent(decodedQuery)
       
-      return `<button class="action-btn" data-type="${type}" data-query="${safeQuery}">
-        <span class="action-icon">🚀</span>
-        <span class="action-text">${btnLabel}</span>
-      </button>`
+      return `<button class="action-btn" data-type="${type}" data-query="${safeQuery}"><span class="action-icon">🚀</span><span class="action-text">${btnLabel}</span></button>`
     }
   )
 
@@ -460,6 +455,10 @@ html.dark {
           word-break: break-word;
           white-space: pre-wrap;
           box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+          
+          &.markdown-body {
+            white-space: normal;
+          }
         }
       }
     }
