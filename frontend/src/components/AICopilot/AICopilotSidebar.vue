@@ -108,7 +108,7 @@ const handleSend = async (text: string) => {
       if (ctxString.length > 1000) {
         ctxString = ctxString.substring(0, 1000) + '...[上下文过长已截断]'
       }
-      payloadMsgs[lastUserMsgIdx].content = `[系统注入：用户当前停留在【${ctxString}】页面。注意：这仅作背景参考，如果用户的最新提问与该页面功能无关，请务必忽略此提示，不要生搬硬套。]\n\n${payloadMsgs[lastUserMsgIdx].content}`
+      payloadMsgs[lastUserMsgIdx].content = `[系统注入：${ctxString}注意：这仅作背景参考，如果用户的最新提问与该页面功能无关，请务必忽略此提示，不要生搬硬套。]\n\n${payloadMsgs[lastUserMsgIdx].content}`
     }
   }
 
