@@ -91,7 +91,7 @@ const aiStore = useAIStore()
 // 监听路由变化，自动更新 AI 的上下文
 watch(() => route.path, () => {
   if (route.meta && route.meta.title) {
-    aiStore.pageContext = `用户当前停留在【${route.meta.title}】页面。`
+    aiStore.pageContext = route.meta.title as string
   } else {
     aiStore.pageContext = ''
   }
