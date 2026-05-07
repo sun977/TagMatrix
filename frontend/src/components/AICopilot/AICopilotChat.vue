@@ -119,6 +119,9 @@ const renderMarkdown = (text: string) => {
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&amp;/g, '&')
+        .replace(/\\n/g, '\n')
+        .replace(/\\r/g, '\r')
+        .replace(/\\t/g, '\t')
         
       // 兼容大模型有时会用两个单引号转义一个单引号的行为
       if (_q3 === "'") {
