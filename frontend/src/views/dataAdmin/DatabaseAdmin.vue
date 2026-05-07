@@ -37,13 +37,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import SqlConsole from './SqlConsole.vue'
 import TableExplorer from './TableExplorer.vue'
 import BackupRestore from './BackupRestore.vue'
+import { useAIStore } from '../../store/useAIStore'
 
+const aiStore = useAIStore()
 const activeTab = ref('sql')
 const showWarning = ref(false)
+
+watch(() => aiStore.pendingSQL, (newVal) => {
+  if (newVal) {
+    activeTab.value = 'sql'
+  }
+}, { immediate: true })
 
 onMounted(() => {
   if (!localStorage.getItem('sys_db_warning_dismissed')) {

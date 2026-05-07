@@ -57,10 +57,17 @@
       </router-view>
     </div>
 
-    <!-- 右下角 AI 助手悬浮按钮 (暂时隐藏，等开发AI功能时再开启) -->
-    <!-- <div class="ai-assistant-btn" @click="toggleAIPanel">
-      <el-icon :size="24"><Service /></el-icon>
-    </div> -->
+    <!-- 右侧智能助手面板 -->
+    <AICopilotSidebar />
+
+    <!-- 右上角全局布局控制栏 (Layout Controls) -->
+    <div class="layout-controls" :class="{ 'is-shifted': aiStore.isOpen }">
+      <el-tooltip content="全局智能助手" placement="bottom" :show-after="300">
+        <div class="control-btn" :class="{ 'is-active': aiStore.isOpen }" @click="toggleAIPanel">
+          <el-icon><Service /></el-icon>
+        </div>
+      </el-tooltip>
+    </div>
 
     <!-- 全局设置模态框 -->
     <SettingsDialog v-model="isSettingsOpen" @saved="handleSettingsSaved" />
@@ -68,14 +75,27 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onUnmounted, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, ref, onUnmounted, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 // @ts-ignore: Vetur / TS plugin issue with script setup
 import SettingsDialog from './SettingsDialog.vue'
+import AICopilotSidebar from './AICopilot/AICopilotSidebar.vue'
+import { useAIStore } from '../store/useAIStore'
 import { GetAppConfig } from '../../wailsjs/go/main/App'
 import { config } from '../../wailsjs/go/models'
 
 const router = useRouter()
+const route = useRoute()
+const aiStore = useAIStore()
+
+// 监听路由变化，自动更新 AI 的上下文
+watch(() => route.path, () => {
+  if (route.meta && route.meta.title) {
+    aiStore.pageContext = `用户当前停留在【${route.meta.title}】页面。`
+  } else {
+    aiStore.pageContext = ''
+  }
+}, { immediate: true })
 
 const appVersion = __APP_VERSION__
 const authorName = __APP_AUTHOR__
@@ -89,6 +109,13 @@ onMounted(async () => {
   } catch (e) {
     console.error('Failed to load app config in Layout', e)
   }
+  
+  window.addEventListener('open-settings', openSettings)
+})
+
+onUnmounted(() => {
+  stopDrag()
+  window.removeEventListener('open-settings', openSettings)
 })
 
 // 过滤出要在菜单中显示的路由
@@ -108,6 +135,8 @@ const openSettings = () => {
 const handleSettingsSaved = async () => {
   try {
     appConfig.value = await GetAppConfig()
+    // 更新 AI Store
+    aiStore.checkAPIKey()
     // 权限回收判断：如果关了开发者模式且当前在数据库管理页，丝滑退回首页
     if (!appConfig.value?.adv?.developer_mode && router.currentRoute.value.meta.requireDev) {
       router.replace('/dashboard')
@@ -118,8 +147,7 @@ const handleSettingsSaved = async () => {
 }
 
 const toggleAIPanel = () => {
-  // TODO: 呼出 AI 面板
-  console.log('Toggle AI Panel')
+  aiStore.togglePanel()
 }
 
 // --- 侧边栏拖拽调节宽度逻辑 ---
@@ -179,6 +207,7 @@ onUnmounted(() => {
   height: 100vh;
   background-color: var(--tm-bg-main);
   overflow: hidden;
+  position: relative;
 
   // 拖拽时防止全局文本选中
   &.is-dragging {
@@ -344,31 +373,47 @@ onUnmounted(() => {
   background-color: var(--tm-bg-main);
 }
 
-/* --- 右下角 AI 助手按钮 --- */
-.ai-assistant-btn {
-  position: fixed;
-  right: 32px;
-  bottom: 32px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background-color: var(--tm-accent-primary);
-  color: #ffffff;
+/* --- 右上角全局布局控制栏 (Layout Controls) --- */
+.layout-controls {
+  position: absolute;
+  top: 16px;
+  right: 24px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(82, 196, 143, 0.3);
-  cursor: pointer;
+  gap: 4px;
+  padding: 4px;
+  background-color: var(--tm-bg-main);
+  border: 1px solid var(--tm-border-color);
+  border-radius: 8px;
+  box-shadow: var(--tm-shadow-sm);
   z-index: 100;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(82, 196, 143, 0.4);
+  /* 当侧边栏展开时，向左偏移侧边栏的宽度 (400px + 原本的24px = 424px) */
+  &.is-shifted {
+    right: 424px;
   }
 
-  &:active {
-    transform: translateY(0);
+  .control-btn {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--tm-text-regular);
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: var(--tm-bg-hover);
+      color: var(--tm-text-primary);
+    }
+
+    &.is-active {
+      background-color: var(--tm-bg-active);
+      color: var(--tm-text-primary);
+    }
   }
 }
 

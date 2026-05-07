@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "highlight.js": "^11.11.1",
+    "marked": "^18.0.3"
+  },
+  "devDependencies": {
+    "@types/highlight.js": "^9.12.4",
+    "@types/marked": "^5.0.2"
+  }
+}

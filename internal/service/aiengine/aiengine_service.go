@@ -2,7 +2,10 @@ package aiengine
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"strings"
 
 	"TagMatrix/internal/config"
@@ -10,6 +13,7 @@ import (
 	"TagMatrix/internal/service/network"
 
 	"github.com/sashabaranov/go-openai"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"gorm.io/gorm"
 )
 
@@ -135,6 +139,92 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
 	}
 
 	return "", fmt.Errorf("no response from AI")
+}
+
+// ChatWithAIStream 发送消息给 AI 并获取流式回复，通过 Wails events 发送至前端。
+func (s *AIEngineService) ChatWithAIStream(ctx context.Context, message string) error {
+	client, modelName := s.getClient()
+
+	schema, err := s.getSchema()
+	if err != nil {
+		schema = "无法获取数据库结构。"
+	}
+
+	cfg := config.GetConfig().AI
+	systemPrompt := cfg.SystemPrompt
+	if systemPrompt == "" {
+		systemPrompt = "你是一个数据分析助手。"
+	}
+
+	actionInstruction := "\n\n[系统交互指令]\n如果用户的意图是请求你编写或生成一段 SQL，除了给出解释和 Markdown 代码块之外，请务必在你的回复末尾输出一个动作标签，格式严格如下：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n这将会被前端解析并渲染为一个交互按钮。请将 query 属性中的双引号转义为实体或直接使用单引号包裹字符串。"
+
+	fullSystemPrompt := systemPrompt + actionInstruction + "\n\n以下是当前系统的数据库结构信息：\n" + schema
+
+	// 解析传入的 message (可能是 JSON 数组)
+	type ChatMsgJSON struct {
+		Role    string `json:"role"`
+		Content string `json:"content"`
+	}
+	var incomingMsgs []ChatMsgJSON
+
+	if strings.HasPrefix(strings.TrimSpace(message), "[") {
+		if err := json.Unmarshal([]byte(message), &incomingMsgs); err != nil {
+			// 解析失败，作为一个普通字符串处理
+			incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
+		}
+	} else {
+		// 纯文本，作为单条 user 消息
+		incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
+	}
+
+	// 构造发送给大模型的 Messages 数组
+	var messages []openai.ChatCompletionMessage
+	messages = append(messages, openai.ChatCompletionMessage{
+		Role:    openai.ChatMessageRoleSystem,
+		Content: fullSystemPrompt,
+	})
+
+	for _, m := range incomingMsgs {
+		role := openai.ChatMessageRoleUser
+		if m.Role == "ai" || m.Role == "assistant" {
+			role = openai.ChatMessageRoleAssistant
+		}
+		messages = append(messages, openai.ChatCompletionMessage{
+			Role:    role,
+			Content: m.Content,
+		})
+	}
+
+	req := openai.ChatCompletionRequest{
+		Model:    modelName,
+		Messages: messages,
+		Stream:   true,
+	}
+
+	stream, err := client.CreateChatCompletionStream(ctx, req)
+	if err != nil {
+		return fmt.Errorf("AI response error: %w", err)
+	}
+	defer stream.Close()
+
+	for {
+		response, err := stream.Recv()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				runtime.EventsEmit(ctx, "ai_chat_end")
+				break
+			}
+			runtime.EventsEmit(ctx, "ai_chat_error", err.Error())
+			return err
+		}
+		if len(response.Choices) > 0 {
+			content := response.Choices[0].Delta.Content
+			if content != "" {
+				runtime.EventsEmit(ctx, "ai_chat_chunk", content)
+			}
+		}
+	}
+	return nil
 }
 
 // TestConnection 测试用户提供的 AI 连通性

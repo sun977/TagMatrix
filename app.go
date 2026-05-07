@@ -959,6 +959,10 @@ func (a *App) ChatWithAI(message string) (string, error) {
 	return a.aiEngine.ChatWithAI(a.ctx, message)
 }
 
+func (a *App) ChatWithAIStream(message string) error {
+	return a.aiEngine.ChatWithAIStream(a.ctx, message)
+}
+
 func (a *App) TestAIConnection(apiKey, baseUrl, modelName string) error {
 	return a.aiEngine.TestConnection(a.ctx, apiKey, baseUrl, modelName)
 }

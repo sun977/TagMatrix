@@ -220,7 +220,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { List, Search, VideoPlay, Delete, Download, CaretRight, Document, FolderAdd, DocumentCopy, Clock, FullScreen, Monitor, Timer, Close } from '@element-plus/icons-vue'
 import { Codemirror } from 'vue-codemirror'
@@ -228,9 +228,19 @@ import { sql } from '@codemirror/lang-sql'
 import { tags as t } from '@lezer/highlight'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { EditorView } from '@codemirror/view'
+import { useAIStore } from '../../store/useAIStore'
 import { ExecuteRawSQL, GetSqlTemplates, SaveSqlTemplate, DeleteSqlTemplate } from '../../../wailsjs/go/main/App'
 
+const aiStore = useAIStore()
 const sqlQuery = ref('SELECT * FROM sys_datasets;')
+
+// 处理 pendingSQL
+const checkPendingSQL = () => {
+  if (aiStore.pendingSQL) {
+    sqlQuery.value = aiStore.pendingSQL
+    aiStore.pendingSQL = '' // 清除消费过的 sql
+  }
+}
 
 const customTheme = EditorView.theme({
   "&": {
@@ -573,6 +583,11 @@ const executeSQL = async () => {
 
 onMounted(() => {
   loadTemplates()
+  checkPendingSQL()
+})
+
+watch(() => aiStore.pendingSQL, () => {
+  checkPendingSQL()
 })
 </script>
 
