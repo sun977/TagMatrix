@@ -62,7 +62,7 @@ import { useRouter } from 'vue-router'
 import { useAIStore } from '../../store/useAIStore'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import 'highlight.js/styles/atom-one-dark.css' // Import highlight.js theme
 
 const router = useRouter()
@@ -109,10 +109,26 @@ const renderMarkdown = (text: string) => {
   
   // 拦截 <action> 标签并转换为前端按钮组件 (使用原生 HTML 因为在 v-html 内部)
   let processedText = text.replace(
-    /<action\s+type="([^"]+)"(?:\s+query="([^"]*)")?(?:\s+label="([^"]*)")?\s*\/>/g,
-    (match, type, query, label) => {
+    /<action\s+type=(['"])(.*?)\1(?:\s+query=(['"])([\s\S]*?)\3)?(?:\s+label=(['"])(.*?)\5)?\s*\/>/g,
+    (match, _q1, type, _q2, query, _q3, label) => {
       const btnLabel = label || '执行操作'
-      const safeQuery = query ? encodeURIComponent(query) : ''
+      
+      // 处理转义字符，特别是单双引号的 HTML 实体
+      let decodedQuery = query || ''
+      decodedQuery = decodedQuery
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        
+      // 兼容大模型有时会用两个单引号转义一个单引号的行为
+      if (_q3 === "'") {
+        decodedQuery = decodedQuery.replace(/''/g, "'")
+      }
+        
+      const safeQuery = encodeURIComponent(decodedQuery)
+      
       return `<button class="action-btn" data-type="${type}" data-query="${safeQuery}">
         <span class="action-icon">🚀</span>
         <span class="action-text">${btnLabel}</span>
@@ -151,9 +167,21 @@ const handleBubbleClick = (e: MouseEvent) => {
     const query = decodeURIComponent(actionBtn.getAttribute('data-query') || '')
 
     if (type === 'execute_sql') {
-      aiStore.pendingSQL = query
-      router.push('/database-admin')
-      ElMessage.success('已应用 SQL 至控制台')
+      ElMessageBox.confirm(
+        '该操作将直接携带该 SQL 语句跳转至控制台。在真正执行前您仍有确认修改的机会。',
+        '操作确认',
+        {
+          confirmButtonText: '前往控制台',
+          cancelButtonText: '取消',
+          type: 'info',
+        }
+      ).then(() => {
+        aiStore.pendingSQL = query
+        router.push('/database-admin')
+        ElMessage.success('已加载 SQL，请确认后手动执行')
+      }).catch(() => {
+        // 用户取消
+      })
     }
   }
 }
@@ -373,7 +401,7 @@ html.dark {
   .chat-list {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 24px;
 
     .chat-message {
       display: flex;
@@ -390,22 +418,22 @@ html.dark {
         .message-bubble {
           background-color: var(--tm-accent-primary);
           color: white;
-          border-bottom-right-radius: 4px;
+          border-top-right-radius: 4px;
         }
       }
 
       &.is-ai {
         .message-avatar {
-          background-color: var(--tm-bg-sidebar);
+          background-color: var(--tm-bg-subtle);
           border: 1px solid var(--tm-border-color);
           color: var(--tm-accent-primary);
         }
 
         .message-bubble {
-          background-color: var(--tm-bg-sidebar);
+          background-color: var(--tm-bg-subtle);
           color: var(--tm-text-primary);
           border: 1px solid var(--tm-border-color);
-          border-bottom-left-radius: 4px;
+          border-top-left-radius: 4px;
         }
       }
 
@@ -420,7 +448,7 @@ html.dark {
       }
 
       .message-content {
-        max-width: 85%;
+        max-width: 90%;
         display: flex;
         flex-direction: column;
         
@@ -431,6 +459,7 @@ html.dark {
           line-height: 1.6;
           word-break: break-word;
           white-space: pre-wrap;
+          box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
       }
     }

@@ -67,7 +67,7 @@
         </div>
       </el-tooltip>
       <el-tooltip content="快捷注入 System Prompt" placement="bottom">
-        <div class="icon-btn">
+        <div class="icon-btn" @click="showPromptInjectDialog = true">
           <el-icon><Operation /></el-icon>
         </div>
       </el-tooltip>
@@ -75,11 +75,27 @@
         <el-icon><Close /></el-icon>
       </div>
     </div>
+
+    <el-dialog v-model="showPromptInjectDialog" title="临时系统指令注入" width="400px" append-to-body>
+      <p class="dialog-desc">在此注入临时指令，将在本次对话中影响 AI 的回复基调。</p>
+      <el-input
+        v-model="injectText"
+        type="textarea"
+        :rows="4"
+        placeholder="例如：接下来的对话请你用简短的英文回复，不要使用中文..."
+      ></el-input>
+      <template #footer>
+        <span class="dialog-footer">
+          <el-button @click="showPromptInjectDialog = false">取消</el-button>
+          <el-button type="primary" @click="handleInjectPrompt">注入指令</el-button>
+        </span>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useAIStore } from '../../store/useAIStore'
 
 const aiStore = useAIStore()
@@ -97,11 +113,32 @@ const handleModelChange = (cmd: string) => {
 const startNewChat = () => {
   aiStore.clearHistory()
 }
+
+const showPromptInjectDialog = ref(false)
+const injectText = ref('')
+
+const handleInjectPrompt = () => {
+  if (!injectText.value.trim()) return
+  
+  const formattedText = `[临时系统指令注入]\n\n${injectText.value}`
+  aiStore.addMessage({
+    role: 'user',
+    content: formattedText
+  })
+  
+  injectText.value = ''
+  showPromptInjectDialog.value = false
+}
 </script>
 
 <style lang="scss">
 .ai-history-popover {
   padding: 0 !important;
+}
+.dialog-desc {
+  font-size: 13px;
+  color: var(--tm-text-secondary);
+  margin-bottom: 12px;
 }
 </style>
 

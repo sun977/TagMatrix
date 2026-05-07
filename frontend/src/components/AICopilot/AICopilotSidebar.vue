@@ -22,34 +22,50 @@ const isGenerating = ref(false)
 
 let aiMessageIndex = -1
 let currentGeneratingContent = ''
+let currentReqId = ''
 
-onMounted(() => {
-  aiStore.initSessions()
+const setupEventHandlers = (reqId: string) => {
+  // 移除旧的监听
+  removeEventHandlers()
+  currentReqId = reqId
 
-  EventsOn('ai_chat_chunk', (chunk: string) => {
+  EventsOn(`ai_chat_chunk_${reqId}`, (chunk: string) => {
     currentGeneratingContent += chunk
     aiStore.updateLastMessage(currentGeneratingContent)
   })
 
-  EventsOn('ai_chat_end', () => {
+  EventsOn(`ai_chat_end_${reqId}`, () => {
     isGenerating.value = false
     aiMessageIndex = -1
     aiStore.saveToLocal()
+    removeEventHandlers()
   })
 
-  EventsOn('ai_chat_error', (err: string) => {
+  EventsOn(`ai_chat_error_${reqId}`, (err: string) => {
     currentGeneratingContent += `\n\n[请求出错: ${err}]`
     aiStore.updateLastMessage(currentGeneratingContent)
     isGenerating.value = false
     aiMessageIndex = -1
     aiStore.saveToLocal()
+    removeEventHandlers()
   })
+}
+
+const removeEventHandlers = () => {
+  if (currentReqId) {
+    EventsOff(`ai_chat_chunk_${currentReqId}`)
+    EventsOff(`ai_chat_end_${currentReqId}`)
+    EventsOff(`ai_chat_error_${currentReqId}`)
+    currentReqId = ''
+  }
+}
+
+onMounted(() => {
+  aiStore.initSessions()
 })
 
 onUnmounted(() => {
-  EventsOff('ai_chat_chunk')
-  EventsOff('ai_chat_end')
-  EventsOff('ai_chat_error')
+  removeEventHandlers()
 })
 
 const handleSend = async (text: string) => {
@@ -70,6 +86,10 @@ const handleSend = async (text: string) => {
   currentGeneratingContent = ''
   isGenerating.value = true
 
+  // 生成请求ID，用于隔离事件
+  const reqId = Date.now().toString() + '_' + Math.random().toString(36).substring(2, 9)
+  setupEventHandlers(reqId)
+
   // 3. 构建发给后端的真实 Payload (带上 Context 及全部历史)
   // 克隆所有历史，防止直接修改 store
   const payloadMsgs = aiStore.currentChatHistory.slice(0, aiMessageIndex).map(m => ({
@@ -81,19 +101,27 @@ const handleSend = async (text: string) => {
   if (aiStore.isContextAwareness && aiStore.pageContext && payloadMsgs.length > 0) {
     const lastUserMsgIdx = payloadMsgs.findLastIndex(m => m.role === 'user')
     if (lastUserMsgIdx !== -1) {
-      payloadMsgs[lastUserMsgIdx].content = `[系统注入：用户当前停留在【${aiStore.pageContext}】页面。注意：这仅作背景参考，如果用户的最新提问与该页面功能无关，请务必忽略此提示，不要生搬硬套。]\n\n${payloadMsgs[lastUserMsgIdx].content}`
+      // 防止上下文过长导致 Token 浪费，截断处理
+      let ctxString = aiStore.pageContext
+      if (ctxString.length > 1000) {
+        ctxString = ctxString.substring(0, 1000) + '...[上下文过长已截断]'
+      }
+      payloadMsgs[lastUserMsgIdx].content = `[系统注入：用户当前停留在【${ctxString}】页面。注意：这仅作背景参考，如果用户的最新提问与该页面功能无关，请务必忽略此提示，不要生搬硬套。]\n\n${payloadMsgs[lastUserMsgIdx].content}`
     }
   }
 
   // 4. 调用后端流式接口
   try {
-    await ChatWithAIStream(JSON.stringify(payloadMsgs))
+    // 强制转换为 any 以兼容 TS，因为我们在 app.go 修改了参数但前端的绑定位未重新生成
+    // 原生 wails 绑定会限制参数数量 (因为 JS 代理层中只有一个 arg)，可以直接使用 window.go 对象绕过这个限制
+    await (window as any).go.main.App.ChatWithAIStream(reqId, JSON.stringify(payloadMsgs))
   } catch (e: any) {
     currentGeneratingContent = `[系统错误: ${e.message || e}]`
     aiStore.updateLastMessage(currentGeneratingContent)
     isGenerating.value = false
     aiMessageIndex = -1
     aiStore.saveToLocal()
+    removeEventHandlers()
   }
 }
 </script>

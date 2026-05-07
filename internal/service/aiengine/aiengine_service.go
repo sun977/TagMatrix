@@ -121,7 +121,7 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
    - **你的职责**：根据用户提供的表结构或业务需求，生成针对当前 SQLite 数据库的准确查询 SQL。
    - **专属交互指令**：如果用户的意图是请求你编写或生成一段 SQL，除了给出解释和 Markdown 代码块之外，**请务必在你的回复末尾输出一个动作标签**，格式严格如下：
      <action type="execute_sql" query="YOUR_SQL_HERE" label="一键去 SQL 控制台执行" />
-     *(注意：请将 query 属性中的双引号使用单引号代替，或者进行 HTML 实体转义)*
+     *(注意：Action 标签的属性请使用双引号包裹。SQL 中的字符串字面量请正常使用单引号，这样就不会产生冲突。如果 SQL 内部极其罕见地包含双引号，请使用 HTML 实体 &quot; 进行转义。换行可以直接保留。)*
 
 2. **标签规则引擎语法 (Rule Engine DSL)**
    - **使用场景**：当用户想要提取特定特征的数据或者为数据打标时，你需要生成符合 TagMatrix 底层通用匹配引擎规范的 JSON 规则。
@@ -193,7 +193,7 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
 }
 
 // ChatWithAIStream 发送消息给 AI 并获取流式回复，通过 Wails events 发送至前端。
-func (s *AIEngineService) ChatWithAIStream(ctx context.Context, message string) error {
+func (s *AIEngineService) ChatWithAIStream(ctx context.Context, reqId string, message string) error {
 	client, modelName := s.getClient()
 
 	schema, err := s.getSchema()
@@ -218,7 +218,7 @@ func (s *AIEngineService) ChatWithAIStream(ctx context.Context, message string) 
    - **你的职责**：根据用户提供的表结构或业务需求，生成针对当前 SQLite 数据库的准确查询 SQL。
    - **专属交互指令**：如果用户的意图是请求你编写或生成一段 SQL，除了给出解释和 Markdown 代码块之外，**请务必在你的回复末尾输出一个动作标签**，格式严格如下：
      <action type="execute_sql" query="YOUR_SQL_HERE" label="一键去 SQL 控制台执行" />
-     *(注意：请将 query 属性中的双引号使用单引号代替，或者进行 HTML 实体转义)*
+     *(注意：Action 标签的属性请使用双引号包裹。SQL 中的字符串字面量请正常使用单引号，这样就不会产生冲突。如果 SQL 内部极其罕见地包含双引号，请使用 HTML 实体 &quot; 进行转义。换行可以直接保留。)*
 
 2. **标签规则引擎语法 (Rule Engine DSL)**
    - **使用场景**：当用户想要提取特定特征的数据或者为数据打标时，你需要生成符合 TagMatrix 底层通用匹配引擎规范的 JSON 规则。
@@ -258,7 +258,7 @@ func (s *AIEngineService) ChatWithAIStream(ctx context.Context, message string) 
 4. **友好交互**：保持专业且热情的语气，当用户遇到报错时，安抚并给出排查建议。`
 	}
 
-	actionInstruction := "\n\n[系统交互指令]\n如果用户的意图是请求你编写或生成一段 SQL，除了给出解释和 Markdown 代码块之外，请务必在你的回复末尾输出一个动作标签，格式严格如下：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n这将会被前端解析并渲染为一个交互按钮。请将 query 属性中的双引号转义为实体或直接使用单引号包裹字符串。"
+	actionInstruction := "\n\n[系统交互指令]\n如果用户的意图是请求你编写或生成一段 SQL，除了给出解释和 Markdown 代码块之外，请务必在你的回复末尾输出一个动作标签，格式严格如下：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n这将会被前端解析并渲染为一个交互按钮。*(注意：Action 标签的属性请使用双引号包裹。SQL 中的字符串字面量请正常使用单引号，这样就不会产生冲突。如果 SQL 内部极其罕见地包含双引号，请使用 HTML 实体 &quot; 进行转义。换行可以直接保留。)*"
 
 	fullSystemPrompt := systemPrompt + actionInstruction + "\n\n以下是当前系统的数据库结构信息：\n" + schema
 
@@ -313,16 +313,28 @@ func (s *AIEngineService) ChatWithAIStream(ctx context.Context, message string) 
 		response, err := stream.Recv()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				runtime.EventsEmit(ctx, "ai_chat_end")
+				if reqId != "" {
+					runtime.EventsEmit(ctx, "ai_chat_end_"+reqId)
+				} else {
+					runtime.EventsEmit(ctx, "ai_chat_end")
+				}
 				break
 			}
-			runtime.EventsEmit(ctx, "ai_chat_error", err.Error())
+			if reqId != "" {
+				runtime.EventsEmit(ctx, "ai_chat_error_"+reqId, err.Error())
+			} else {
+				runtime.EventsEmit(ctx, "ai_chat_error", err.Error())
+			}
 			return err
 		}
 		if len(response.Choices) > 0 {
 			content := response.Choices[0].Delta.Content
 			if content != "" {
-				runtime.EventsEmit(ctx, "ai_chat_chunk", content)
+				if reqId != "" {
+					runtime.EventsEmit(ctx, "ai_chat_chunk_"+reqId, content)
+				} else {
+					runtime.EventsEmit(ctx, "ai_chat_chunk", content)
+				}
 			}
 		}
 	}
