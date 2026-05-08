@@ -105,9 +105,11 @@ TagMatrix 拥有一套严谨且强大的“数据集隔离 -> 标签规则绑定
 
 ## 📚 详细文档 (Documentation)
 
-项目的需求演进、架构设计及相关决策记录存放在 `docs/` 目录下：
-*   [EVOLUTION_TagMatrix.md](./docs/TagMatrix/EVOLUTION_TagMatrix.md) - 需求演进与架构决策追踪记录（涵盖 V1.0 至 V2.0 完整演进史）。
-*   [DESIGN_TagMatrix.md](./docs/TagMatrix/DESIGN_TagMatrix.md) - 系统核心架构设计方案。
+项目的需求演进、架构设计及相关操作指南存放在 `docs/` 目录下：
+*   [USER_MANUAL.md](./docs/TagMatrix/USER_MANUAL.md) - **新用户必看**：详尽的系统使用手册与操作指南。
+*   [产品需求文档.md](./docs/产品需求文档.md) - TagMatrix 从 0 到 1 的核心产品需求与全景功能矩阵定义。
+*   [EVOLUTION_TagMatrix.md](./docs/TagMatrix/EVOLUTION_TagMatrix.md) - 需求演进与架构决策追踪记录（记录了我们如何在 V1 到 V3 的各阶段排雷并构建核心引擎）。
+*   [DESIGN_TagMatrix.md](./docs/TagMatrix/DESIGN_TagMatrix.md) - 系统底层核心架构设计方案。
 *   [CODING_STANDARDS.md](./docs/TagMatrix/CODING_STANDARDS.md) - 项目开发与代码规范。
 
 ## 🚀 快速开始 (Getting Started)
