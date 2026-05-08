@@ -1,5 +1,4 @@
 import { defineStore } from 'pinia'
-import { GetAppConfig } from '../../wailsjs/go/main/App'
 
 export interface ChatMessage {
   role: 'user' | 'ai'
@@ -48,7 +47,7 @@ export const useAIStore = defineStore('aiStore', {
     },
     async checkAPIKey() {
       try {
-        const config = await GetAppConfig()
+        const config = await (window as any).go.main.App.GetAppConfig()
         this.hasAPIKey = !!(config?.ai?.api_key && config.ai.api_key.trim().length > 0)
         if (config?.ai?.model) {
           this.currentModel = config.ai.model

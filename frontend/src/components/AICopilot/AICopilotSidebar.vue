@@ -14,7 +14,6 @@ import { useAIStore } from '../../store/useAIStore'
 import AICopilotHeader from './AICopilotHeader.vue'
 import AICopilotChat from './AICopilotChat.vue'
 import AICopilotInput from './AICopilotInput.vue'
-import { ChatWithAIStream } from '../../../wailsjs/go/main/App'
 import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 
 const aiStore = useAIStore()

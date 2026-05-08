@@ -229,7 +229,6 @@ import { tags as t } from '@lezer/highlight'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { EditorView } from '@codemirror/view'
 import { useAIStore } from '../../store/useAIStore'
-import { ExecuteRawSQL, GetSqlTemplates, SaveSqlTemplate, DeleteSqlTemplate } from '../../../wailsjs/go/main/App'
 
 const aiStore = useAIStore()
 const sqlQuery = ref('SELECT * FROM sys_datasets;')
@@ -284,8 +283,6 @@ const paginatedRows = computed(() => {
   return resultData.value.rows.slice(start, start + pageSize.value)
 })
 
-import { SaveCSVFile } from '../../../wailsjs/go/main/App'
-
 // 导出 CSV 功能
 const exportToCSV = async () => {
   if (!resultData.value?.rows || resultData.value.rows.length === 0) {
@@ -322,7 +319,7 @@ const exportToCSV = async () => {
   const fileName = `query_result_${timestamp}.csv`
   
   try {
-    const savedPath = await SaveCSVFile(fileName, csvContent)
+    const savedPath = await (window as any).go.main.App.SaveCSVFile(fileName, csvContent)
     if (savedPath) {
       ElMessage.success(`导出成功：${savedPath}`)
     } else {
@@ -450,7 +447,7 @@ const saveEditTemplate = async () => {
   }
   isSavingEdit.value = true
   try {
-    await SaveSqlTemplate(editTemplateForm.value.id, editTemplateForm.value.name, editTemplateForm.value.query)
+      await (window as any).go.main.App.SaveSqlTemplate(editTemplateForm.value.id, editTemplateForm.value.name, editTemplateForm.value.query)
     ElMessage.success('保存成功')
     editTemplateDialogVisible.value = false
     loadTemplates()
@@ -504,7 +501,7 @@ const handleTemplateCommand = (tpl: any) => {
 
 const loadTemplates = async () => {
   try {
-    const res = await GetSqlTemplates()
+    const res = await (window as any).go.main.App.GetSqlTemplates()
     sqlTemplates.value = res || []
   } catch (e: any) {
     ElMessage.error('获取模板失败: ' + e.message)
@@ -535,7 +532,7 @@ const saveSQL = async () => {
   }
   isSaving.value = true
   try {
-    await SaveSqlTemplate(0, saveForm.value.name, sqlQuery.value)
+      await (window as any).go.main.App.SaveSqlTemplate(0, saveForm.value.name, sqlQuery.value)
     ElMessage.success('保存成功')
     saveDialogVisible.value = false
     loadTemplates()
@@ -550,7 +547,7 @@ const deleteTemplate = (id: number) => {
   ElMessageBox.confirm('确定要删除这个查询模板吗？', '提示', { type: 'warning' })
     .then(async () => {
       try {
-        await DeleteSqlTemplate(id)
+        await (window as any).go.main.App.DeleteSqlTemplate(id)
         ElMessage.success('删除成功')
         loadTemplates()
       } catch (e: any) {
@@ -569,7 +566,7 @@ const executeSQL = async () => {
   resultData.value = null
   
   try {
-    const res = await ExecuteRawSQL(sqlQuery.value)
+    const res = await (window as any).go.main.App.ExecuteRawSQL(sqlQuery.value)
     resultData.value = res
     currentPage.value = 1
     lastDuration.value = res.duration
