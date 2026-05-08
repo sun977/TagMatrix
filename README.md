@@ -164,6 +164,7 @@ wails build
 
 - **Author**: Sun977
 - **Email**: jiuwei977@foxmail.com
+- **GitHub**: [Sun977](https://github.com/sun977)
 - **License**: [MIT](https://opensource.org/licenses/MIT)
 - **Copyright**: © 2026 Sun977. All rights reserved.
 
