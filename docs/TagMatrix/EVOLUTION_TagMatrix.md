@@ -151,6 +151,21 @@
    - 引入**全局命令面板**（`Ctrl/Cmd + K`）实现快捷跳转。
    - 明确规划了支持保护开发者视力的**暗色主题 (Dark Mode)**。
 
+### 架构演进与技术排雷 (Wails Bindings)
+   - **痛点**：在重构高级功能与全局状态管理时，使用 Wails 自动生成的 TS 绑定 (`wailsjs/go/main/App`) 频发模块未找到或类型不匹配的编译错误，阻塞了前端工程化进度。
+   - **解决方案**：针对经常变动签名的后端接口（如 `SaveCSVFile`、`ExecuteRawSQL`、`GetAppConfig` 以及流式对话接口 `ChatWithAIStream`），全面切换为全局调用模式 `(window as any).go.main.App.FunctionName()`，成功绕过类型校验与生成滞后问题，达成 **0 TS 错误**的里程碑状态。
+
+---
+
+## 阶段：V4.0 全局智能副驾 (AI Copilot) 落地 (当前进行中)
+**事件**：在基础打标引擎与数据管理后台全面竣工后，开始正式接入 AI Copilot 面板。
+
+### 核心聚焦目标
+1. **全局挂载与布局融合**：在 `Layout.vue` 中接入并唤醒 `AICopilotSidebar.vue`，实现右侧抽屉式无缝拉出，确保生命周期贯穿所有路由视图。
+2. **上下文感知通信网络**：打通 Vuex/Pinia 状态管理与 Wails SSE流式输出 (`EventsOn`) 之间的链路。
+3. **真实 LLM 调度联调**：测试大模型 API Key 挂载情况，完善 `ChatWithAIStream` 的交互体验。
+
+---
 
 ### 系统数据库管理 (DatabaseAdmin) [高级功能]
 *入口隐藏逻辑：此功能默认隐藏，必须在全局设置中开启“开发者模式 (Developer Mode)”后，才能在左侧导航栏底部看到入口。*
