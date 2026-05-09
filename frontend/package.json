@@ -12,6 +12,8 @@
     "@codemirror/lang-sql": "^6.10.0",
     "@element-plus/icons-vue": "^2.3.2",
     "element-plus": "^2.13.7",
+    "highlight.js": "^11.11.1",
+    "marked": "^18.0.3",
     "pinia": "^3.0.4",
     "vue": "^3.2.37",
     "vue-codemirror": "^6.1.1",
@@ -19,6 +21,8 @@
   },
   "devDependencies": {
     "@babel/types": "^7.18.10",
+    "@types/highlight.js": "^9.12.4",
+    "@types/marked": "^5.0.2",
     "@types/node": "^25.6.0",
     "@vitejs/plugin-vue": "^3.0.3",
     "sass": "^1.99.0",
