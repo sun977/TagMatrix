@@ -1,7 +1,7 @@
 <template>
   <div class="page-container">
     <!-- 数据集列表视图 -->
-    <div v-if="viewMode === 'list'">
+    <div v-if="viewMode === 'list'" class="list-view-wrapper">
       <header class="page-header">
         <div class="header-left">
           <h1 class="page-title">
@@ -76,7 +76,7 @@
     </div>
 
     <!-- 数据详情视图 -->
-    <div v-else-if="viewMode === 'detail'">
+    <div v-else-if="viewMode === 'detail'" class="detail-view-wrapper">
       <header class="page-header">
         <div class="header-left" style="display: flex; align-items: center; gap: 16px;">
           <el-button @click="handleBackToList" circle>
@@ -193,18 +193,15 @@
           </el-table-column>
         </el-table>
 
-        <!-- 分页 -->
         <div class="pagination-wrapper" v-if="totalRecords > 0">
-          <span class="pagination-info">显示 {{ (currentPage - 1) * pageSize + 1 }} 到 {{ Math.min(currentPage * pageSize, totalRecords) }} 条，共 {{ totalRecords }} 条记录</span>
           <el-pagination
             :current-page="currentPage"
             :page-size="pageSize"
             :page-sizes="[10, 20, 50, 100]"
-            layout="prev, pager, next, jumper"
+            layout="total, sizes, prev, pager, next, jumper"
             :total="totalRecords"
             @size-change="handleSizeChange"
             @current-change="handleCurrentChange"
-            background
           />
         </div>
       </div>
@@ -319,7 +316,7 @@ const selectedRows = ref<any[]>([])
 const hiddenColumns = ref<string[]>([])
 
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(20)
 const totalRecords = ref(0)
 
 // Dataset CRUD state
@@ -663,12 +660,25 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page-container {
-  padding: 24px 32px 40px;
+  padding: 24px;
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.list-view-wrapper, .detail-view-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
 }
 
 /* --- 页面顶部 --- */
 .page-header {
   margin-bottom: 24px;
+  flex-shrink: 0;
 
   .page-title {
     font-size: 20px;
@@ -690,6 +700,7 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  flex-shrink: 0;
 
   .toolbar-left {
     display: flex;
@@ -734,6 +745,10 @@ onMounted(() => {
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
   padding: 20px 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .table-header {
@@ -780,6 +795,8 @@ onMounted(() => {
 
 /* --- 表格样式 --- */
 .custom-table {
+  flex: 1;
+  overflow: hidden;
   --el-table-border-color: transparent;
   --el-table-header-bg-color: var(--tm-bg-main);
   --el-table-header-text-color: var(--tm-text-secondary);
@@ -852,20 +869,12 @@ onMounted(() => {
 
 /* --- 分页 --- */
 .pagination-wrapper {
+  padding: 16px 20px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 20px;
-  padding-top: 16px;
-
-  .pagination-info {
-    font-size: 13px;
-    color: var(--tm-text-secondary);
-  }
-
-  :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
-    background-color: var(--tm-accent-primary);
-  }
+  justify-content: flex-end;
+  border-top: 1px solid var(--tm-border-color-light);
+  background-color: var(--tm-bg-main);
+  margin: 0 -24px -20px -24px; /* offset the table-section padding to touch borders */
 }
 
 .detail-content-wrapper {
