@@ -665,7 +665,7 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 	sort.Strings(dynamicCols)
 	// 构建表头 (不要系统 ID 和打标时间)
 	headers := append([]string{}, dynamicCols...)
-	headers = append(headers, "TagM_打标模式", "TagM_命中标签", "TagM_命中主标签", "TagM_任务批次", "TagM_sourceFile", "TagM_状态")
+	headers = append(headers, "TagM_打标模式", "TagM_命中标签", "TagM_命中主标签", "TagM_is_ai_intervened", "TagM_ai_arbitration_reason", "TagM_confidence", "TagM_任务批次", "TagM_sourceFile", "TagM_状态")
 
 	if err := writer.Write(headers); err != nil {
 		return err
@@ -684,6 +684,9 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 		tagModeVal := "-"
 		tagsStr := "-"
 		primaryTagStr := "-"
+		isAiIntervenedStr := "-"
+		aiArbitrationReasonStr := "-"
+		confidenceStr := "-"
 
 		if len(entityTags) > 0 {
 			statusVal = "已打标"
@@ -698,11 +701,50 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 
 			var tagIDs []uint64
 			primaryMap := make(map[uint64]bool)
+			
+			// 确定谁是主标签并提取 MDCT 字段
+			var primaryTagID uint64
+			if tagModeVal == "single" && len(entityTags) > 0 {
+				// 单标签模式下，唯一的标签就是主标签
+				primaryTagID = entityTags[0].TagID
+				primaryMap[primaryTagID] = true
+				
+				// 遍历找出 AI 介入过的标签，或者置信度最高的（这和列表页的显示逻辑保持一致）
+				for _, et := range entityTags {
+					if et.IsAiIntervened {
+						isAiIntervenedStr = "true"
+						aiArbitrationReasonStr = et.AiArbitrationReason
+						confidenceStr = fmt.Sprintf("%.2f", et.Confidence)
+						break
+					}
+					if et.Confidence > 0 && confidenceStr == "-" {
+						isAiIntervenedStr = strconv.FormatBool(et.IsAiIntervened)
+						aiArbitrationReasonStr = et.AiArbitrationReason
+						confidenceStr = fmt.Sprintf("%.2f", et.Confidence)
+					}
+				}
+				// 兜底：如果遍历完还没拿到，就取第一条的
+				if confidenceStr == "-" {
+					isAiIntervenedStr = strconv.FormatBool(entityTags[0].IsAiIntervened)
+					aiArbitrationReasonStr = entityTags[0].AiArbitrationReason
+					confidenceStr = fmt.Sprintf("%.2f", entityTags[0].Confidence)
+				}
+			} else {
+				// 混合模式下，寻找 is_primary = true 的标签
+				for _, et := range entityTags {
+					if et.IsPrimary {
+						primaryTagID = et.TagID
+						primaryMap[primaryTagID] = true
+						isAiIntervenedStr = strconv.FormatBool(et.IsAiIntervened)
+						aiArbitrationReasonStr = et.AiArbitrationReason
+						confidenceStr = fmt.Sprintf("%.2f", et.Confidence)
+						break
+					}
+				}
+			}
+
 			for _, et := range entityTags {
 				tagIDs = append(tagIDs, et.TagID)
-				if et.IsPrimary {
-					primaryMap[et.TagID] = true
-				}
 			}
 
 			if len(tagIDs) > 0 {
@@ -756,7 +798,7 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 			}
 		}
 		// 追加系统处理字段
-		row = append(row, tagModeVal, tagsStr, primaryTagStr, batchName, sourceFileStr, statusVal)
+		row = append(row, tagModeVal, tagsStr, primaryTagStr, isAiIntervenedStr, aiArbitrationReasonStr, confidenceStr, batchName, sourceFileStr, statusVal)
 
 		if err := writer.Write(row); err != nil {
 			return err
