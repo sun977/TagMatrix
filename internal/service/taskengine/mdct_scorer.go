@@ -128,61 +128,83 @@ func (s *MDCTScorer) EvaluateAndSort(ctx context.Context, record map[string]inte
 func (s *MDCTScorer) AskAIToArbitrate(ctx context.Context, record map[string]interface{}, r1, r2 parsedRule) (int, string, error) {
 	recordJSON, _ := json.Marshal(record)
 
-	prompt := fmt.Sprintf(`你是一个数据风控专家。现有一条数据：%s。
-它同时符合【%s】(选项A) 和【%s】(选项B) 的打标规则，且置信度一致。
-基于商业常识，哪个标签更适合作为它的主标签？
-请务必以如下格式回复：
-裁决结果：A（或B）
-判定理由：你的简短理由...`,
-		string(recordJSON), r1.model.Name, r2.model.Name)
+	r1Name, r1Desc := r1.model.Name, "无描述"
+	if r1.tag != nil {
+		r1Name = r1.tag.Name
+		if r1.tag.Description != "" {
+			r1Desc = r1.tag.Description
+		}
+	}
+
+	r2Name, r2Desc := r2.model.Name, "无描述"
+	if r2.tag != nil {
+		r2Name = r2.tag.Name
+		if r2.tag.Description != "" {
+			r2Desc = r2.tag.Description
+		}
+	}
+
+	prompt := fmt.Sprintf(`你是一个资深的数据分析与分类标注专家。
+请根据具体的上下文，为发生冲突的数据选择最合适的主标签。
+
+【数据内容】
+%s
+
+【候选标签】
+- 选项 A: 【%s】 (定义描述: %s)
+- 选项 B: 【%s】 (定义描述: %s)
+
+【任务要求】
+这条数据同时满足了上述两个标签的规则，产生了冲突。请你基于业务常识和标签定义，判断哪个标签能更准确、更核心地概括这条数据。
+
+请以 JSON 格式输出你的决策，不要包含任何其他废话，也不要使用 markdown 代码块包裹，纯 JSON 字符串。JSON 结构必须严格如下：
+{
+  "thought_process": "在这里简要输出你的分析与推理过程（限50字内）",
+  "winner": "A 或 B"
+}`,
+		string(recordJSON), r1Name, r1Desc, r2Name, r2Desc)
 
 	resp, err := s.AiService.ChatWithAI(ctx, prompt)
 	if err != nil {
 		return -1, "", err
 	}
 
-	// 解析大模型返回的结果
-	respUpper := strings.ToUpper(resp)
-	lines := strings.Split(strings.ReplaceAll(resp, "\r\n", "\n"), "\n")
+	// 尝试清洗可能存在的 markdown code block
+	respCleaned := strings.TrimSpace(resp)
+	if strings.HasPrefix(respCleaned, "```json") {
+		respCleaned = strings.TrimPrefix(respCleaned, "```json")
+		respCleaned = strings.TrimSuffix(respCleaned, "```")
+		respCleaned = strings.TrimSpace(respCleaned)
+	} else if strings.HasPrefix(respCleaned, "```") {
+		respCleaned = strings.TrimPrefix(respCleaned, "```")
+		respCleaned = strings.TrimSuffix(respCleaned, "```")
+		respCleaned = strings.TrimSpace(respCleaned)
+	}
 
+	type AIResult struct {
+		ThoughtProcess string `json:"thought_process"`
+		Winner         string `json:"winner"`
+	}
+
+	var aiRes AIResult
+	err = json.Unmarshal([]byte(respCleaned), &aiRes)
+	if err != nil {
+		return -1, "", fmt.Errorf("failed to parse AI JSON response: %w, raw: %s", err, resp)
+	}
+
+	winnerStr := strings.TrimSpace(strings.ToUpper(aiRes.Winner))
 	winner := -1
-	reason := resp
-
-	// 简单解析逻辑：寻找 "裁决结果："
-	for _, line := range lines {
-		if strings.Contains(strings.ToUpper(line), "裁决结果") {
-			if strings.Contains(strings.ToUpper(line), "A") {
-				winner = 0
-			} else if strings.Contains(strings.ToUpper(line), "B") {
-				winner = 1
-			}
-		} else if strings.Contains(line, "判定理由") {
-			parts := strings.SplitN(line, "：", 2)
-			if len(parts) == 2 {
-				reason = strings.TrimSpace(parts[1])
-			} else {
-				parts = strings.SplitN(line, ":", 2)
-				if len(parts) == 2 {
-					reason = strings.TrimSpace(parts[1])
-				}
-			}
-		}
-	}
-
-	// Fallback 解析
-	if winner == -1 {
-		if strings.Contains(respUpper, "选项A") || strings.HasPrefix(strings.TrimSpace(respUpper), "A") {
-			winner = 0
-		} else if strings.Contains(respUpper, "选项B") || strings.HasPrefix(strings.TrimSpace(respUpper), "B") {
-			winner = 1
-		}
+	if winnerStr == "A" || strings.Contains(winnerStr, "A") {
+		winner = 0
+	} else if winnerStr == "B" || strings.Contains(winnerStr, "B") {
+		winner = 1
 	}
 
 	if winner == -1 {
-		return -1, "", fmt.Errorf("AI response unclear: %s", resp)
+		return -1, "", fmt.Errorf("AI response unclear winner: %s", resp)
 	}
 
-	return winner, reason, nil
+	return winner, aiRes.ThoughtProcess, nil
 }
 
 // RankScore 计算不含 AI 裁决的基础总分 (W1+W2+W3)

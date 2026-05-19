@@ -155,12 +155,31 @@ func (s *TaskEngineService) GetAvailableSourceFiles(ctx context.Context, dataset
 // parsedRule 用于预解析的规则结构体
 type parsedRule struct {
 	model *model.SysMatchRule
+	tag   *model.SysTag
 	mRule matcher.MatchRule
 }
 
 // executeTask 核心调度引擎，使用 Worker Pool 模式流式处理海量数据
 func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string, sourceFile string) {
 	log.Printf("[TaskEngine] Starting batch %d, datasetID: %d, sourceFile: %s", batchID, datasetID, sourceFile)
+
+	// 提取所有涉及的 TagID
+	// [优化]: 此处提前批量提取并查询相关的 Tag 信息，是为了避免在海量数据执行 MDCT 仲裁时引发 N+1 查库导致性能崩溃。
+	// 同时，提前将 Tag 的定义描述 (Description) 挂载到内存结构中，以便为后续大模型的冲突裁决提供精准的业务上下文。
+	var tagIDs []uint64
+	for _, r := range rules {
+		tagIDs = append(tagIDs, r.TagID)
+	}
+
+	// 批量查询 Tags
+	var tags []model.SysTag
+	tagMap := make(map[uint64]*model.SysTag)
+	if len(tagIDs) > 0 {
+		s.db.Where("id IN ?", tagIDs).Find(&tags)
+		for i := range tags {
+			tagMap[tags[i].ID] = &tags[i]
+		}
+	}
 
 	// 预解析规则
 	var pRules []parsedRule
@@ -169,6 +188,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 		if err := json.Unmarshal([]byte(rules[i].RuleJSON), &mr); err == nil {
 			pRules = append(pRules, parsedRule{
 				model: &rules[i],
+				tag:   tagMap[rules[i].TagID],
 				mRule: mr,
 			})
 		}
