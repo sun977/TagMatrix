@@ -25,7 +25,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"sort"
 	"sync"
 	"time"
 
@@ -175,6 +174,10 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 		}
 	}
 
+	// 初始化 MDCT 打分器
+	appConfig := config.GetConfig()
+	mdctScorer := NewMDCTScorer(appConfig.MDCT)
+
 	// 初始化 Worker Pool
 	workerCount := 5 // 启动 5 个协程并发处理
 	jobsChan := make(chan []model.RawDataRecord, 100)
@@ -199,7 +202,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 		go func() {
 			defer wg.Done()
 			for records := range jobsChan {
-				s.processRecords(batchID, records, pRules, isOverwrite, tagMode)
+				s.processRecords(s.ctx, batchID, records, pRules, isOverwrite, tagMode, mdctScorer)
 
 				mu.Lock()
 				totalProcessed += len(records)
@@ -259,7 +262,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	logger.Info(fmt.Sprintf("[TaskEngine] Finished batch %d. Processed: %d", batchID, totalProcessed))
 
 	// 发送系统通知 (根据配置)
-	appConfig := config.GetConfig()
+	appConfig = config.GetConfig()
 	if appConfig.System.TaskNotification {
 		title := "TagMatrix"
 		msg := fmt.Sprintf("打标任务 (批次: %d) 已完成！共处理数据: %d 条", batchID, totalProcessed)
@@ -272,7 +275,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 }
 
 // processRecords 处理一小批数据（由 Worker 执行）
-func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDataRecord, pRules []parsedRule, isOverwrite bool, tagMode string) {
+func (s *TaskEngineService) processRecords(ctx context.Context, batchID uint64, records []model.RawDataRecord, pRules []parsedRule, isOverwrite bool, tagMode string, scorer *MDCTScorer) {
 	var logs []model.TagTaskLog
 	var tags []model.SysEntityTag
 	var recordIDsToClear []uint64 // 记录需要清除原有 auto_rule 标签的 recordID
@@ -300,46 +303,47 @@ func (s *TaskEngineService) processRecords(batchID uint64, records []model.RawDa
 				recordIDsToClear = append(recordIDsToClear, record.ID)
 			}
 
-			// 按规则优先级降序排序 (Priority 越大越优先)
-			// 当优先级相同时，使用规则 ID 降序作为兜底（后创建的规则优先）
-			sort.SliceStable(matchedRules, func(i, j int) bool {
-				if matchedRules[i].model.Priority != matchedRules[j].model.Priority {
-					return matchedRules[i].model.Priority > matchedRules[j].model.Priority
-				}
-				// 优先级相同时，ID 较大的排在前面
-				return matchedRules[i].model.ID > matchedRules[j].model.ID
-			})
+			// 接入 MDCT 多维共识打标算法引擎进行打分、仲裁与排序
+			scoredRules := scorer.EvaluateAndSort(ctx, dataMap, matchedRules)
 
 			// 根据打标模式 (tagMode) 处理命中的规则
-			if tagMode == "single" {
-				// 单标签模式：只取优先级最高的第一个
-				matchedRules = matchedRules[:1]
+			if tagMode == "single" && len(scoredRules) > 0 {
+				// 单标签模式：只取 MDCT 综合打分最高的第一个
+				scoredRules = scoredRules[:1]
 			}
 
-			for i, pr := range matchedRules {
+			for i, sr := range scoredRules {
 				isPrimary := false
 				if tagMode == "mixed" && i == 0 {
-					// 混合模式：优先级最高的第一个作为主标签
+					// 混合模式：综合得分最高的第一个作为主标签
 					isPrimary = true
 				}
 
 				// 命中规则，生成结果与日志
 				tags = append(tags, model.SysEntityTag{
-					RecordID:  record.ID,
-					TagID:     pr.model.TagID,
-					Source:    "auto_rule",
-					IsPrimary: isPrimary,
-					BatchID:   batchID,
-					RuleID:    pr.model.ID,
+					RecordID:            record.ID,
+					TagID:               sr.ParsedRule.model.TagID,
+					Source:              "auto_rule",
+					IsPrimary:           isPrimary,
+					BatchID:             batchID,
+					RuleID:              sr.ParsedRule.model.ID,
+					IsAiIntervened:      sr.IsAiIntervened,
+					AiArbitrationReason: sr.AiArbitrationReason,
+					Confidence:          sr.Confidence,
 				})
+
+				logReason := fmt.Sprintf("Matched rule: %s (MDCT FinalScore: %.2f, Confidence: %.2f%%)", sr.ParsedRule.model.Name, sr.FinalScore, sr.Confidence)
+				if sr.IsAiIntervened {
+					logReason += fmt.Sprintf(" [AI Intervened: %s]", sr.AiArbitrationReason)
+				}
 
 				logs = append(logs, model.TagTaskLog{
 					BatchID:  batchID,
 					RecordID: record.ID,
-					TagID:    pr.model.TagID,
-					RuleID:   pr.model.ID,
+					TagID:    sr.ParsedRule.model.TagID,
+					RuleID:   sr.ParsedRule.model.ID,
 					Action:   "add",
-					Reason:   fmt.Sprintf("Matched rule: %s (Priority: %d)", pr.model.Name, pr.model.Priority),
+					Reason:   logReason,
 				})
 			}
 		}

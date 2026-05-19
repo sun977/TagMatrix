@@ -29,6 +29,11 @@ type TaggedRecordDto struct {
 	SourceFile string   `json:"sourceFile"` // 来源文件
 	UpdateTime string   `json:"updateTime"`
 	Status     string   `json:"status"` // success 或 unmatched
+
+	// MDCT 算法新增字段
+	IsAiIntervened      bool    `json:"isAiIntervened"`      // 是否由 AI 介入裁决
+	AiArbitrationReason string  `json:"aiArbitrationReason"` // AI 裁决的理由
+	Confidence          float64 `json:"confidence"`          // 置信度百分比
 }
 
 type TagDto struct {

@@ -504,6 +504,17 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 				if et.IsPrimary {
 					primaryTagMap[et.TagID] = true
 				}
+				
+				// 从 EntityTag 获取 MDCT 字段 (如果有多条，优先保留被AI介入过的数据或置信度最高的)
+				if et.IsAiIntervened {
+					dto.IsAiIntervened = true
+					if dto.AiArbitrationReason == "" {
+						dto.AiArbitrationReason = et.AiArbitrationReason
+					}
+				}
+				if et.Confidence > dto.Confidence {
+					dto.Confidence = et.Confidence
+				}
 			}
 
 			if len(tagIDs) > 0 {

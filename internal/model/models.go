@@ -87,6 +87,11 @@ type SysEntityTag struct {
 	IsPrimary bool   `json:"is_primary" gorm:"default:false;comment:是否为主标签 (区分混合模式主副标签)"`
 	BatchID   uint64 `json:"batch_id" gorm:"index;comment:记录是哪个批次打上的，用于回退"`
 	RuleID    uint64 `json:"rule_id" gorm:"default:0;comment:如果是 auto_rule，记录命中的规则ID"`
+
+	// MDCT 算法新增字段
+	IsAiIntervened      bool    `json:"is_ai_intervened" gorm:"default:false;comment:是否由 AI 介入裁决"`
+	AiArbitrationReason string  `json:"ai_arbitration_reason" gorm:"type:text;comment:AI 裁决的理由"`
+	Confidence          float64 `json:"confidence" gorm:"type:decimal(5,2);comment:置信度百分比"`
 }
 
 // SysSqlTemplate 系统SQL查询模板表

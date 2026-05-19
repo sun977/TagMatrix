@@ -15,6 +15,7 @@ type AppConfig struct {
 	System  SystemConfig  `json:"system"`
 	Network NetworkConfig `json:"network"`
 	Adv     AdvConfig     `json:"adv"`
+	MDCT    MDCTConfig    `json:"mdct"`
 }
 
 // NetworkConfig 定义了网络及代理相关的配置
@@ -44,6 +45,15 @@ type AdvConfig struct {
 	Retries       int  `json:"retries"`
 	DebugMode     bool `json:"debug_mode"`
 	DeveloperMode bool `json:"developer_mode"` // 开发者模式
+}
+
+// MDCTConfig 多维共识打标算法权重配置
+type MDCTConfig struct {
+	W1             int  `json:"w1"`               // 人为静态权重 (基础决定权)
+	W2             int  `json:"w2"`               // 规则逻辑深度打分权重
+	W3             int  `json:"w3"`               // 数据置信度打分权重
+	W4             int  `json:"w4"`               // AI 语义裁决分权重
+	AllowAiArbiter bool `json:"allow_ai_arbiter"` // 是否允许AI介入裁决 (对应文档中的数据隐私手动开关)
 }
 
 var (
@@ -95,6 +105,13 @@ TagMatrix操作指南：
 				Concurrency: 5,
 				Retries:     3,
 				DebugMode:   false,
+			},
+			MDCT: MDCTConfig{
+				W1:             1000,
+				W2:             10,
+				W3:             10,
+				W4:             100,
+				AllowAiArbiter: false, // 默认关闭，保护数据隐私
 			},
 		}
 
