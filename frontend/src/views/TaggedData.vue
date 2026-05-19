@@ -74,6 +74,13 @@
           </el-select>
         </el-form-item>
 
+        <el-form-item label="AI裁决">
+          <el-select v-model="filterForm.isAiIntervened" placeholder="全部" clearable class="w-150">
+            <el-option label="是" value="true" />
+            <el-option label="否" value="false" />
+          </el-select>
+        </el-form-item>
+
         <el-form-item label="打标时间">
           <el-date-picker
             v-model="filterForm.dateRange"
@@ -299,6 +306,7 @@ const filterForm = reactive({
   sourceFile: '',
   tagMode: '',
   status: '',
+  isAiIntervened: '',
   dateRange: null as string[] | null
 })
 
@@ -371,6 +379,7 @@ const handleSearch = async () => {
       filterForm.status,
       filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[0] : '',
       filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[1] : '',
+      filterForm.isAiIntervened,
       currentPage.value, 
       pageSize.value
     )
@@ -446,6 +455,7 @@ const resetFilter = () => {
   filterForm.sourceFile = ''
   filterForm.tagMode = ''
   filterForm.status = ''
+  filterForm.isAiIntervened = ''
   filterForm.dateRange = null
   currentPage.value = 1
   handleSearch()
@@ -463,7 +473,8 @@ const handleExport = async () => {
       filterForm.tagMode,
       filterForm.status,
       filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[0] : '',
-      filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[1] : ''
+      filterForm.dateRange && filterForm.dateRange.length === 2 ? filterForm.dateRange[1] : '',
+      filterForm.isAiIntervened
     )
     ElMessage.success('导出成功')
   } catch (e: any) {

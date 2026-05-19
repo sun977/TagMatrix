@@ -59,6 +59,9 @@ type App struct {
 	aiEngine   *aiengine.AIEngineService
 	dataAdmin  *dataadmin.DataAdminService
 	backupSvc  *dataadmin.BackupService
+
+	dbPath  string
+	logPath string
 }
 
 // NewApp creates a new App application struct
@@ -67,7 +70,9 @@ func NewApp() *App {
 }
 
 // startup is called when the app starts. The context is saved
+// 应用启动时调用startup函数。上下文已保存
 // so we can call the runtime methods
+// 因此我们可以调用运行时方法
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
@@ -93,6 +98,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	dbPath := filepath.Join(appDir, "data.db")
+	a.dbPath, _ = filepath.Abs(dbPath)
 
 	// 2. 初始化配置文件
 	err := config.InitConfig(appDir)
@@ -101,6 +107,7 @@ func (a *App) startup(ctx context.Context) {
 	}
 
 	logPath := filepath.Join(appDir, "app.log")
+	a.logPath, _ = filepath.Abs(logPath)
 	cfg := config.GetConfig()
 	logger.InitLogger(logPath, cfg.Adv.DebugMode)
 	logger.Info("TagMatrix application started", zap.String("appDir", appDir))
@@ -155,21 +162,9 @@ type AppPaths struct {
 
 // GetAppPaths 获取应用存储路径
 func (a *App) GetAppPaths() AppPaths {
-	var appDir string
-	env := runtime.Environment(a.ctx)
-	if env.BuildType == "dev" || env.BuildType == "debug" {
-		appDir = "."
-	} else {
-		appDataDir, _ := os.UserConfigDir()
-		appDir = filepath.Join(appDataDir, "TagMatrix")
-	}
-
-	dbPath, _ := filepath.Abs(filepath.Join(appDir, "data.db"))
-	logPath, _ := filepath.Abs(filepath.Join(appDir, "app.log"))
-
 	return AppPaths{
-		DBPath:  dbPath,
-		LogPath: logPath,
+		DBPath:  a.dbPath,
+		LogPath: a.logPath,
 	}
 }
 
@@ -389,7 +384,7 @@ func (a *App) DeleteRawData(ids []uint64) error {
 	return model.DB.Delete(&model.RawDataRecord{}, ids).Error
 }
 
-func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate string, page, pageSize int) (*model.PagedTaggedData, error) {
+func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate, isAiIntervened string, page, pageSize int) (*model.PagedTaggedData, error) {
 	var total int64
 	var dtos []model.TaggedRecordDto
 
@@ -424,7 +419,7 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 	// 其他关联过滤条件需要在连接表上操作，因为我们需要分页
 	// 由于 Tag, Batch, TagMode, Status 是多对多或根据计算得出的，我们最好使用 Join 或者子查询
 
-	if tag != "" || batch != "" || tagMode != "" || status != "" {
+	if tag != "" || batch != "" || tagMode != "" || status != "" || isAiIntervened != "" {
 		subQuery := model.DB.Table("sys_entity_tags").Select("record_id")
 
 		if tag != "" {
@@ -441,13 +436,27 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 				Where("tag_task_batches.tag_mode = ?", tagMode)
 		}
 
+		switch isAiIntervened {
+		case "true":
+			subQuery = subQuery.Where("is_ai_intervened = ?", true)
+		case "false":
+			// 如果查未介入的，需要确保它的标签中没有一个是 is_ai_intervened = true 的
+			// 所以先找到有哪些 record_id 是 true 的，然后排除它们，同时要确保它在 sys_entity_tags 里（排除掉未命中的，除非 status 选了全部）
+			subQuery = subQuery.Where("sys_entity_tags.record_id NOT IN (?)", model.DB.Table("sys_entity_tags").Select("record_id").Where("is_ai_intervened = ?", true))
+		}
+
 		switch status {
 		case "success":
 			db = db.Where("raw_data_records.id IN (?)", subQuery)
 		case "unmatched":
 			db = db.Where("raw_data_records.id NOT IN (?)", subQuery)
 		default:
-			db = db.Where("raw_data_records.id IN (?)", subQuery)
+			if isAiIntervened != "" {
+				// 如果筛选了 AI 是否介入，隐含条件是它已经被打标了
+				db = db.Where("raw_data_records.id IN (?)", subQuery)
+			} else {
+				db = db.Where("raw_data_records.id IN (?)", subQuery)
+			}
 		}
 	}
 
@@ -504,7 +513,7 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 				if et.IsPrimary {
 					primaryTagMap[et.TagID] = true
 				}
-				
+
 				// 从 EntityTag 获取 MDCT 字段 (如果有多条，优先保留被AI介入过的数据或置信度最高的)
 				if et.IsAiIntervened {
 					dto.IsAiIntervened = true
@@ -553,7 +562,7 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 }
 
 // ExportTaggedDataList 按筛选条件导出打标数据，包含动态字段和系统处理字段，不包含 ID 和打标时间
-func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate string) error {
+func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate, isAiIntervened string) error {
 	// 构建查询条件
 	db := model.DB.Model(&model.RawDataRecord{})
 
@@ -580,7 +589,7 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 		db = db.Where("raw_data_records.updated_at <= ?", endDate+" 23:59:59")
 	}
 
-	if tag != "" || batch != "" || tagMode != "" || status != "" {
+	if tag != "" || batch != "" || tagMode != "" || status != "" || isAiIntervened != "" {
 		subQuery := model.DB.Table("sys_entity_tags").Select("record_id")
 
 		if tag != "" {
@@ -596,13 +605,24 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 				Where("tag_task_batches.tag_mode = ?", tagMode)
 		}
 
+		switch isAiIntervened {
+		case "true":
+			subQuery = subQuery.Where("is_ai_intervened = ?", true)
+		case "false":
+			subQuery = subQuery.Where("sys_entity_tags.record_id NOT IN (?)", model.DB.Table("sys_entity_tags").Select("record_id").Where("is_ai_intervened = ?", true))
+		}
+
 		switch status {
 		case "success":
 			db = db.Where("raw_data_records.id IN (?)", subQuery)
 		case "unmatched":
 			db = db.Where("raw_data_records.id NOT IN (?)", subQuery)
 		default:
-			db = db.Where("raw_data_records.id IN (?)", subQuery)
+			if isAiIntervened != "" {
+				db = db.Where("raw_data_records.id IN (?)", subQuery)
+			} else {
+				db = db.Where("raw_data_records.id IN (?)", subQuery)
+			}
 		}
 	}
 
@@ -701,14 +721,14 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 
 			var tagIDs []uint64
 			primaryMap := make(map[uint64]bool)
-			
+
 			// 确定谁是主标签并提取 MDCT 字段
 			var primaryTagID uint64
 			if tagModeVal == "single" && len(entityTags) > 0 {
 				// 单标签模式下，唯一的标签就是主标签
 				primaryTagID = entityTags[0].TagID
 				primaryMap[primaryTagID] = true
-				
+
 				// 遍历找出 AI 介入过的标签，或者置信度最高的（这和列表页的显示逻辑保持一致）
 				for _, et := range entityTags {
 					if et.IsAiIntervened {
