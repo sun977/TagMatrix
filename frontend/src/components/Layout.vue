@@ -49,7 +49,11 @@
     </aside>
 
     <!-- 主容器 -->
-    <div class="content-wrapper">
+    <div 
+      class="content-wrapper"
+      :class="{ 'no-transition': aiStore.isDragging }"
+      :style="aiStore.isOpen ? { marginRight: aiStore.sidebarWidth + 'px' } : { marginRight: '0px' }"
+    >
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
@@ -60,11 +64,16 @@
     <!-- 右侧智能助手面板 -->
     <AICopilotSidebar />
 
-    <!-- 右上角全局布局控制栏 (Layout Controls) -->
-    <div class="layout-controls" :class="{ 'is-shifted': aiStore.isOpen }">
-      <el-tooltip content="AI助手" placement="bottom" :show-after="300">
-        <div class="control-btn" :class="{ 'is-active': aiStore.isOpen }" @click="toggleAIPanel">
-          <el-icon><Service /></el-icon>
+    <!-- 右侧全局布局控制栏 (Layout Controls) -->
+    <div 
+      class="layout-controls" 
+      :class="{ 'is-shifted': aiStore.isOpen, 'no-transition': aiStore.isDragging }" 
+      @click="toggleAIPanel"
+      :style="aiStore.isOpen ? { right: aiStore.sidebarWidth + 'px' } : {}"
+    >
+      <el-tooltip content="AI助手" placement="left" :show-after="300">
+        <div class="control-btn" :class="{ 'is-active': aiStore.isOpen }">
+          <el-icon><CaretLeft v-if="!aiStore.isOpen" /><CaretRight v-else /></el-icon>
         </div>
       </el-tooltip>
     </div>
@@ -369,40 +378,44 @@ onUnmounted(() => {
   flex-direction: column;
   min-width: 0; /* 避免 flex 子项超出 */
   overflow-y: auto;
+  overflow-x: hidden;
   position: relative;
   background-color: var(--tm-bg-main);
+  transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.no-transition {
+    transition: none !important;
+  }
 }
 
-/* --- 右上角全局布局控制栏 (Layout Controls) --- */
+/* --- 右侧全局布局控制栏 (Layout Controls) --- */
 .layout-controls {
   position: absolute;
-  top: 16px;
-  right: 24px;
+  top: 15%;
+  right: 0;
+  transform: translateY(-50%);
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px;
   background-color: var(--tm-bg-main);
   border: 1px solid var(--tm-border-color);
-  border-radius: 8px;
-  box-shadow: var(--tm-shadow-sm);
+  border-right: none;
+  border-radius: 6px 0 0 6px;
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
   z-index: 100;
   transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
 
-  /* 当侧边栏展开时，向左偏移侧边栏的宽度 (400px + 原本的24px = 424px) */
-  &.is-shifted {
-    right: 424px;
+  &.no-transition {
+    transition: none !important;
   }
 
   .control-btn {
-    width: 28px;
-    height: 28px;
+    width: 14px;
+    height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
-    cursor: pointer;
-    color: var(--tm-text-regular);
+    color: var(--tm-text-secondary);
     transition: all 0.2s;
 
     &:hover {
@@ -411,7 +424,6 @@ onUnmounted(() => {
     }
 
     &.is-active {
-      background-color: var(--tm-bg-active);
       color: var(--tm-text-primary);
     }
   }

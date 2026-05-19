@@ -1,6 +1,14 @@
 <template>
   <transition name="slide-fade">
-    <div v-show="aiStore.isOpen" class="ai-sidebar">
+    <div 
+      v-show="aiStore.isOpen" 
+      class="ai-sidebar"
+      :class="{ 'no-transition': aiStore.isDragging }"
+      :style="{ width: aiStore.sidebarWidth + 'px' }"
+    >
+      <!-- 拖拽调节宽度的把手 -->
+      <div class="sidebar-resizer" @mousedown="startDrag"></div>
+      
       <AICopilotHeader />
       <AICopilotChat @preset-click="handleSend" />
       <AICopilotInput @send="handleSend" :disabled="isGenerating" />
@@ -18,6 +26,44 @@ import { EventsOn, EventsOff } from '../../../wailsjs/runtime/runtime'
 
 const aiStore = useAIStore()
 const isGenerating = ref(false)
+
+// --- 侧边栏拖拽调节宽度逻辑 ---
+
+const minWidth = 300
+// 计算最大宽度为屏幕宽度的一半
+const getMaxWidth = () => window.innerWidth / 2
+
+const startDrag = (e: MouseEvent) => {
+  aiStore.isDragging = true
+  document.body.style.cursor = 'col-resize'
+  document.addEventListener('mousemove', onDrag)
+  document.addEventListener('mouseup', stopDrag)
+  e.preventDefault()
+}
+
+const onDrag = (e: MouseEvent) => {
+  if (!aiStore.isDragging) return
+  // 由于侧边栏在右侧，向左拖拽 x 坐标变小，宽度增加
+  const newWidth = window.innerWidth - e.clientX
+  const maxWidth = getMaxWidth()
+  
+  if (newWidth < minWidth) {
+    aiStore.sidebarWidth = minWidth
+  } else if (newWidth > maxWidth) {
+    aiStore.sidebarWidth = maxWidth
+  } else {
+    aiStore.sidebarWidth = newWidth
+  }
+}
+
+const stopDrag = () => {
+  if (aiStore.isDragging) {
+    aiStore.isDragging = false
+    document.body.style.cursor = ''
+    document.removeEventListener('mousemove', onDrag)
+    document.removeEventListener('mouseup', stopDrag)
+  }
+}
 
 let aiMessageIndex = -1
 let currentGeneratingContent = ''
@@ -65,6 +111,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   removeEventHandlers()
+  stopDrag()
 })
 
 const handleSend = async (text: string) => {
@@ -129,8 +176,10 @@ const handleSend = async (text: string) => {
 
 <style scoped lang="scss">
 .ai-sidebar {
-  width: 400px;
-  flex-shrink: 0;
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -138,7 +187,30 @@ const handleSend = async (text: string) => {
   border-left: 1px solid var(--tm-border-color);
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.05);
   z-index: 50;
-  position: relative;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform, width;
+  overflow-x: hidden;
+  
+  &.no-transition {
+    transition: none !important;
+  }
+  
+  /* --- 拖拽调整宽度的把手 --- */
+  .sidebar-resizer {
+    position: absolute;
+    top: 0;
+    left: -3px; // 悬浮在左侧边框线上
+    width: 6px;
+    height: 100%;
+    cursor: col-resize;
+    z-index: 10;
+    transition: background-color 0.2s;
+
+    &:hover, &:active {
+      background-color: var(--tm-accent-primary);
+      opacity: 0.5;
+    }
+  }
 }
 
 html.dark {

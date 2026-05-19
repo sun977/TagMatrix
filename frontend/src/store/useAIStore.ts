@@ -22,6 +22,8 @@ export const useAIStore = defineStore('aiStore', {
     currentSessionId: '' as string,
     pageContext: '', // Current page context string
     pendingSQL: '', // SQL pending to be executed
+    sidebarWidth: 400, // AI 侧边栏宽度
+    isDragging: false, // 是否正在拖拽侧边栏
   }),
   getters: {
     currentChatHistory(state): ChatMessage[] {
