@@ -118,6 +118,9 @@ func (a *App) startup(ctx context.Context) {
 		logger.Fatal("Failed to initialize database", zap.Error(err))
 	}
 
+	// 在启动时，将配置文件中的 DebugMode 同步给 GORM Logger，否则默认是 Warn 级别
+	model.UpdateDBLoggerLevel(cfg.Adv.DebugMode)
+
 	// 3. 初始化所有的 Service
 	a.dataset = dataset.NewDatasetService()
 	a.dataImport = dataimport.NewDataImportService()
@@ -190,6 +193,7 @@ func (a *App) OpenDirectoryInOS(path string) {
 
 // ----------------- Dashboard & Stats API -----------------
 
+// GetDashboardStats 获取仪表盘统计信息
 func (a *App) GetDashboardStats() (*model.DashboardStats, error) {
 	var stats model.DashboardStats
 
@@ -315,10 +319,12 @@ func (a *App) AnalyzeDataFile() (*model.FileAnalysisResult, error) {
 	return a.dataImport.AnalyzeFile(file)
 }
 
+// ImportData 导入数据
 func (a *App) ImportData(filePath string, selectedSheets []string, datasetID uint64, newDatasetName string) (int, error) {
 	return a.dataImport.ImportData(filePath, selectedSheets, datasetID, newDatasetName)
 }
 
+// ExportData 导出数据
 func (a *App) ExportData(datasetID uint64, exportPath string) error {
 	if exportPath == "" {
 		file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
@@ -345,6 +351,7 @@ type PagedData struct {
 	Records []model.RawDataRecord
 }
 
+// GetRawDataList 获取原始数据列表
 func (a *App) GetRawDataList(datasetID uint64, page, pageSize int, searchCol, keyword string) (*PagedData, error) {
 	var records []model.RawDataRecord
 	var total int64
@@ -376,6 +383,7 @@ func (a *App) GetRawDataList(datasetID uint64, page, pageSize int, searchCol, ke
 	}, nil
 }
 
+// DeleteRawData 删除原始数据
 func (a *App) DeleteRawData(ids []uint64) error {
 	if len(ids) == 0 {
 		return nil
@@ -384,6 +392,7 @@ func (a *App) DeleteRawData(ids []uint64) error {
 	return model.DB.Delete(&model.RawDataRecord{}, ids).Error
 }
 
+// GetTaggedDataList 获取打标数据列表
 func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourceFile, tagMode, status, startDate, endDate, isAiIntervened string, page, pageSize int) (*model.PagedTaggedData, error) {
 	var total int64
 	var dtos []model.TaggedRecordDto
@@ -830,34 +839,42 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 
 // ----------------- Tag & Rule Logic API -----------------
 
+// CreateTag 创建标签
 func (a *App) CreateTag(tag model.SysTag) error {
 	return a.tagLogic.CreateTag(&tag)
 }
 
+// UpdateTag 更新标签
 func (a *App) UpdateTag(tag model.SysTag) error {
 	return a.tagLogic.UpdateTag(&tag)
 }
 
+// MoveTag 移动标签
 func (a *App) MoveTag(tagID uint64, newParentID uint64) error {
 	return a.tagLogic.MoveTag(tagID, newParentID)
 }
 
+// DeleteTag 删除标签
 func (a *App) DeleteTag(id uint64) error {
 	return a.tagLogic.DeleteTag(id)
 }
 
+// CheckTagHasRules 检查标签或其子标签是否配置了匹配规则
 func (a *App) CheckTagHasRules(id uint64) (bool, error) {
 	return a.tagLogic.CheckTagHasRules(id)
 }
 
+// GetAllTags 获取所有标签
 func (a *App) GetAllTags() ([]model.SysTag, error) {
 	return a.tagLogic.GetAllTags()
 }
 
+// GetTagTree 获取标签树
 func (a *App) GetTagTree() ([]model.TagTreeNode, error) {
 	return a.tagLogic.GetTagTree()
 }
 
+// ExportTags 导出标签结构
 func (a *App) ExportTags(exportPath string) error {
 	if exportPath == "" {
 		file, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
@@ -878,6 +895,7 @@ func (a *App) ExportTags(exportPath string) error {
 	return a.tagLogic.ExportTags(exportPath)
 }
 
+// ImportTags 导入标签结构
 func (a *App) ImportTags(filePath string) error {
 	if filePath == "" {
 		file, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
@@ -897,33 +915,40 @@ func (a *App) ImportTags(filePath string) error {
 	return a.tagLogic.ImportTags(filePath)
 }
 
+// SaveRule 保存匹配规则
 func (a *App) SaveRule(rule model.SysMatchRule) error {
 	return a.tagLogic.SaveRule(&rule)
 }
 
+// GetRulesByTag 获取某个标签下的所有规则
 func (a *App) GetRulesByTag(tagID uint64) ([]model.SysMatchRule, error) {
 	return a.tagLogic.GetRulesByTagID(tagID)
 }
 
+// GetRulesByDataset 获取某个数据集下的所有规则 (打标任务引擎使用的批量拉取接口)
 func (a *App) GetRulesByDataset(datasetID uint64) ([]model.SysMatchRule, error) {
 	return a.tagLogic.GetRulesByDataset(datasetID)
 }
 
+// DeleteRule 删除规则
 func (a *App) DeleteRule(id uint64) error {
 	return a.tagLogic.DeleteRule(id)
 }
 
+// GetAllRules 获取所有规则
 func (a *App) GetAllRules() ([]model.SysMatchRule, error) {
 	var rules []model.SysMatchRule
 	err := model.DB.Find(&rules).Error
 	return rules, err
 }
 
+// DryRunRule 规则试算
 func (a *App) DryRunRule(ruleJSON string, limit int, datasetID uint64) ([]taglogic.DryRunResult, error) {
 	return a.tagLogic.DryRunRule(ruleJSON, limit, datasetID)
 }
 
 // ----------------- Task Engine API -----------------
+// RunTaggingTask 异步执行规则打标任务
 func (a *App) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, sourceFile string) (uint64, error) {
 	return a.taskEngine.RunTaggingTask(datasetID, ruleIDs, batchName, isOverwrite, tagMode, sourceFile)
 }
@@ -933,20 +958,24 @@ func (a *App) GetAvailableSourceFiles(datasetID uint64) ([]model.SourceFileOptio
 	return a.taskEngine.GetAvailableSourceFiles(a.ctx, datasetID)
 }
 
+// RollbackTask 回退指定的打标批次
 func (a *App) RollbackTask(batchID uint64) error {
 	return a.taskEngine.RollbackTask(a.ctx, batchID)
 }
 
+// DeleteTaskBatches 硬删除指定的打标批次及其关联的日志和标签
 func (a *App) DeleteTaskBatches(batchIDs []uint64) error {
 	return a.taskEngine.DeleteTaskBatches(a.ctx, batchIDs)
 }
 
+// GetTaskBatches 获取所有打标批次
 func (a *App) GetTaskBatches() ([]model.TagTaskBatch, error) {
 	var batches []model.TagTaskBatch
 	err := model.DB.Order("id desc").Find(&batches).Error
 	return batches, err
 }
 
+// GetTaskLogs 获取某个批次的打标日志
 func (a *App) GetTaskLogs(batchID uint64) ([]model.TagTaskLogDto, error) {
 	return a.taskEngine.GetTaskLogs(batchID)
 }
@@ -1021,6 +1050,7 @@ func (a *App) ExportTaskLogsCSV(batchID uint64) (string, error) {
 }
 
 // SaveCSVFile saves a raw CSV string to a file using native dialog
+// 选择保存路径
 func (a *App) SaveCSVFile(defaultFilename string, csvContent string) (string, error) {
 	filepath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		DefaultFilename: defaultFilename,
@@ -1048,68 +1078,84 @@ func (a *App) SaveCSVFile(defaultFilename string, csvContent string) (string, er
 
 // ----------------- AI Engine API -----------------
 
+// 聊天
 func (a *App) ChatWithAI(message string) (string, error) {
 	return a.aiEngine.ChatWithAI(a.ctx, message)
 }
 
+// 聊天流式传输
 func (a *App) ChatWithAIStream(reqId string, message string) error {
 	return a.aiEngine.ChatWithAIStream(a.ctx, reqId, message)
 }
 
+// 测试 AI 连接
 func (a *App) TestAIConnection(apiKey, baseUrl, modelName string) error {
 	return a.aiEngine.TestConnection(a.ctx, apiKey, baseUrl, modelName)
 }
 
 // ----------------- Data Admin API -----------------
 
+// 执行原始 SQL
 func (a *App) ExecuteRawSQL(query string) (*dataadmin.RawSQLResult, error) {
 	return a.dataAdmin.ExecuteRawSQL(query)
 }
 
+// 获取系统表
 func (a *App) GetSystemTables() ([]string, error) {
 	return a.dataAdmin.GetSystemTables()
 }
 
+// 获取表数据
 func (a *App) GetTableData(tableName string, offset, limit int) (*dataadmin.PagedTableData, error) {
 	return a.dataAdmin.GetTableData(tableName, offset, limit)
 }
 
+// 获取虚拟数据集数据
 func (a *App) GetVirtualDatasetData(datasetId uint, offset, limit int) (*dataadmin.PagedTableData, error) {
 	return a.dataAdmin.GetVirtualDatasetData(datasetId, offset, limit)
 }
 
+// 插入系统表记录
 func (a *App) InsertSystemTableRecord(tableName string, payload map[string]interface{}) error {
 	return a.dataAdmin.InsertSystemTableRecord(tableName, payload)
 }
 
+// 更新系统表记录
 func (a *App) UpdateSystemTableRecord(tableName string, recordId interface{}, payload map[string]interface{}) error {
 	return a.dataAdmin.UpdateSystemTableRecord(tableName, recordId, payload)
 }
 
+// 删除系统表记录
 func (a *App) DeleteSystemTableRecord(tableName string, recordId interface{}) error {
 	return a.dataAdmin.DeleteSystemTableRecord(tableName, recordId)
 }
 
+// 插入虚拟数据记录
 func (a *App) InsertVirtualRecord(datasetId uint, payload map[string]interface{}) error {
 	return a.dataAdmin.InsertVirtualRecord(datasetId, payload)
 }
 
+// 更新虚拟数据记录
 func (a *App) UpdateVirtualRecord(recordId uint, payload map[string]interface{}) error {
 	return a.dataAdmin.UpdateVirtualRecord(recordId, payload)
 }
 
+// 删除虚拟数据记录
 func (a *App) DeleteVirtualRecord(recordId uint) error {
 	return a.dataAdmin.DeleteVirtualRecord(recordId)
 }
 
+// 获取 SQL 模板
 func (a *App) GetSqlTemplates() ([]model.SysSqlTemplate, error) {
 	return a.dataAdmin.GetSqlTemplates()
 }
 
+// 保存
 func (a *App) SaveSqlTemplate(id uint64, name, query string) error {
 	return a.dataAdmin.SaveSqlTemplate(id, name, query)
 }
 
+// 删除
 func (a *App) DeleteSqlTemplate(id uint64) error {
 	return a.dataAdmin.DeleteSqlTemplate(id)
 }
