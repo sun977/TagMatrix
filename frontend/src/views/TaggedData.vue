@@ -47,7 +47,7 @@
           </el-select>
         </el-form-item>
 
-        <el-form-item label="任务名称">
+        <el-form-item label="命中任务">
           <el-select v-model="filterForm.batch" placeholder="全部任务" clearable class="w-150">
             <el-option v-for="batch in batchOptions" :key="batch.id" :label="batch.name" :value="String(batch.id)" />
           </el-select>
