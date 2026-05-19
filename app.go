@@ -1150,30 +1150,33 @@ func (a *App) GetSqlTemplates() ([]model.SysSqlTemplate, error) {
 	return a.dataAdmin.GetSqlTemplates()
 }
 
-// 保存
+// 保存 SQl 模板
 func (a *App) SaveSqlTemplate(id uint64, name, query string) error {
 	return a.dataAdmin.SaveSqlTemplate(id, name, query)
 }
 
-// 删除
+// 删除 SQL 模板
 func (a *App) DeleteSqlTemplate(id uint64) error {
 	return a.dataAdmin.DeleteSqlTemplate(id)
 }
 
 // ----------------- Backup Service API -----------------
-
+// 列出备份清单
 func (a *App) ListBackups() ([]dataadmin.BackupInfo, error) {
 	return a.backupSvc.ListBackups()
 }
 
+// 创建备份
 func (a *App) CreateBackup(note string) error {
 	return a.backupSvc.CreateBackup(note)
 }
 
+// 删除备份
 func (a *App) DeleteBackup(backupPath string) error {
 	return a.backupSvc.DeleteBackup(backupPath)
 }
 
+// 重载数据库
 func (a *App) RestoreDatabase(backupPath string) error {
 	// 1. 关闭现有数据库连接释放文件锁
 	sqlDB, err := model.DB.DB()
@@ -1217,6 +1220,7 @@ func (a *App) RestoreDatabase(backupPath string) error {
 	return nil
 }
 
+// 导入数据库文件
 func (a *App) ImportExternalDatabase() error {
 	filepath, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
 		Title: "选择要导入的数据库文件",
