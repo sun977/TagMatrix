@@ -191,22 +191,7 @@
           <template #default="scope">
             <div v-if="(scope.row.tagMode === 'mixed' && scope.row.primaryTag) || (scope.row.tagMode === 'single' && scope.row.tags && scope.row.tags.length > 0)">
               <div class="primary-tag-wrapper" style="display: flex; align-items: center;">
-                <el-badge v-if="scope.row.isAiIntervened" is-dot class="ai-badge" type="warning" title="AI 介入裁决">
-                  <el-tag 
-                    :color="(scope.row.primaryTag || scope.row.tags[0]).color + '20'"
-                    :style="{ color: (scope.row.primaryTag || scope.row.tags[0]).color, borderColor: (scope.row.primaryTag || scope.row.tags[0]).color + '40' }"
-                    size="small"
-                    class="custom-tag"
-                    disable-transitions
-                  >
-                    {{ (scope.row.primaryTag || scope.row.tags[0]).name }}
-                    <span v-if="scope.row.confidence" class="confidence-text">
-                      ({{ scope.row.confidence.toFixed(1) }}%)
-                    </span>
-                  </el-tag>
-                </el-badge>
                 <el-tag 
-                  v-else
                   :color="(scope.row.primaryTag || scope.row.tags[0]).color + '20'"
                   :style="{ color: (scope.row.primaryTag || scope.row.tags[0]).color, borderColor: (scope.row.primaryTag || scope.row.tags[0]).color + '40' }"
                   size="small"
@@ -226,7 +211,7 @@
                       {{ scope.row.aiArbitrationReason }}
                     </div>
                   </template>
-                  <el-icon class="ai-icon" style="color: #e6a23c; margin-left: 8px; cursor: help; font-size: 16px;"><Cpu /></el-icon>
+                  <el-icon class="ai-icon" style="color: #e6a23c; margin-left: 8px; cursor: help; font-size: 16px;"><MagicStick /></el-icon>
                 </el-tooltip>
               </div>
             </div>
@@ -290,7 +275,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue'
-import { Search, Download, RefreshRight, Setting, DocumentCopy, Cpu } from '@element-plus/icons-vue'
+import { Search, Download, RefreshRight, Setting, DocumentCopy, MagicStick } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { GetTaggedDataList, ExportTaggedDataList, GetAllTags, GetTaskBatches, GetAvailableSourceFiles, ListDatasets } from '../../wailsjs/go/main/App'
 
