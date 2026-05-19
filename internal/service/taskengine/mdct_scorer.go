@@ -84,11 +84,12 @@ func (s *MDCTScorer) EvaluateAndSort(ctx context.Context, record map[string]inte
 			} else {
 				// 注入 W4 得分
 				w4Score := float64(s.Weights.W4)
-				if winnerIndex == 0 {
+				switch winnerIndex {
+				case 0:
 					r1.FinalScore += w4Score
 					r1.IsAiIntervened = true
 					r1.AiArbitrationReason = reason
-				} else if winnerIndex == 1 {
+				case 1:
 					r2.FinalScore += w4Score
 					r2.IsAiIntervened = true
 					r2.AiArbitrationReason = reason
