@@ -109,6 +109,64 @@
           </div>
         </el-tab-pane>
 
+        <!-- 打标算法设置 -->
+        <el-tab-pane label="打标算法设置" name="mdct">
+          <div class="settings-section">
+            <h3 class="section-title-with-icon">
+              多维共识打标算法 (MDCT) 权重
+              <el-tooltip effect="dark" placement="bottom-start" max-width="400px">
+                <template #content>
+                  <div style="line-height: 1.5; font-size: 12px;">
+                    <strong>【打分机制说明】</strong><br/>
+                    当数据命中多个标签产生冲突时，系统按以下 4 个维度加权求和决出主标签：<br/>
+                    <strong>1. 优先级得分(W1)：</strong>系统人工意志。通过 W1 的高权重产生总分断层碾压。只要 W1 足够大，微小的 Priority 差距即可决定胜负。<br/>
+                    <strong>2. 逻辑深度(W2)：</strong>代表画像精准度。依据规则 AST 树打分（多一层 AND/OR +10分）。精确匹配(如 equals) 乘1.5倍；正则/范围 乘1.2倍；模糊匹配 乘1.0倍。<br/>
+                    <strong>3. 数据置信度(W3)：</strong>依据数据“画像丰满度”打分。考察核心字段的非空完整度，倾向把主标签颁发给字段填写详尽的数据。<br/>
+                    <strong>4. AI 语义裁决(W4)：</strong>延迟计算的仲裁者。仅开启 AI 且前 3 个维度总分差 &lt; 5% 时触发，由大模型打破平局。<br/>
+                    <em>* 总分 = (W1 × 优先级) + (W2 × 逻辑深度) + (W3 × 置信度) + (W4 × AI 裁决)</em>
+                  </div>
+                </template>
+                <el-icon class="title-help-icon"><QuestionFilled /></el-icon>
+              </el-tooltip>
+            </h3>
+            <div class="help-text" style="margin-bottom: 20px;">
+              用于调整标签冲突时的主标签判定优先级。注意：若希望人工配置的优先级具有一票否决权，W1 的值必须远大于 W2+W3 的总和。
+            </div>
+
+            <div class="setting-item">
+              <label>人为静态权重(W1)</label>
+              <el-input-number v-model="form.w1" :min="0" :step="1" controls-position="right" class="w-100" />
+              <div class="help-text">基础决定权，默认 1000 以确保优先级统治权。</div>
+            </div>
+
+            <div class="setting-item">
+              <label>规则逻辑深度权重(W2)</label>
+              <el-input-number v-model="form.w2" :min="0" :step="1" controls-position="right" class="w-100" />
+              <div class="help-text">依据匹配规则的复杂程度计算的客观数据复杂度得分(默认10)。</div>
+            </div>
+
+            <div class="setting-item">
+              <label>数据置信度权重(W3)</label>
+              <el-input-number v-model="form.w3" :min="0" :step="1" controls-position="right" class="w-100" />
+              <div class="help-text">依据命中该规则的数据完整度质量进行打分的权重(默认10)。</div>
+            </div>
+            
+            <div class="setting-item">
+              <label>AI 语义裁决分权重(W4)</label>
+              <el-input-number v-model="form.w4" :min="0" :step="1" controls-position="right" class="w-100" />
+              <div class="help-text">AI 介入平局时的得分加成(默认100)。</div>
+            </div>
+
+            <div class="setting-item flex-between mt-4">
+              <div class="item-text">
+                <label>允许 AI 介入深度打标裁决</label>
+                <div class="help-text">出于数据隐私保护，此功能默认关闭。如果关闭，在平局时将退回使用规则 ID 兜底，绝不上传数据。</div>
+              </div>
+              <el-switch v-model="form.allowAiArbiter" />
+            </div>
+          </div>
+        </el-tab-pane>
+
         <!-- 网络与代理 -->
         <el-tab-pane label="网络与代理" name="network">
           <div class="settings-section">
@@ -203,6 +261,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { QuestionFilled } from '@element-plus/icons-vue'
 import { GetAppConfig, SaveAppConfig, TestAIConnection, GetAppPaths, OpenDirectoryInOS, BackupAppConfig } from '../../wailsjs/go/main/App'
 import { config } from '../../wailsjs/go/models'
 
@@ -250,7 +309,12 @@ const defaultForm = {
   debugMode: false,
   developerMode: false,
   proxyMode: 'system',
-  proxyUrl: ''
+  proxyUrl: '',
+  w1: 1000,
+  w2: 10,
+  w3: 10,
+  w4: 100,
+  allowAiArbiter: false
 }
 
 const form = reactive({ ...defaultForm })
@@ -307,6 +371,21 @@ const loadSettings = async () => {
     if (cfg && cfg.network) {
       form.proxyMode = cfg.network.proxy_mode || 'system'
       form.proxyUrl = cfg.network.proxy_url || ''
+    }
+    if (cfg && (cfg as any).mdct) {
+      const mdct = (cfg as any).mdct
+      if (mdct.w1 === 0 && mdct.w2 === 0 && mdct.w3 === 0 && mdct.w4 === 0) {
+        form.w1 = 1000
+        form.w2 = 10
+        form.w3 = 10
+        form.w4 = 100
+      } else {
+        form.w1 = mdct.w1
+        form.w2 = mdct.w2
+        form.w3 = mdct.w3
+        form.w4 = mdct.w4
+      }
+      form.allowAiArbiter = !!mdct.allow_ai_arbiter
     }
 
     const paths = await GetAppPaths()
@@ -399,6 +478,14 @@ const saveSettings = async () => {
     newCfg.network.proxy_mode = form.proxyMode
     newCfg.network.proxy_url = form.proxyUrl
 
+    ;(newCfg as any).mdct = {
+      w1: form.w1,
+      w2: form.w2,
+      w3: form.w3,
+      w4: form.w4,
+      allow_ai_arbiter: form.allowAiArbiter
+    }
+
     await SaveAppConfig(newCfg)
     ElMessage.success('设置已保存')
     
@@ -462,6 +549,27 @@ onMounted(() => {
     height: 100%;
     box-sizing: border-box;
     overflow-y: auto;
+  }
+}
+
+.section-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 20px 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--tm-text-primary);
+}
+
+.title-help-icon {
+  font-size: 16px;
+  color: var(--tm-text-secondary);
+  cursor: help;
+  outline: none;
+  
+  &:hover {
+    color: var(--tm-text-primary);
   }
 }
 

@@ -210,6 +210,14 @@ func loadConfigFromFile() error {
 		return fmt.Errorf("failed to parse config json: %w", err)
 	}
 
+	// 兼容老版本配置文件：如果 MDCT 权重全是 0，说明是旧配置升级上来的，补全推荐默认值
+	if cfg.MDCT.W1 == 0 && cfg.MDCT.W2 == 0 && cfg.MDCT.W3 == 0 && cfg.MDCT.W4 == 0 {
+		cfg.MDCT.W1 = 1000
+		cfg.MDCT.W2 = 10
+		cfg.MDCT.W3 = 10
+		cfg.MDCT.W4 = 100
+	}
+
 	configInstance = &cfg
 	return nil
 }
