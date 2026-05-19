@@ -110,9 +110,9 @@
         </el-tab-pane>
 
         <!-- 打标算法设置 -->
-        <el-tab-pane label="打标算法设置" name="mdct">
+        <el-tab-pane label="MDCT 设置" name="mdct">
           <div class="settings-section">
-            <h3 class="section-title-with-icon">
+            <h3>
               多维共识打标算法 (MDCT) 权重
               <el-tooltip effect="dark" placement="bottom-start" max-width="400px">
                 <template #content>
@@ -123,10 +123,12 @@
                     <strong>2. 逻辑深度(W2)：</strong>代表画像精准度。依据规则 AST 树打分（多一层 AND/OR +10分）。精确匹配(如 equals) 乘1.5倍；正则/范围 乘1.2倍；模糊匹配 乘1.0倍。<br/>
                     <strong>3. 数据置信度(W3)：</strong>依据数据“画像丰满度”打分。考察核心字段的非空完整度，倾向把主标签颁发给字段填写详尽的数据。<br/>
                     <strong>4. AI 语义裁决(W4)：</strong>延迟计算的仲裁者。仅开启 AI 且前 3 个维度总分差 &lt; 5% 时触发，由大模型打破平局。<br/>
-                    <em>* 总分 = (W1 × 优先级) + (W2 × 逻辑深度) + (W3 × 置信度) + (W4 × AI 裁决)</em>
+                    <em>总分 = (W1 × 优先级) + (W2 × 逻辑深度) + (W3 × 置信度) + (W4 × AI 裁决)</em>
                   </div>
                 </template>
-                <el-icon class="title-help-icon"><QuestionFilled /></el-icon>
+                <el-icon style="font-size: 15px; color: var(--tm-text-secondary); cursor: help; vertical-align: -2px; margin-left: 4px; outline: none;">
+                  <QuestionFilled />
+                </el-icon>
               </el-tooltip>
             </h3>
             <div class="help-text" style="margin-bottom: 20px;">
@@ -248,7 +250,7 @@
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="resetDefaults">重置默认值</el-button>
+        <el-button @click="resetDefaults">重置默认配置</el-button>
         <div>
           <el-button @click="dialogVisible = false">关闭</el-button>
           <el-button type="primary" @click="saveSettings">应用并保存</el-button>
@@ -536,6 +538,8 @@ onMounted(() => {
   :deep(.el-tabs__header.is-left) {
     margin-right: 0;
     width: 130px;
+    min-width: 130px; /* 锁定宽度 */
+    flex-shrink: 0; /* 绝对禁止缩小，防止出现滚动条时左侧导航被挤压导致“往左靠” */
     background-color: var(--tm-bg-subtle);
     padding-top: 10px;
   }
@@ -548,28 +552,23 @@ onMounted(() => {
     padding: 20px 24px 40px;
     height: 100%;
     box-sizing: border-box;
-    overflow-y: auto;
-  }
-}
+    overflow-y: auto; /* 只有内容超出时才显示滚动条，避免空轨道 */
+    overflow-x: hidden;
 
-.section-title-with-icon {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 20px 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--tm-text-primary);
-}
-
-.title-help-icon {
-  font-size: 16px;
-  color: var(--tm-text-secondary);
-  cursor: help;
-  outline: none;
-  
-  &:hover {
-    color: var(--tm-text-primary);
+    /* 全局统一美化设置区域的滚动条，使用细长轻量的样式替代系统默认的厚重滚动条 */
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-thumb {
+      background-color: #c0c4cc;
+      border-radius: 4px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background-color: #909399;
+    }
+    &::-webkit-scrollbar-track {
+      background-color: transparent;
+    }
   }
 }
 
