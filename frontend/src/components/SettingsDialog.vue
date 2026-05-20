@@ -164,7 +164,15 @@
                 <label>允许 AI 介入深度打标裁决</label>
                 <div class="help-text">出于数据隐私保护，此功能默认关闭。如果关闭，在平局时将退回使用规则 ID 兜底，绝不上传数据。</div>
               </div>
-              <el-switch v-model="form.allowAiArbiter" />
+              <el-tooltip
+                :content="!form.apiKey ? '请先在「AI 模型配置」中填写 API Key 后方可开启此功能' : '开启 AI 深度打标裁决'"
+                placement="top-end"
+                :disabled="!!form.apiKey && !form.allowAiArbiter"
+              >
+                <div style="display: inline-block;">
+                  <el-switch v-model="form.allowAiArbiter" :disabled="!form.apiKey" />
+                </div>
+              </el-tooltip>
             </div>
           </div>
         </el-tab-pane>
@@ -387,7 +395,7 @@ const loadSettings = async () => {
         form.w3 = mdct.w3
         form.w4 = mdct.w4
       }
-      form.allowAiArbiter = !!mdct.allow_ai_arbiter
+      form.allowAiArbiter = !!mdct.allow_ai_arbiter && !!form.apiKey
     }
 
     const paths = await GetAppPaths()
@@ -458,6 +466,11 @@ const resetDefaults = () => {
 
 const saveSettings = async () => {
   try {
+    // 安全校验：如果保存时没有 API Key，强制关闭 AI 裁决开关
+    if (!form.apiKey && form.allowAiArbiter) {
+      form.allowAiArbiter = false
+    }
+
     const newCfg = new config.AppConfig()
     newCfg.ai = new config.AIConfig()
     newCfg.ai.api_key = form.apiKey
