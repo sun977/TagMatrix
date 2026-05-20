@@ -1,8 +1,8 @@
 // ============================================================================
-//  ___________              _____          __         .__        
+//  ___________              _____          __         .__
 //  \__    ___/____    ____ /     \ _____ _/  |________|__|__  ___
 //    |    |  \__  \  / ___/  \ /  \\__  \\   __\_  __ \  \  \/  /
-//    |    |   / __ \/ /_/  >  Y    \/ __ \|  |  |  | \/  |>    < 
+//    |    |   / __ \/ /_/  >  Y    \/ __ \|  |  |  | \/  |>    <
 //    |____|  (____  /\___  /____|__  (____  /__|  |__|  |__/__/\_ \
 //                 \//_____/        \/     \/                     \/
 // ============================================================================
@@ -37,7 +37,7 @@ type MatchRule struct {
 	// --- 逻辑节点 (Branch) ---
 	And         []MatchRule `json:"and,omitempty"`
 	Or          []MatchRule `json:"or,omitempty"`
-	EvaluateAll []MatchRule `json:"evaluate_all,omitempty"`  // 强制执行所有规则
+	EvaluateAll []MatchRule `json:"evaluate_all,omitempty"` // 强制执行所有规则
 
 	// --- 条件节点 (Leaf) ---
 	Field      string      `json:"field,omitempty"`
@@ -290,7 +290,7 @@ func evaluateCondition(ctx context.Context, actual interface{}, operator string,
 				return false, err
 			}
 		}
-		
+
 		s1 := getStr(actual)
 		matches := re.FindAllStringIndex(s1, -1)
 		count := len(matches)
