@@ -55,18 +55,15 @@ func IsEmptyRule(rule MatchRule) bool {
 func Match(ctx context.Context, data interface{}, rule MatchRule) (bool, error) {
 	// 0. 处理强制非短路节点 (EvaluateAll)
 	if len(rule.EvaluateAll) > 0 {
-		matchedAny := false
 		for _, subRule := range rule.EvaluateAll {
-			matched, err := Match(ctx, data, subRule)
+			_, err := Match(ctx, data, subRule)
 			if err != nil {
 				return false, err
 			}
-			if matched {
-				matchedAny = true
-			}
 		}
-		// 如果没有任何一个子规则匹配，返回 false，否则返回 true
-		return matchedAny, nil
+		// 对于 EvaluateAll，只要内部子规则没有报错，且主要是为了副作用运行，
+		// 我们默认让它返回 true 以不阻断上层的规则链路
+		return true, nil
 	}
 
 	// 1. 处理逻辑节点 (Branch)
@@ -117,6 +114,9 @@ func Match(ctx context.Context, data interface{}, rule MatchRule) (bool, error) 
 		return !exists || fieldValue == nil, nil
 	case "is_not_null":
 		return exists && fieldValue != nil, nil
+	// 新增特殊处理：如果是副作用算子，即使没有 Field 也不应该因为 "如果字段不存在，默认不匹配" 而拦截
+	case "row_inc", "global_inc":
+		return evaluateCondition(ctx, nil, rule.Operator, rule.Value, rule.IgnoreCase)
 	}
 
 	// 如果字段不存在，且不是上述操作符，默认不匹配

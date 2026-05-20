@@ -1,6 +1,7 @@
 package taglogic
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -436,7 +437,14 @@ func (s *TagLogicService) DryRunRule(ruleJSON string, limit int, datasetID uint6
 			continue // 跳过无法解析的数据
 		}
 
-		matched, err := matcher.Match(dataMap, mRule)
+		// 对于单个规则测试匹配，也需要初始化基本上下文
+		ctx := context.Background()
+		rc := matcher.NewRowCounter()
+		rowCtx := matcher.WithRowCounter(ctx, rc)
+		// 这里暂无 tag 信息，传入 "test_tag" 兜底
+		tagCtx := matcher.WithCurrentTag(rowCtx, "test_tag")
+
+		matched, err := matcher.Match(tagCtx, dataMap, mRule)
 		if err != nil {
 			matched = false // 匹配出错视作不匹配
 		}

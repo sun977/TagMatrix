@@ -1,6 +1,7 @@
 package matcher
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 )
@@ -54,7 +55,7 @@ func TestMatch_UserSpecificRule(t *testing.T) {
 		"port_open":   []int{22, 80, 443},
 		"port_count":  10,
 	}
-	matched, err := Match(data1, rule)
+	matched, err := Match(context.Background(), data1, rule)
 	if err != nil {
 		t.Errorf("Case 1 Error: %v", err)
 	}
@@ -69,7 +70,7 @@ func TestMatch_UserSpecificRule(t *testing.T) {
 		"os":          "redhat linux",
 		"port_count":  2000,
 	}
-	matched, err = Match(data2, rule)
+	matched, err = Match(context.Background(), data2, rule)
 	if err != nil {
 		t.Errorf("Case 2 Error: %v", err)
 	}
@@ -83,7 +84,7 @@ func TestMatch_UserSpecificRule(t *testing.T) {
 		"os":          "linux",
 		"test_field":  "Detected IP: 192.168.1.5 connected",
 	}
-	matched, err = Match(data3, rule)
+	matched, err = Match(context.Background(), data3, rule)
 	if err != nil {
 		t.Errorf("Case 3 Error: %v", err)
 	}
@@ -97,7 +98,7 @@ func TestMatch_UserSpecificRule(t *testing.T) {
 		"os":          "linux",
 		"port_open":   []int{80},
 	}
-	matched, err = Match(data4, rule)
+	matched, err = Match(context.Background(), data4, rule)
 	if matched {
 		t.Errorf("Case 4 Failed: Expected NO match due to device_type")
 	}
@@ -108,7 +109,7 @@ func TestMatch_UserSpecificRule(t *testing.T) {
 		"os":          "windows server", // Mismatch
 		"port_open":   []int{80},
 	}
-	matched, err = Match(data5, rule)
+	matched, err = Match(context.Background(), data5, rule)
 	if matched {
 		t.Errorf("Case 5 Failed: Expected NO match due to os")
 	}
@@ -122,7 +123,7 @@ func TestMatch_UserSpecificRule(t *testing.T) {
 		"service":     "ftp",         // No sshd
 		"test_field":  "nothing",     // No portmap, no IP
 	}
-	matched, err = Match(data6, rule)
+	matched, err = Match(context.Background(), data6, rule)
 	if matched {
 		t.Errorf("Case 6 Failed: Expected NO match due to all OR conditions failing")
 	}
@@ -162,7 +163,7 @@ func TestMatch_ComplexNested(t *testing.T) {
 		"destinationProcessName": "C:\\Windows\\System32\\lsass.exe",
 		"filePath":               "C:\\Users\\NT AUTHORITY\\SYSTEM\\test.txt",
 	}
-	matched, err := Match(data1, rule)
+	matched, err := Match(context.Background(), data1, rule)
 	if err != nil {
 		t.Errorf("Match error: %v", err)
 	}
@@ -176,7 +177,7 @@ func TestMatch_ComplexNested(t *testing.T) {
 		"destinationProcessName": "C:\\Windows\\System32\\lsass.exe",
 		"filePath":               "C:\\Users\\NT AUTHORITY\\SYSTEM\\test.txt",
 	}
-	matched, err = Match(data2, rule)
+	matched, err = Match(context.Background(), data2, rule)
 	if !matched && err == nil {
 		// Expected
 	} else {
@@ -189,7 +190,7 @@ func TestMatch_ComplexNested(t *testing.T) {
 		"destinationProcessName": "calc.exe",
 		"filePath":               "NT AUTHORITY\\SYSTEM",
 	}
-	matched, err = Match(data3, rule)
+	matched, err = Match(context.Background(), data3, rule)
 	if !matched && err == nil {
 		// Expected
 	} else {
@@ -202,11 +203,115 @@ func TestMatch_ComplexNested(t *testing.T) {
 		"destinationProcessName": "C:\\Windows\\System32\\lsass.exe",
 		"filePath":               "C:\\Users\\Guest\\file.txt",
 	}
-	matched, err = Match(data4, rule)
+	matched, err = Match(context.Background(), data4, rule)
 	if !matched && err == nil {
 		// Expected
 	} else {
 		t.Errorf("Expected no match for data4, got matched=%v, err=%v", matched, err)
+	}
+}
+
+func TestMatch_SideEffects(t *testing.T) {
+	ctx := context.Background()
+	gc := NewGlobalCounter()
+	ctx = WithGlobalCounter(ctx, gc)
+	rc := NewRowCounter()
+	ctx = WithRowCounter(ctx, rc)
+	ctx = WithCurrentTag(ctx, "test_tag")
+
+	tests := []struct {
+		name      string
+		data      interface{}
+		rule      MatchRule
+		wantMatch bool
+		wantCount int
+	}{
+		{
+			name: "count_contains single match",
+			data: map[string]interface{}{"content": "hello world"},
+			rule: MatchRule{
+				Field:    "content",
+				Operator: "count_contains",
+				Value:    "hello",
+			},
+			wantMatch: true,
+			wantCount: 1,
+		},
+		{
+			name: "count_contains multiple matches",
+			data: map[string]interface{}{"content": "hello hello world hello"},
+			rule: MatchRule{
+				Field:    "content",
+				Operator: "count_contains",
+				Value:    "hello",
+			},
+			wantMatch: true,
+			wantCount: 3,
+		},
+		{
+			name: "evaluate_all non-short-circuit",
+			data: map[string]interface{}{"status": "active", "type": "vip"},
+			rule: MatchRule{
+				EvaluateAll: []MatchRule{
+					{
+						And: []MatchRule{
+							{Field: "status", Operator: "equals", Value: "active"},
+							{Operator: "row_inc", Value: 1},
+						},
+					},
+					{
+						And: []MatchRule{
+							{Field: "type", Operator: "equals", Value: "vip"},
+							{Operator: "row_inc", Value: 2},
+						},
+					},
+				},
+			},
+			wantMatch: true,
+			wantCount: 3, // 1 + 2
+		},
+		{
+			name: "evaluate_all partial match",
+			data: map[string]interface{}{"status": "active", "type": "normal"},
+			rule: MatchRule{
+				EvaluateAll: []MatchRule{
+					{
+						And: []MatchRule{
+							{Field: "status", Operator: "equals", Value: "active"},
+							{Operator: "row_inc", Value: 1},
+						},
+					},
+					{
+						And: []MatchRule{
+							{Field: "type", Operator: "equals", Value: "vip"},
+							{Operator: "row_inc", Value: 2},
+						},
+					},
+				},
+			},
+			wantMatch: true,
+			wantCount: 1, // Only the first rule matched
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Reset counters for each test
+			rc.data = make(map[string]int)
+
+			gotMatch, err := Match(ctx, tt.data, tt.rule)
+			if err != nil {
+				t.Fatalf("Match() error = %v", err)
+			}
+			if gotMatch != tt.wantMatch {
+				t.Errorf("Match() got = %v, want %v", gotMatch, tt.wantMatch)
+			}
+
+			gotCount := rc.data["test_tag"]
+			if gotCount != tt.wantCount {
+				t.Errorf("Hit Count got = %v, want %v", gotCount, tt.wantCount)
+			}
+		})
 	}
 }
 
@@ -273,7 +378,7 @@ func TestMatch_Operators(t *testing.T) {
 			if err := json.Unmarshal([]byte(tt.ruleJSON), &rule); err != nil {
 				t.Fatalf("Failed to parse rule: %v", err)
 			}
-			got, err := Match(tt.data, rule)
+			got, err := Match(context.Background(), tt.data, rule)
 			if err != nil {
 				t.Errorf("Match() error = %v", err)
 				return

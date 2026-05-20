@@ -205,6 +205,9 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	var totalProcessed int
 	var mu sync.Mutex // 保护 totalProcessed
 
+	// 初始化 GlobalCounter 实例
+	gc := matcher.NewGlobalCounter()
+
 	// 先获取总记录数用于进度计算
 	var totalRecords int64
 	query := s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
@@ -222,7 +225,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 		go func() {
 			defer wg.Done()
 			for records := range jobsChan {
-				s.processRecords(s.ctx, batchID, records, pRules, isOverwrite, tagMode, mdctScorer)
+				s.processRecords(s.ctx, gc, batchID, records, pRules, isOverwrite, tagMode, mdctScorer)
 
 				mu.Lock()
 				totalProcessed += len(records)
@@ -295,7 +298,7 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 }
 
 // processRecords 处理一小批数据（由 Worker 执行）
-func (s *TaskEngineService) processRecords(ctx context.Context, batchID uint64, records []model.RawDataRecord, pRules []parsedRule, isOverwrite bool, tagMode string, scorer *MDCTScorer) {
+func (s *TaskEngineService) processRecords(ctx context.Context, gc *matcher.GlobalCounter, batchID uint64, records []model.RawDataRecord, pRules []parsedRule, isOverwrite bool, tagMode string, scorer *MDCTScorer) {
 	var logs []model.TagTaskLog
 	var tags []model.SysEntityTag
 	var recordIDsToClear []uint64 // 记录需要清除原有 auto_rule 标签的 recordID
@@ -306,12 +309,28 @@ func (s *TaskEngineService) processRecords(ctx context.Context, batchID uint64, 
 			continue
 		}
 
+		// 为当前行初始化行级计数器，并构建行级别的上下文
+		rc := matcher.NewRowCounter()
+		rowCtx := matcher.WithGlobalCounter(ctx, gc)
+		rowCtx = matcher.WithRowCounter(rowCtx, rc)
+
 		// 收集该条记录命中的所有规则
 		var matchedRules []parsedRule
 
 		// 对这行数据应用所有规则
 		for _, pr := range pRules {
-			matched, err := matcher.Match(dataMap, pr.mRule)
+			// 在调用 matcher.Match 前，将当前标签名称注入上下文
+			tagName := ""
+			if pr.tag != nil {
+				tagName = pr.tag.Name
+			}
+			if tagName == "" && pr.model != nil {
+				// 兜底处理，如果有异常没有拿到 Name，尝试从其他地方获取或者使用 RuleName 兜底
+				tagName = pr.model.Name
+			}
+			tagCtx := matcher.WithCurrentTag(rowCtx, tagName)
+
+			matched, err := matcher.Match(tagCtx, dataMap, pr.mRule)
 			if err == nil && matched {
 				matchedRules = append(matchedRules, pr)
 			}
@@ -332,11 +351,25 @@ func (s *TaskEngineService) processRecords(ctx context.Context, batchID uint64, 
 				scoredRules = scoredRules[:1]
 			}
 
+			// 提取所有命中的算子频次统计数据
+			rowHits := rc.GetAll()
+
 			for i, sr := range scoredRules {
 				isPrimary := false
 				if tagMode == "mixed" && i == 0 {
 					// 混合模式：综合得分最高的第一个作为主标签
 					isPrimary = true
+				}
+
+				// 提取针对当前标签的 Hits 次数（保底至少为1）
+				hitCount := 1
+				if sr.ParsedRule.tag != nil {
+					hitCount = rowHits[sr.ParsedRule.tag.Name]
+				} else if sr.ParsedRule.model != nil {
+					hitCount = rowHits[sr.ParsedRule.model.Name]
+				}
+				if hitCount < 1 {
+					hitCount = 1
 				}
 
 				// 命中规则，生成结果与日志
@@ -350,6 +383,7 @@ func (s *TaskEngineService) processRecords(ctx context.Context, batchID uint64, 
 					IsAiIntervened:      sr.IsAiIntervened,
 					AiArbitrationReason: sr.AiArbitrationReason,
 					Confidence:          sr.Confidence,
+					Hits:                hitCount, // 将算子上下文的计数落地到 DB
 				})
 
 				logReason := fmt.Sprintf("Matched rule: %s (MDCT FinalScore: %.2f, Confidence: %.2f%%)", sr.ParsedRule.model.Name, sr.FinalScore, sr.Confidence)
