@@ -92,6 +92,9 @@ type SysEntityTag struct {
 	IsAiIntervened      bool    `json:"is_ai_intervened" gorm:"default:false;comment:是否由 AI 介入裁决"`
 	AiArbitrationReason string  `json:"ai_arbitration_reason" gorm:"type:text;comment:AI 裁决的理由"`
 	Confidence          float64 `json:"confidence" gorm:"type:decimal(5,2);comment:置信度百分比"`
+
+	// 算子上下文新增字段
+	Hits                int     `json:"hits" gorm:"default:1;comment:算子上下文记录的命中频次"`
 }
 
 // SysSqlTemplate 系统SQL查询模板表

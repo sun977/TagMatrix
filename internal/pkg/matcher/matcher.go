@@ -21,6 +21,7 @@
 package matcher
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -34,8 +35,9 @@ import (
 // 既可以是条件节点(Leaf)，也可以是逻辑节点(Branch)
 type MatchRule struct {
 	// --- 逻辑节点 (Branch) ---
-	And []MatchRule `json:"and,omitempty"`
-	Or  []MatchRule `json:"or,omitempty"`
+	And         []MatchRule `json:"and,omitempty"`
+	Or          []MatchRule `json:"or,omitempty"`
+	EvaluateAll []MatchRule `json:"evaluate_all,omitempty"`  // 强制执行所有规则
 
 	// --- 条件节点 (Leaf) ---
 	Field      string      `json:"field,omitempty"`
@@ -50,12 +52,28 @@ func IsEmptyRule(rule MatchRule) bool {
 }
 
 // Match 评估数据是否符合规则
-func Match(data interface{}, rule MatchRule) (bool, error) {
+func Match(ctx context.Context, data interface{}, rule MatchRule) (bool, error) {
+	// 0. 处理强制非短路节点 (EvaluateAll)
+	if len(rule.EvaluateAll) > 0 {
+		matchedAny := false
+		for _, subRule := range rule.EvaluateAll {
+			matched, err := Match(ctx, data, subRule)
+			if err != nil {
+				return false, err
+			}
+			if matched {
+				matchedAny = true
+			}
+		}
+		// 如果没有任何一个子规则匹配，返回 false，否则返回 true
+		return matchedAny, nil
+	}
+
 	// 1. 处理逻辑节点 (Branch)
 	// 优先处理 And
 	if len(rule.And) > 0 {
 		for _, subRule := range rule.And {
-			matched, err := Match(data, subRule)
+			matched, err := Match(ctx, data, subRule)
 			if err != nil {
 				return false, err
 			}
@@ -69,7 +87,7 @@ func Match(data interface{}, rule MatchRule) (bool, error) {
 	// 处理 Or
 	if len(rule.Or) > 0 {
 		for _, subRule := range rule.Or {
-			matched, err := Match(data, subRule)
+			matched, err := Match(ctx, data, subRule)
 			if err != nil {
 				return false, err
 			}
@@ -107,7 +125,7 @@ func Match(data interface{}, rule MatchRule) (bool, error) {
 	}
 
 	// 执行具体匹配逻辑
-	return evaluateCondition(fieldValue, rule.Operator, rule.Value, rule.IgnoreCase)
+	return evaluateCondition(ctx, fieldValue, rule.Operator, rule.Value, rule.IgnoreCase)
 }
 
 // ParseJSON 解析 JSON 规则字符串
@@ -158,10 +176,24 @@ func getFieldValue(data interface{}, fieldPath string) (interface{}, bool) {
 }
 
 // evaluateCondition 评估单个条件
-func evaluateCondition(actual interface{}, operator string, expected interface{}, ignoreCase bool) (bool, error) {
+func evaluateCondition(ctx context.Context, actual interface{}, operator string, expected interface{}, ignoreCase bool) (bool, error) {
 	// 辅助函数：获取字符串表示
 	getStr := func(v interface{}) string {
 		return fmt.Sprintf("%v", v)
+	}
+
+	// 统一计数辅助函数，用于将计数值写入上下文容器
+	recordBothCounters := func(count int) {
+		tagName := GetCurrentTag(ctx)
+		if tagName == "" {
+			return
+		}
+		if rc := GetRowCounter(ctx); rc != nil {
+			rc.Inc(tagName, count)
+		}
+		if gc := GetGlobalCounter(ctx); gc != nil {
+			gc.Inc(tagName, count)
+		}
 	}
 
 	switch operator {
@@ -192,6 +224,19 @@ func evaluateCondition(actual interface{}, operator string, expected interface{}
 			return !strings.Contains(strings.ToLower(s1), strings.ToLower(s2)), nil
 		}
 		return !strings.Contains(s1, s2), nil
+
+	case "count_contains":
+		s1, s2 := getStr(actual), getStr(expected)
+		if ignoreCase {
+			s1 = strings.ToLower(s1)
+			s2 = strings.ToLower(s2)
+		}
+		count := strings.Count(s1, s2)
+		if count > 0 {
+			recordBothCounters(count)
+			return true, nil
+		}
+		return false, nil
 
 	case "starts_with":
 		s1, s2 := getStr(actual), getStr(expected)
@@ -224,6 +269,36 @@ func evaluateCondition(actual interface{}, operator string, expected interface{}
 		}
 		match, err := regexp.MatchString(pattern, getStr(actual))
 		return match, err
+
+	case "count_regex":
+		var re *regexp.Regexp
+		var err error
+		if r, ok := expected.(*regexp.Regexp); ok {
+			re = r
+		} else {
+			pattern, ok := expected.(string)
+			if !ok {
+				return false, fmt.Errorf("count_regex pattern must be string or *regexp.Regexp")
+			}
+			if ignoreCase {
+				if !strings.HasPrefix(pattern, "(?i)") {
+					pattern = "(?i)" + pattern
+				}
+			}
+			re, err = regexp.Compile(pattern)
+			if err != nil {
+				return false, err
+			}
+		}
+		
+		s1 := getStr(actual)
+		matches := re.FindAllStringIndex(s1, -1)
+		count := len(matches)
+		if count > 0 {
+			recordBothCounters(count)
+			return true, nil
+		}
+		return false, nil
 
 	case "like":
 		// 简单的 SQL like 实现: % -> .*, _ -> .
@@ -313,8 +388,49 @@ func evaluateCondition(actual interface{}, operator string, expected interface{}
 		}
 		return ipNet.Contains(ip), nil
 
+	case "row_inc":
+		delta, err := toInt(expected)
+		if err != nil {
+			delta = 1 // 默认增加 1
+		}
+		if tagName := GetCurrentTag(ctx); tagName != "" {
+			if rc := GetRowCounter(ctx); rc != nil {
+				rc.Inc(tagName, delta)
+			}
+		}
+		return true, nil
+
+	case "global_inc":
+		delta, err := toInt(expected)
+		if err != nil {
+			delta = 1 // 默认增加 1
+		}
+		if tagName := GetCurrentTag(ctx); tagName != "" {
+			if gc := GetGlobalCounter(ctx); gc != nil {
+				gc.Inc(tagName, delta)
+			}
+		}
+		return true, nil
+
 	default:
 		return false, fmt.Errorf("unknown operator: %s", operator)
+	}
+}
+
+// toInt 辅助函数，将 interface{} 转换为 int
+func toInt(v interface{}) (int, error) {
+	val := reflect.ValueOf(v)
+	switch val.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return int(val.Int()), nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return int(val.Uint()), nil
+	case reflect.Float32, reflect.Float64:
+		return int(val.Float()), nil
+	case reflect.String:
+		return strconv.Atoi(val.String())
+	default:
+		return 0, fmt.Errorf("not an integer")
 	}
 }
 

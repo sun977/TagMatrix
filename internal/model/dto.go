@@ -29,6 +29,7 @@ type TaggedRecordDto struct {
 	SourceFile string   `json:"sourceFile"` // 来源文件
 	UpdateTime string   `json:"updateTime"`
 	Status     string   `json:"status"` // success 或 unmatched
+	TagHits    map[string]int `json:"tagHits,omitempty"` // 记录该行数据中各标签的命中频次
 
 	// MDCT 算法新增字段
 	IsAiIntervened      bool    `json:"isAiIntervened"`      // 是否由 AI 介入裁决
