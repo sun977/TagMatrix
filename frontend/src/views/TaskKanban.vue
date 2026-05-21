@@ -157,7 +157,8 @@
         <el-table-column prop="status" label="状态" width="120">
           <template #default="scope">
             <div class="status-pill" :class="scope.row.statusType">
-              <span class="dot"></span>
+              <span class="dot" v-if="scope.row.statusType !== 'running'"></span>
+              <el-icon v-else class="is-loading" style="margin-right: 4px; font-size: 14px; position: relative; top: 1px;"><Loading /></el-icon>
               {{ scope.row.statusText }}
             </div>
           </template>
@@ -271,7 +272,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { VideoPlay, RefreshRight, QuestionFilled } from '@element-plus/icons-vue'
+import { VideoPlay, RefreshRight, QuestionFilled, Loading } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'

@@ -54,6 +54,10 @@
       :class="{ 'no-transition': aiStore.isDragging }"
       :style="aiStore.isOpen ? { marginRight: aiStore.sidebarWidth + 'px' } : { marginRight: '0px' }"
     >
+      <div v-if="firstRunningTask" class="global-running-task-banner">
+        <el-icon class="is-loading" style="margin-right: 8px;"><Loading /></el-icon>
+        <span>当前正在执行 <strong>{{ firstRunningTask.name }}</strong> 任务，进度 {{ firstRunningTask.progress }}%</span>
+      </div>
       <router-view v-slot="{ Component }">
         <transition name="fade" mode="out-in">
           <component :is="Component" />
@@ -90,12 +94,34 @@ import { useRouter, useRoute } from 'vue-router'
 import SettingsDialog from './SettingsDialog.vue'
 import AICopilotSidebar from './AICopilot/AICopilotSidebar.vue'
 import { useAIStore } from '../store/useAIStore'
-import { GetAppConfig } from '../../wailsjs/go/main/App'
-import { config } from '../../wailsjs/go/models'
+import { GetAppConfig, GetTaskBatches } from '../../wailsjs/go/main/App'
+import { config, model } from '../../wailsjs/go/models'
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
+import { Loading } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
 const aiStore = useAIStore()
+
+const runningTasks = ref<Array<{id: number, name: string, progress: number}>>([])
+const firstRunningTask = computed(() => runningTasks.value.length > 0 ? runningTasks.value[0] : null)
+
+const fetchRunningTasks = async () => {
+  try {
+    const batches = await GetTaskBatches()
+    if (batches) {
+      runningTasks.value = batches
+        .filter((b: model.TagTaskBatch) => b.status === 'running')
+        .map((b: model.TagTaskBatch) => ({
+          id: b.id,
+          name: b.name,
+          progress: 0
+        }))
+    }
+  } catch (e) {
+    console.error('Failed to fetch task batches', e)
+  }
+}
 
 // 监听路由变化，自动更新 AI 的上下文
 watch(() => route.path, () => {
@@ -120,11 +146,29 @@ onMounted(async () => {
   }
   
   window.addEventListener('open-settings', openSettings)
+
+  fetchRunningTasks()
+
+  EventsOn('taskProgress', (data: any) => {
+    if (data.status === 'running') {
+      const existing = runningTasks.value.find(t => t.id === data.batchID)
+      if (existing) {
+        existing.progress = data.progress
+      } else {
+        // Maybe a newly started task
+        fetchRunningTasks()
+      }
+    } else {
+      // Completed, failed, etc.
+      runningTasks.value = runningTasks.value.filter(t => t.id !== data.batchID)
+    }
+  })
 })
 
 onUnmounted(() => {
   stopDrag()
   window.removeEventListener('open-settings', openSettings)
+  EventsOff('taskProgress')
 })
 
 // 过滤出要在菜单中显示的路由
@@ -210,6 +254,20 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+.global-running-task-banner {
+  background-color: var(--el-color-warning-light-9);
+  color: var(--el-color-warning);
+  border: 1px solid var(--el-color-warning-light-5);
+  padding: 8px 16px;
+  text-align: center;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  margin: 16px 24px 0 24px;
+}
+
 .layout-container {
   display: flex;
   width: 100vw;
