@@ -199,7 +199,10 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	mdctScorer := NewMDCTScorer(appConfig.MDCT)
 
 	// 初始化 Worker Pool
-	workerCount := 5 // 启动 5 个协程并发处理
+	workerCount := appConfig.Adv.TaskConcurrency
+	if workerCount <= 0 {
+		workerCount = 20
+	}
 	jobsChan := make(chan []model.RawDataRecord, 100)
 	var wg sync.WaitGroup
 	var totalProcessed int

@@ -132,7 +132,7 @@
               </el-tooltip>
             </h3>
             <div class="help-text" style="margin-bottom: 20px;">
-              用于调整标签冲突时的主标签判定优先级。注意：若希望人工配置的优先级具有一票否决权，W1 的值必须远大于 W2+W3 的总和。
+              用于调整标签冲突时的主标签判定优先级。若希望人工配置的优先级具有一票否决权，W1 的值必须远大于 W2+W3 的总和。
             </div>
 
             <div class="setting-item">
@@ -162,7 +162,7 @@
             <div class="setting-item flex-between mt-4">
               <div class="item-text">
                 <label>允许 AI 介入深度打标裁决</label>
-                <div class="help-text">出于数据隐私保护，此功能默认关闭。如果关闭，在平局时将退回使用规则 ID 兜底，绝不上传数据。</div>
+                <div class="help-text">出于数据隐私保护，此功能默认关闭。如关闭，在平局时将退回使用规则 ID 兜底，绝不上传数据。开启会拉长任务处理时间</div>
               </div>
               <el-tooltip
                 :content="!form.apiKey ? '请先在「AI 模型配置」中填写 API Key 后方可开启此功能' : '开启 AI 深度打标裁决'"
@@ -225,6 +225,12 @@
 
           <div class="settings-section">
             <h3>高级设置</h3>
+            <div class="setting-item">
+              <label>任务处理并发数</label>
+              <el-input-number v-model="form.taskConcurrency" :min="1" :max="100" class="w-100" controls-position="right" />
+              <div class="help-text">本地打标任务并行处理的线程数量，调大可加快处理速度（建议 10~50 之间）。</div>
+            </div>
+
             <div class="setting-item">
               <label>AI 请求并发数</label>
               <el-input-number v-model="form.concurrency" :min="1" :max="20" class="w-100" controls-position="right" />
@@ -322,7 +328,8 @@ TagMatrix操作指南：
 2.格式规范：SQL/正则/JSON/代码等必用Markdown代码块包裹。涉及界面操作用有序列表。`,
   taskNotification: true,
   concurrency: 5,
-  retries: 3,
+  taskConcurrency: 20,
+  retries: 1,
   debugMode: false,
   developerMode: false,
   proxyMode: 'system',
@@ -379,9 +386,10 @@ const loadSettings = async () => {
       form.theme = cfg.system.theme || 'auto'
       form.taskNotification = cfg.system.task_notification
     }
-    if (cfg && cfg.adv) {
-      form.concurrency = cfg.adv.concurrency || 5
-      form.retries = cfg.adv.retries || 3
+      if (cfg && cfg.adv) {
+        form.concurrency = cfg.adv?.concurrency ?? 5
+        form.taskConcurrency = cfg.adv?.task_concurrency ?? 20
+        form.retries = cfg.adv?.retries ?? 1
       form.debugMode = cfg.adv.debug_mode
       form.developerMode = cfg.adv.developer_mode
     }
@@ -490,9 +498,10 @@ const saveSettings = async () => {
     newCfg.system.theme = form.theme
     newCfg.system.task_notification = form.taskNotification
 
-    newCfg.adv = new config.AdvConfig()
-    newCfg.adv.concurrency = form.concurrency
-    newCfg.adv.retries = form.retries
+  newCfg.adv = new config.AdvConfig()
+  newCfg.adv.concurrency = form.concurrency
+  newCfg.adv.task_concurrency = form.taskConcurrency
+  newCfg.adv.retries = form.retries
     newCfg.adv.debug_mode = form.debugMode
     newCfg.adv.developer_mode = form.developerMode
 

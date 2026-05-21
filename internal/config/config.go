@@ -41,10 +41,11 @@ type SystemConfig struct {
 
 // AdvConfig 定义了高级配置
 type AdvConfig struct {
-	Concurrency   int  `json:"concurrency"`
-	Retries       int  `json:"retries"`
-	DebugMode     bool `json:"debug_mode"`
-	DeveloperMode bool `json:"developer_mode"` // 开发者模式
+	Concurrency     int  `json:"concurrency"`      // AI 请求并发数
+	TaskConcurrency int  `json:"task_concurrency"` // 本地任务处理并发数
+	Retries         int  `json:"retries"`          // AI 请求失败重试次数
+	DebugMode       bool `json:"debug_mode"`       // DUBUG 模式
+	DeveloperMode   bool `json:"developer_mode"`   // 开发者模式
 }
 
 // MDCTConfig 多维共识打标算法权重配置
@@ -103,9 +104,10 @@ TagMatrix操作指南：
 				ProxyURL:  "",
 			},
 			Adv: AdvConfig{
-				Concurrency: 5,
-				Retries:     3,
-				DebugMode:   false,
+				Concurrency:     5,
+				TaskConcurrency: 20,
+				Retries:         1,
+				DebugMode:       false,
 			},
 			MDCT: MDCTConfig{
 				W1:             1000,

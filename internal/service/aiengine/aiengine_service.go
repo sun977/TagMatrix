@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
@@ -34,8 +35,35 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"golang.org/x/sync/semaphore"
 	"gorm.io/gorm"
 )
+
+var (
+	aiSem       *semaphore.Weighted
+	aiSemMutex  sync.Mutex
+	aiSemWeight int64
+)
+
+// 当系统偶尔碰到多条记录同时需要“深度平局 AI 裁决”时，
+// 那 50 个满负荷运行的 Worker 在发起外部 AI 询问时，会自动挂起排队获取那 5 个网络请求名额，
+// 既保证了本地吞吐最大化，又完美的防止了大模型 API 的 429 限流报错。完全拦截
+func getAISemaphore() *semaphore.Weighted {
+	cfg := config.GetConfig()
+	weight := int64(cfg.Adv.Concurrency)
+	if weight <= 0 {
+		weight = 5
+	}
+
+	aiSemMutex.Lock()
+	defer aiSemMutex.Unlock()
+
+	if aiSem == nil || aiSemWeight != weight {
+		aiSem = semaphore.NewWeighted(weight)
+		aiSemWeight = weight
+	}
+	return aiSem
+}
 
 // AIEngineService 处理与 AI 相关的业务逻辑
 type AIEngineService struct {
@@ -165,9 +193,32 @@ TagMatrix操作指南：
 	}
 
 	// 发送请求,拿到AI响应
-	resp, err := client.CreateChatCompletion(ctx, req)
+	var resp openai.ChatCompletionResponse
+
+	// 控制 AI 并发请求
+	sem := getAISemaphore()
+	if acquireErr := sem.Acquire(ctx, 1); acquireErr != nil {
+		return "", fmt.Errorf("failed to acquire AI semaphore: %w", acquireErr)
+	}
+	defer sem.Release(1)
+
+	retries := config.GetConfig().Adv.Retries
+	if retries < 0 {
+		retries = 0
+	}
+	for i := 0; i <= retries; i++ {
+		resp, err = client.CreateChatCompletion(ctx, req)
+		if err == nil {
+			break
+		}
+		if i < retries {
+			// 可以选择加上延时等待
+			// time.Sleep(time.Second)
+			continue
+		}
+	}
 	if err != nil {
-		return "", fmt.Errorf("AI response error: %w", err)
+		return "", fmt.Errorf("AI response error after %d retries: %w", retries, err)
 	}
 
 	if len(resp.Choices) > 0 {
@@ -252,9 +303,29 @@ TagMatrix操作指南：
 		Stream:   true,
 	}
 
-	stream, err := client.CreateChatCompletionStream(ctx, req)
+	// 控制 AI 并发请求
+	sem := getAISemaphore()
+	if acquireErr := sem.Acquire(ctx, 1); acquireErr != nil {
+		return fmt.Errorf("failed to acquire AI semaphore: %w", acquireErr)
+	}
+	defer sem.Release(1)
+
+	var stream *openai.ChatCompletionStream
+	retries := config.GetConfig().Adv.Retries
+	if retries < 0 {
+		retries = 0
+	}
+	for i := 0; i <= retries; i++ {
+		stream, err = client.CreateChatCompletionStream(ctx, req)
+		if err == nil {
+			break
+		}
+		if i < retries {
+			continue
+		}
+	}
 	if err != nil {
-		return fmt.Errorf("AI response error: %w", err)
+		return fmt.Errorf("AI response error after %d retries: %w", retries, err)
 	}
 	defer stream.Close()
 
@@ -315,6 +386,23 @@ func (s *AIEngineService) TestConnection(ctx context.Context, apiKey, baseUrl, m
 		MaxTokens: 5,
 	}
 
-	_, err := client.CreateChatCompletion(ctx, req)
+	// 控制 AI 并发请求
+	sem := getAISemaphore()
+	if acquireErr := sem.Acquire(ctx, 1); acquireErr != nil {
+		return fmt.Errorf("failed to acquire AI semaphore: %w", acquireErr)
+	}
+	defer sem.Release(1)
+
+	var err error
+	retries := config.GetConfig().Adv.Retries
+	if retries < 0 {
+		retries = 0
+	}
+	for i := 0; i <= retries; i++ {
+		_, err = client.CreateChatCompletion(ctx, req)
+		if err == nil {
+			break
+		}
+	}
 	return err
 }
