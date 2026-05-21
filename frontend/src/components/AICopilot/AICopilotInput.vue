@@ -30,12 +30,32 @@
         @keydown="handleKeydown"
       ></textarea>
       
-      <div 
-        class="send-btn" 
-        :class="{ 'is-active': inputText.trim().length > 0 && !disabled }" 
-        @click="sendMessage"
-      >
-        <el-icon><Promotion v-if="!disabled" /><Loading v-else class="is-loading" /></el-icon>
+      <div class="action-bar">
+        <div class="left-actions">
+          <el-tooltip :content="isAgentMode ? 'Agent 模式 (规划中)' : 'Ask 模式 (规划中)'" placement="top" :show-after="500">
+            <div class="mode-switch-btn" :class="{ 'is-agent': isAgentMode }" @click="toggleMode">
+              <el-icon class="mode-icon">
+                <svg v-if="!isAgentMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
+              </el-icon>
+              <span class="mode-text">{{ isAgentMode ? 'Agent' : 'Ask' }}</span>
+            </div>
+          </el-tooltip>
+          <el-tooltip content="添加附件 (规划中)" placement="top" :show-after="500">
+            <div class="action-btn">
+              <el-icon><Plus /></el-icon>
+            </div>
+          </el-tooltip>
+        </div>
+        <div class="right-actions">
+          <div 
+            class="send-btn" 
+            :class="{ 'is-active': inputText.trim().length > 0 && !disabled }" 
+            @click="sendMessage"
+          >
+            <el-icon><Promotion v-if="!disabled" /><Loading v-else class="is-loading" /></el-icon>
+          </div>
+        </div>
       </div>
     </div>
     <!-- <div class="footer-tips">
@@ -46,11 +66,16 @@
 
 <script setup lang="ts">
 import { ref, nextTick, computed } from 'vue'
-import { Promotion, Loading, MagicStick, Document, Search } from '@element-plus/icons-vue'
+import { Promotion, Loading, MagicStick, Document, Search, Plus } from '@element-plus/icons-vue'
 
 const props = defineProps<{
   disabled?: boolean
 }>()
+
+const isAgentMode = ref(false)
+const toggleMode = () => {
+  isAgentMode.value = !isAgentMode.value
+}
 
 const inputText = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -203,15 +228,15 @@ const sendMessage = () => {
 
 <style scoped lang="scss">
 .ai-input-wrapper {
-  padding: 16px;
+  padding: 10px 12px 12px;
   background-color: var(--tm-bg-sidebar);
   border-top: 1px solid var(--tm-border-color);
   position: relative;
 
   .slash-commands-popup {
     position: absolute;
-    left: 16px;
-    right: 16px;
+    left: 12px;
+    right: 12px;
     background-color: var(--tm-bg-main);
     border: 1px solid var(--tm-border-color);
     border-radius: var(--tm-border-radius);
@@ -271,11 +296,11 @@ const sendMessage = () => {
   .input-container {
     position: relative;
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
     background-color: var(--tm-bg-main);
     border: 1px solid var(--tm-border-color);
-    border-radius: var(--tm-border-radius);
-    padding: 8px 12px;
+    border-radius: 16px;
+    padding: 10px 12px;
     transition: border-color 0.2s;
 
     &:focus-within {
@@ -289,7 +314,6 @@ const sendMessage = () => {
     }
 
     .auto-resize-textarea {
-      flex: 1;
       width: 100%;
       border: none;
       outline: none;
@@ -301,7 +325,6 @@ const sendMessage = () => {
       line-height: 1.5;
       max-height: 150px;
       overflow-y: auto;
-      padding-right: 40px; // 为发送按钮留出空间
       
       &::placeholder {
         color: var(--tm-text-secondary);
@@ -317,28 +340,92 @@ const sendMessage = () => {
       }
     }
 
-    .send-btn {
-      position: absolute;
-      right: 8px;
-      bottom: calc(50% - 16px);
+    .action-bar {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
-      width: 32px;
-      height: 32px;
-      border-radius: var(--tm-border-radius-sm);
-      color: var(--tm-text-secondary);
-      background-color: var(--tm-bg-hover);
-      cursor: not-allowed;
-      transition: all 0.2s;
+      width: 100%;
+      margin-top: 8px;
 
-      &.is-active {
-        color: #ffffff;
-        background-color: var(--tm-accent-primary);
-        cursor: pointer;
+      .left-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
 
-        &:hover {
-          background-color: var(--tm-accent-hover);
+        .mode-switch-btn {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 10px;
+          border-radius: 14px;
+          font-size: 13px;
+          font-weight: 500;
+          color: var(--tm-text-secondary);
+          cursor: pointer;
+          transition: all 0.2s;
+
+          &:hover {
+            background-color: var(--tm-bg-hover);
+            color: var(--tm-text-primary);
+          }
+
+          &.is-agent {
+            color: var(--tm-accent-primary);
+            background-color: var(--tm-bg-subtle);
+          }
+
+          .mode-icon {
+            font-size: 15px;
+          }
+        }
+
+        .action-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          color: var(--tm-text-secondary);
+          cursor: pointer;
+          transition: background-color 0.2s, color 0.2s;
+
+          &:hover {
+            background-color: var(--tm-bg-hover);
+            color: var(--tm-text-primary);
+          }
+
+          &.is-active {
+            color: var(--tm-accent-primary);
+            background-color: var(--tm-bg-subtle);
+          }
+        }
+      }
+
+      .right-actions {
+        display: flex;
+
+        .send-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          color: var(--tm-text-secondary);
+          background-color: var(--tm-bg-hover);
+          cursor: not-allowed;
+          transition: all 0.2s;
+
+          &.is-active {
+            color: var(--tm-bg-main);
+            background-color: var(--tm-text-primary);
+            cursor: pointer;
+
+            &:hover {
+              opacity: 0.8;
+            }
+          }
         }
       }
     }

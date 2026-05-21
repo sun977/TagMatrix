@@ -515,13 +515,17 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 				}
 			}
 
-			// 构建 TagID 到 IsPrimary 的映射
+			// 构建 TagID 到 IsPrimary 的映射以及收集 TagHits
 			primaryTagMap := make(map[uint64]bool)
+			hitsMap := make(map[uint64]int)
 			var tagIDs []uint64
 			for _, et := range entityTags {
 				tagIDs = append(tagIDs, et.TagID)
 				if et.IsPrimary {
 					primaryTagMap[et.TagID] = true
+				}
+				if et.Hits > 0 {
+					hitsMap[et.TagID] = et.Hits
 				}
 
 				// 从 EntityTag 获取 MDCT 字段 (如果有多条，优先保留被AI介入过的数据或置信度最高的)
@@ -554,6 +558,14 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 					// 如果是主标签
 					if primaryTagMap[t.ID] {
 						dto.PrimaryTag = &tagDto
+					}
+					
+					// 如果有命中次数，放入 DTO 的 TagHits 中
+					if hitsMap[t.ID] > 0 {
+						if dto.TagHits == nil {
+							dto.TagHits = make(map[string]int)
+						}
+						dto.TagHits[displayName] = hitsMap[t.ID]
 					}
 				}
 			}
@@ -665,11 +677,11 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 
 	isExcel := strings.HasSuffix(strings.ToLower(filePath), ".xlsx")
 	var (
-		file    *os.File
-		writer  *csv.Writer
-		f       *excelize.File
-		sheet   string
-		rowIdx  int = 1
+		file   *os.File
+		writer *csv.Writer
+		f      *excelize.File
+		sheet  string
+		rowIdx int = 1
 	)
 
 	if isExcel {
@@ -712,7 +724,7 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 	sort.Strings(dynamicCols)
 	// 构建表头 (不要系统 ID 和打标时间)
 	headers := append([]string{}, dynamicCols...)
-	headers = append(headers, "TagM_打标模式", "TagM_命中标签", "TagM_命中主标签", "TagM_is_ai_intervened", "TagM_ai_arbitration_reason", "TagM_confidence", "TagM_任务批次", "TagM_sourceFile", "TagM_状态")
+	headers = append(headers, "TagM_打标模式", "TagM_命中标签", "TagM_命中主标签", "TagM_副作用频次", "TagM_is_ai_intervened", "TagM_ai_arbitration_reason", "TagM_confidence", "TagM_任务批次", "TagM_sourceFile", "TagM_状态")
 
 	if isExcel {
 		for cIdx, h := range headers {
@@ -742,6 +754,7 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 		isAiIntervenedStr := "-"
 		aiArbitrationReasonStr := "-"
 		confidenceStr := "-"
+		tagHitsStr := "-"
 
 		if len(entityTags) > 0 {
 			statusVal = "已打标"
@@ -807,6 +820,7 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 				model.DB.Where("id IN ?", tagIDs).Find(&tags)
 
 				var tNames []string
+				var hitsList []string
 				for _, t := range tags {
 					displayName := t.Path
 					if displayName == "" {
@@ -817,9 +831,20 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 					if primaryMap[t.ID] {
 						primaryTagStr = displayName
 					}
+
+					// 收集副作用计数
+					for _, et := range entityTags {
+						if et.TagID == t.ID && et.Hits > 0 {
+							hitsList = append(hitsList, fmt.Sprintf("%s(%d次)", displayName, et.Hits))
+							break
+						}
+					}
 				}
 				if len(tNames) > 0 {
 					tagsStr = strings.Join(tNames, ", ")
+				}
+				if len(hitsList) > 0 {
+					tagHitsStr = strings.Join(hitsList, ", ")
 				}
 			}
 		}
@@ -853,7 +878,7 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 			}
 		}
 		// 追加系统处理字段
-		row = append(row, tagModeVal, tagsStr, primaryTagStr, isAiIntervenedStr, aiArbitrationReasonStr, confidenceStr, batchName, sourceFileStr, statusVal)
+		row = append(row, tagModeVal, tagsStr, primaryTagStr, tagHitsStr, isAiIntervenedStr, aiArbitrationReasonStr, confidenceStr, batchName, sourceFileStr, statusVal)
 
 		if isExcel {
 			for cIdx, val := range row {

@@ -49,7 +49,7 @@
           <el-col :span="4">
             <div class="form-item">
               <label>选择要执行的标签规则</label>
-              <el-select v-model="taskForm.rules" placeholder="请选择规则" class="w-100" :disabled="!taskForm.datasetId">
+              <el-select v-model="taskForm.rules" multiple collapse-tags collapse-tags-tooltip placeholder="请选择规则" class="w-100" :disabled="!taskForm.datasetId" @change="handleRuleChange">
                 <el-option label="全部生效规则" value="all" />
                 <el-option v-for="rule in availableRules" :key="rule.id" :label="rule.name" :value="String(rule.id)" />
               </el-select>
@@ -289,14 +289,27 @@ const taskForm = ref({
   batchName: '',
   datasetId: undefined as number | undefined,
   sourceFile: 'all',
-  rules: 'all',
+  rules: ['all'],
   execStrategy: 'append',
   tagMode: 'multiple',
   desc: ''
 })
 
+const handleRuleChange = (val: string[]) => {
+  if (!val || val.length === 0) {
+    taskForm.value.rules = ['all']
+    return
+  }
+  const lastSelected = val[val.length - 1]
+  if (lastSelected === 'all') {
+    taskForm.value.rules = ['all']
+  } else if (val.includes('all')) {
+    taskForm.value.rules = val.filter(item => item !== 'all')
+  }
+}
+
 const handleDatasetChange = async () => {
-  taskForm.value.rules = 'all'
+  taskForm.value.rules = ['all']
   taskForm.value.sourceFile = 'all'
   availableRules.value = []
   availableSourceFiles.value = []
@@ -546,11 +559,11 @@ const submitTask = async () => {
   
   try {
     let ruleIDs: number[] = []
-    if (taskForm.value.rules === 'all') {
+    if (taskForm.value.rules.includes('all')) {
       const rules = await GetRulesByDataset(taskForm.value.datasetId!)
       ruleIDs = rules.map(r => r.id)
     } else {
-      ruleIDs = [parseInt(taskForm.value.rules)]
+      ruleIDs = taskForm.value.rules.map(r => parseInt(r)).filter(id => !isNaN(id))
     }
 
     const isOverwrite = taskForm.value.execStrategy === 'overwrite'

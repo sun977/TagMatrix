@@ -219,6 +219,15 @@
           </template>
         </el-table-column>
 
+        <el-table-column v-if="!hiddenColumns.includes('TagM_副作用频次')" prop="TagM_副作用频次" label="TagM_副作用频次" min-width="150" show-overflow-tooltip>
+          <template #default="scope">
+            <span v-if="scope.row.TagM_副作用频次 && scope.row.TagM_副作用频次 !== '-'">
+              {{ scope.row.TagM_副作用频次 }}
+            </span>
+            <span v-else class="no-tag">-</span>
+          </template>
+        </el-table-column>
+
         <el-table-column v-if="!hiddenColumns.includes('TagM_任务批次')" prop="batchName" label="TagM_任务批次" min-width="150" show-overflow-tooltip />
         <el-table-column v-if="!hiddenColumns.includes('TagM_sourceFile')" prop="sourceFile" label="TagM_sourceFile" min-width="120" show-overflow-tooltip />
         <el-table-column v-if="!hiddenColumns.includes('TagM_打标时间')" prop="updateTime" label="TagM_打标时间" width="160" />
@@ -298,7 +307,7 @@ const filterForm = reactive({
 // 动态列与显示控制
 const dynamicColumns = ref<string[]>([])
 const hiddenColumns = ref<string[]>([])
-const systemColumns = ['TagM_目标数据集', 'TagM_打标模式', 'TagM_命中标签', 'TagM_命中主标签', 'TagM_任务批次', 'TagM_sourceFile', 'TagM_打标时间', 'TagM_状态']
+const systemColumns = ['TagM_目标数据集', 'TagM_打标模式', 'TagM_命中标签', 'TagM_命中主标签', 'TagM_副作用频次', 'TagM_任务批次', 'TagM_sourceFile', 'TagM_打标时间', 'TagM_状态']
 
 const allToggleableColumns = computed(() => {
   return [...dynamicColumns.value, ...systemColumns]
@@ -420,6 +429,17 @@ const handleSearch = async () => {
         cols = Array.from(colSet)
       }
       
+      // 把 tagHits 数据格式化成字符串，绑定给当前行以便 el-table 直接渲染
+      parsedData.forEach((row: any) => {
+        if (row.tagHits && Object.keys(row.tagHits).length > 0) {
+          row['TagM_副作用频次'] = Object.entries(row.tagHits)
+            .map(([k, v]) => `${k}(${v}次)`)
+            .join(', ')
+        } else {
+          row['TagM_副作用频次'] = '-'
+        }
+      })
+      
       dynamicColumns.value = cols
 
       tableData.value = parsedData
@@ -494,7 +514,7 @@ const handleCurrentChange = (val: number) => {
 
 const handleViewDetail = (row: any) => {
   // 排除掉不需要展示在 JSON 中的辅助字段
-  const { id, updateTime, tags, primaryTag, ...rest } = row
+  const { id, updateTime, tags, primaryTag, tagHits, ...rest } = row
   
   // 处理展示的标签名称
   const displayObj: any = { ...rest }
@@ -509,6 +529,13 @@ const handleViewDetail = (row: any) => {
     displayObj['TagM_命中主标签'] = primaryTag.name
   } else if (row.tagMode === 'mixed') {
     displayObj['TagM_命中主标签'] = '-'
+  }
+  
+  // 处理并展示行级副作用频次计数 【示例：高价值(3次), 风险(1次)】
+  if (tagHits && Object.keys(tagHits).length > 0) {
+    displayObj['TagM_副作用频次'] = Object.entries(tagHits)
+      .map(([k, v]) => `${k}(${v}次)`)
+      .join(', ')
   }
   
   // 格式化打标模式
