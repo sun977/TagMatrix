@@ -4,7 +4,7 @@
     <div class="page-header">
       <h2>打标数据看板</h2>
       <div class="header-actions">
-        <el-button type="primary" :icon="Download" class="mint-btn" @click="handleExport">导出当前数据</el-button>
+        <el-button type="primary" :icon="Download" class="mint-btn" @click="handleExport">导出全量筛选结果</el-button>
       </div>
     </div>
 
