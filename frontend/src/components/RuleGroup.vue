@@ -4,6 +4,7 @@
       <el-select v-model="modelValue.logic" class="logic-select" size="small">
         <el-option label="AND (满足所有)" value="and" />
         <el-option label="OR (满足任一)" value="or" />
+        <el-option label="EVAL_ALL (执行所有-叠加副作用)" value="evaluate_all" />
       </el-select>
       <div class="group-actions">
         <el-button type="primary" link size="small" @click="addCondition">
@@ -73,13 +74,20 @@
               <el-option label="列表包含 (list_contains)" value="list_contains" />
               <el-option label="IP网段 (cidr)" value="cidr" />
             </el-option-group>
+
+            <el-option-group label="频次/副作用计数">
+              <el-option label="统计子串频次 (count_contains)" value="count_contains" />
+              <el-option label="统计正则频次 (count_regex)" value="count_regex" />
+              <el-option label="行级计数+N (row_inc)" value="row_inc" />
+              <el-option label="全局计数+N (global_inc)" value="global_inc" />
+            </el-option-group>
           </el-select>
 
           <!-- 目标值输入 -->
           <el-input 
             v-if="!['exists', 'is_null', 'is_not_null'].includes(item.operator)"
             v-model="item.value" 
-            placeholder="匹配值 (in操作用逗号分隔)" 
+            :placeholder="['row_inc', 'global_inc'].includes(item.operator) ? '增加的数值(如1)' : '匹配值 (in操作用逗号分隔)'" 
             size="small" 
             style="width: 200px;" 
           />
