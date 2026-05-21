@@ -31,8 +31,8 @@ func TestMDCTScorer_BasicScoring(t *testing.T) {
 	rule1 := parsedRule{
 		model: &model.SysMatchRule{
 			BaseModel: model.BaseModel{ID: 1},
-			Priority: 2,
-			Name:     "High Priority Rule",
+			Priority:  2,
+			Name:      "High Priority Rule",
 		},
 		mRule: matcher.MatchRule{
 			Field:    "age",
@@ -45,8 +45,8 @@ func TestMDCTScorer_BasicScoring(t *testing.T) {
 	rule2 := parsedRule{
 		model: &model.SysMatchRule{
 			BaseModel: model.BaseModel{ID: 2},
-			Priority: 1,
-			Name:     "Low Priority Rule",
+			Priority:  1,
+			Name:      "Low Priority Rule",
 		},
 		mRule: matcher.MatchRule{
 			And: []matcher.MatchRule{
@@ -59,7 +59,7 @@ func TestMDCTScorer_BasicScoring(t *testing.T) {
 	matchedRules := []parsedRule{rule1, rule2}
 
 	ctx := context.Background()
-	scored := scorer.EvaluateAndSort(ctx, record, matchedRules)
+	scored := scorer.EvaluateAndSort(ctx, record, matchedRules, "single")
 
 	if len(scored) != 2 {
 		t.Fatalf("Expected 2 scored rules, got %d", len(scored))

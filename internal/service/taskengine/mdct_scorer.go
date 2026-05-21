@@ -39,8 +39,8 @@ func NewMDCTScorer(weights config.MDCTConfig) *MDCTScorer {
 	}
 }
 
-// EvaluateAndSort 对命中的规则集合进行完整 MDCT 打分、AI 仲裁与归一化排序
-func (s *MDCTScorer) EvaluateAndSort(ctx context.Context, record map[string]interface{}, matchedRules []parsedRule) []ScoredRule {
+// EvaluateAndSort 对命中的规则集合进行完整 MDCT 打分、AI 仲裁与归一化排序（传入tagmode参数，多标签模式不参与AI裁决）
+func (s *MDCTScorer) EvaluateAndSort(ctx context.Context, record map[string]interface{}, matchedRules []parsedRule, tagMode string) []ScoredRule {
 	if len(matchedRules) == 0 {
 		return nil
 	}
@@ -74,7 +74,8 @@ func (s *MDCTScorer) EvaluateAndSort(ctx context.Context, record map[string]inte
 	r1 := &scoredRules[0]
 	r2 := &scoredRules[1]
 
-	if s.Weights.AllowAiArbiter && r1.BaseScore > 0 {
+	// 多标签模式不参与AI裁决，只有单标签和混合模式需要AI裁决
+	if tagMode != "multiple" && s.Weights.AllowAiArbiter && r1.BaseScore > 0 {
 		diffRatio := (r1.BaseScore - r2.BaseScore) / r1.BaseScore
 		if diffRatio < 0.05 {
 			// 触发 AI 语义裁决 (W4)

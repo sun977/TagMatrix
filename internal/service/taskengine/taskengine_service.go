@@ -343,9 +343,9 @@ func (s *TaskEngineService) processRecords(ctx context.Context, gc *matcher.Glob
 			}
 
 			// 接入 MDCT 多维共识打标算法引擎进行打分、仲裁与排序
-			scoredRules := scorer.EvaluateAndSort(ctx, dataMap, matchedRules)
+			scoredRules := scorer.EvaluateAndSort(ctx, dataMap, matchedRules, tagMode)
 
-			// 根据打标模式 (tagMode) 处理命中的规则
+			// 根据打标模式 (tagMode) 处理命中的规则 (多标签模式不参与AI裁决)
 			if tagMode == "single" && len(scoredRules) > 0 {
 				// 单标签模式：只取 MDCT 综合打分最高的第一个
 				scoredRules = scoredRules[:1]
