@@ -46,6 +46,7 @@ import (
 	"TagMatrix/internal/service/taskengine"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
+	"github.com/xuri/excelize/v2"
 	"go.uber.org/zap"
 )
 
@@ -649,8 +650,9 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 	// 弹窗让用户选择保存位置
 	filePath, err := runtime.SaveFileDialog(a.ctx, runtime.SaveDialogOptions{
 		Title:           "选择导出路径",
-		DefaultFilename: "tagged_data_export.csv",
+		DefaultFilename: "tagged_data_export.xlsx",
 		Filters: []runtime.FileFilter{
+			{DisplayName: "Excel 文件", Pattern: "*.xlsx"},
 			{DisplayName: "CSV 文件", Pattern: "*.csv"},
 		},
 	})
@@ -661,16 +663,32 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 		return fmt.Errorf("cancelled")
 	}
 
-	file, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	isExcel := strings.HasSuffix(strings.ToLower(filePath), ".xlsx")
+	var (
+		file    *os.File
+		writer  *csv.Writer
+		f       *excelize.File
+		sheet   string
+		rowIdx  int = 1
+	)
 
-	// 写入 UTF-8 BOM，防止 Excel 乱码
-	file.Write([]byte("\xEF\xBB\xBF"))
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
+	if isExcel {
+		f = excelize.NewFile()
+		sheet = "Sheet1"
+		f.SetSheetName(f.GetSheetName(0), sheet)
+	} else {
+		var err error
+		file, err = os.Create(filePath)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		// 写入 UTF-8 BOM，防止 Excel 乱码
+		file.Write([]byte("\xEF\xBB\xBF"))
+		writer = csv.NewWriter(file)
+		defer writer.Flush()
+	}
 
 	// 准备提取所有的动态列
 	var dynamicCols []string
@@ -696,8 +714,16 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 	headers := append([]string{}, dynamicCols...)
 	headers = append(headers, "TagM_打标模式", "TagM_命中标签", "TagM_命中主标签", "TagM_is_ai_intervened", "TagM_ai_arbitration_reason", "TagM_confidence", "TagM_任务批次", "TagM_sourceFile", "TagM_状态")
 
-	if err := writer.Write(headers); err != nil {
-		return err
+	if isExcel {
+		for cIdx, h := range headers {
+			cell, _ := excelize.CoordinatesToCellName(cIdx+1, rowIdx)
+			f.SetCellValue(sheet, cell, h)
+		}
+		rowIdx++
+	} else {
+		if err := writer.Write(headers); err != nil {
+			return err
+		}
 	}
 
 	// 处理并写入每行数据
@@ -829,7 +855,21 @@ func (a *App) ExportTaggedDataList(datasetID, keyword, tag, batch, searchCol, so
 		// 追加系统处理字段
 		row = append(row, tagModeVal, tagsStr, primaryTagStr, isAiIntervenedStr, aiArbitrationReasonStr, confidenceStr, batchName, sourceFileStr, statusVal)
 
-		if err := writer.Write(row); err != nil {
+		if isExcel {
+			for cIdx, val := range row {
+				cell, _ := excelize.CoordinatesToCellName(cIdx+1, rowIdx)
+				f.SetCellValue(sheet, cell, val)
+			}
+			rowIdx++
+		} else {
+			if err := writer.Write(row); err != nil {
+				return err
+			}
+		}
+	}
+
+	if isExcel {
+		if err := f.SaveAs(filePath); err != nil {
 			return err
 		}
 	}
