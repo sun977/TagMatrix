@@ -200,7 +200,7 @@
 
           <el-table-column label="操作" width="100" fixed="right" align="center">
             <template #default="scope">
-              <el-button type="primary" link size="small" class="detail-btn" @click="handleViewDetail(scope.row)">查看详情</el-button>
+              <el-button size="small" class="detail-action-btn" @click="handleViewDetail(scope.row)">详情</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -858,16 +858,18 @@ onMounted(() => {
   }
 }
 
-.detail-btn {
+.detail-action-btn {
+  border-radius: 4px;
+  padding: 5px 12px;
+  font-size: 13px;
+  background: transparent;
   color: var(--tm-text-secondary);
-  font-weight: 500;
-  background-color: var(--tm-bg-hover);
-  padding: 6px 12px;
-  border-radius: 6px;
-
+  border: 1px solid var(--tm-border-color);
+  
   &:hover {
     color: var(--tm-text-primary);
-    background-color: var(--tm-bg-active);
+    border-color: var(--tm-text-secondary);
+    background-color: var(--tm-bg-hover);
   }
 }
 
