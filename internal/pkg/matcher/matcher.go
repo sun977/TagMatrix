@@ -37,13 +37,14 @@ type MatchRule struct {
 	// --- 逻辑节点 (Branch) ---
 	And         []MatchRule `json:"and,omitempty"`
 	Or          []MatchRule `json:"or,omitempty"`
-	EvaluateAll []MatchRule `json:"evaluate_all,omitempty"` // 强制执行所有规则
+	EvaluateAll []MatchRule `json:"evaluate_all,omitempty"` // 强制执行所有子条件/组
 
 	// --- 条件节点 (Leaf) ---
 	Field      string      `json:"field,omitempty"`
 	Operator   string      `json:"operator,omitempty"`
 	Value      interface{} `json:"value,omitempty"`
 	IgnoreCase bool        `json:"ignore_case,omitempty"` // 是否忽略大小写 (为True则统一转换为小写进行比较)
+	Action     string      `json:"action,omitempty"`      // 匹配成功后触发的动作 (如 row_inc)
 }
 
 // IsEmptyRule 检查规则是否为空
@@ -106,26 +107,66 @@ func Match(ctx context.Context, data interface{}, rule MatchRule) (bool, error) 
 	// 获取字段值
 	fieldValue, exists := getFieldValue(data, rule.Field)
 
+	var matched bool
+	var count int
+	var err error
+
 	// 特殊处理 exists 和 is_null/is_not_null 操作符，它们不一定需要字段值存在
 	switch rule.Operator {
 	case "exists":
-		return exists, nil
+		matched = exists
+		count = 1
 	case "is_null":
-		return !exists || fieldValue == nil, nil
+		matched = !exists || fieldValue == nil
+		count = 1
 	case "is_not_null":
-		return exists && fieldValue != nil, nil
+		matched = exists && fieldValue != nil
+		count = 1
 	// 新增特殊处理：如果是副作用算子，即使没有 Field 也不应该因为 "如果字段不存在，默认不匹配" 而拦截
 	case "row_inc", "global_inc":
-		return evaluateCondition(ctx, nil, rule.Operator, rule.Value, rule.IgnoreCase)
+		matched, count, err = evaluateCondition(ctx, nil, rule.Operator, rule.Value, rule.IgnoreCase)
+	default:
+		// 如果字段不存在，且不是上述操作符，默认不匹配
+		if !exists {
+			return false, nil
+		}
+		// 执行具体匹配逻辑
+		matched, count, err = evaluateCondition(ctx, fieldValue, rule.Operator, rule.Value, rule.IgnoreCase)
 	}
 
-	// 如果字段不存在，且不是上述操作符，默认不匹配
-	if !exists {
-		return false, nil
+	if err != nil {
+		return false, err
 	}
 
-	// 执行具体匹配逻辑
-	return evaluateCondition(ctx, fieldValue, rule.Operator, rule.Value, rule.IgnoreCase)
+	// 匹配成功且配置了 Action 时，触发副作用
+	if matched && rule.Action != "" {
+		handleAction(ctx, rule.Action, count)
+	}
+
+	return matched, nil
+}
+
+// handleAction 处理匹配成功后的副作用动作
+func handleAction(ctx context.Context, action string, count int) {
+	if count <= 0 {
+		count = 1 // 默认至少触发1次
+	}
+
+	tagName := GetCurrentTag(ctx)
+	if tagName == "" {
+		return
+	}
+
+	switch action {
+	case "row_inc":
+		if rc := GetRowCounter(ctx); rc != nil {
+			rc.Inc(tagName, count)
+		}
+	case "global_inc":
+		if gc := GetGlobalCounter(ctx); gc != nil {
+			gc.Inc(tagName, count)
+		}
+	}
 }
 
 // ParseJSON 解析 JSON 规则字符串
@@ -175,57 +216,42 @@ func getFieldValue(data interface{}, fieldPath string) (interface{}, bool) {
 	return current, true
 }
 
-// evaluateCondition 评估单个条件
-func evaluateCondition(ctx context.Context, actual interface{}, operator string, expected interface{}, ignoreCase bool) (bool, error) {
+// evaluateCondition 评估单个条件，返回是否匹配以及匹配次数
+// 返回值 matched 是否匹配，count 匹配次数，err 错误信息
+func evaluateCondition(ctx context.Context, actual interface{}, operator string, expected interface{}, ignoreCase bool) (bool, int, error) {
 	// 辅助函数：获取字符串表示
 	getStr := func(v interface{}) string {
 		return fmt.Sprintf("%v", v)
 	}
 
-	// 统一计数辅助函数，用于将计数值写入上下文容器
-	recordBothCounters := func(count int) {
-		tagName := GetCurrentTag(ctx)
-		if tagName == "" {
-			return
-		}
-		if rc := GetRowCounter(ctx); rc != nil {
-			rc.Inc(tagName, count)
-		}
-		if gc := GetGlobalCounter(ctx); gc != nil {
-			gc.Inc(tagName, count)
-		}
-	}
-
 	switch operator {
 	case "equals":
 		s1, s2 := getStr(actual), getStr(expected)
+		var match bool
 		if ignoreCase {
-			return strings.EqualFold(s1, s2), nil
+			match = strings.EqualFold(s1, s2)
+		} else {
+			match = s1 == s2
 		}
-		return s1 == s2, nil
+		if match {
+			return true, 1, nil
+		}
+		return false, 0, nil
 
 	case "not_equals":
 		s1, s2 := getStr(actual), getStr(expected)
+		var match bool
 		if ignoreCase {
-			return !strings.EqualFold(s1, s2), nil
+			match = !strings.EqualFold(s1, s2)
+		} else {
+			match = s1 != s2
 		}
-		return s1 != s2, nil
+		if match {
+			return true, 1, nil
+		}
+		return false, 0, nil
 
 	case "contains":
-		s1, s2 := getStr(actual), getStr(expected)
-		if ignoreCase {
-			return strings.Contains(strings.ToLower(s1), strings.ToLower(s2)), nil
-		}
-		return strings.Contains(s1, s2), nil
-
-	case "not_contains":
-		s1, s2 := getStr(actual), getStr(expected)
-		if ignoreCase {
-			return !strings.Contains(strings.ToLower(s1), strings.ToLower(s2)), nil
-		}
-		return !strings.Contains(s1, s2), nil
-
-	case "count_contains":
 		s1, s2 := getStr(actual), getStr(expected)
 		if ignoreCase {
 			s1 = strings.ToLower(s1)
@@ -233,52 +259,61 @@ func evaluateCondition(ctx context.Context, actual interface{}, operator string,
 		}
 		count := strings.Count(s1, s2)
 		if count > 0 {
-			recordBothCounters(count)
-			return true, nil
+			return true, count, nil
 		}
-		return false, nil
+		return false, 0, nil
+
+	case "not_contains":
+		s1, s2 := getStr(actual), getStr(expected)
+		var match bool
+		if ignoreCase {
+			match = !strings.Contains(strings.ToLower(s1), strings.ToLower(s2))
+		} else {
+			match = !strings.Contains(s1, s2)
+		}
+		if match {
+			return true, 1, nil
+		}
+		return false, 0, nil
 
 	case "starts_with":
 		s1, s2 := getStr(actual), getStr(expected)
+		var match bool
 		if ignoreCase {
-			return strings.HasPrefix(strings.ToLower(s1), strings.ToLower(s2)), nil
+			match = strings.HasPrefix(strings.ToLower(s1), strings.ToLower(s2))
+		} else {
+			match = strings.HasPrefix(s1, s2)
 		}
-		return strings.HasPrefix(s1, s2), nil
+		if match {
+			return true, 1, nil
+		}
+		return false, 0, nil
 
 	case "ends_with":
 		s1, s2 := getStr(actual), getStr(expected)
+		var match bool
 		if ignoreCase {
-			return strings.HasSuffix(strings.ToLower(s1), strings.ToLower(s2)), nil
+			match = strings.HasSuffix(strings.ToLower(s1), strings.ToLower(s2))
+		} else {
+			match = strings.HasSuffix(s1, s2)
 		}
-		return strings.HasSuffix(s1, s2), nil
+		if match {
+			return true, 1, nil
+		}
+		return false, 0, nil
 
 	case "regex":
-		// 支持预编译的正则对象
-		if re, ok := expected.(*regexp.Regexp); ok {
-			return re.MatchString(getStr(actual)), nil
-		}
-
-		pattern, ok := expected.(string)
-		if !ok {
-			return false, fmt.Errorf("regex pattern must be string or *regexp.Regexp")
-		}
-		if ignoreCase {
-			if !strings.HasPrefix(pattern, "(?i)") {
-				pattern = "(?i)" + pattern
-			}
-		}
-		match, err := regexp.MatchString(pattern, getStr(actual))
-		return match, err
-
-	case "count_regex":
-		var re *regexp.Regexp
+		var match bool
 		var err error
+		var count int
+
+		var re *regexp.Regexp
 		if r, ok := expected.(*regexp.Regexp); ok {
 			re = r
 		} else {
 			pattern, ok := expected.(string)
 			if !ok {
-				return false, fmt.Errorf("count_regex pattern must be string or *regexp.Regexp")
+				return false, 0, fmt.Errorf("regex pattern must be string or *regexp.Regexp")
 			}
 			if ignoreCase {
 				if !strings.HasPrefix(pattern, "(?i)") {
@@ -287,37 +322,38 @@ func evaluateCondition(ctx context.Context, actual interface{}, operator string,
 			}
 			re, err = regexp.Compile(pattern)
 			if err != nil {
-				return false, err
+				return false, 0, err
 			}
 		}
 
 		s1 := getStr(actual)
 		matches := re.FindAllStringIndex(s1, -1)
-		count := len(matches)
-		if count > 0 {
-			recordBothCounters(count)
-			return true, nil
-		}
-		return false, nil
+		count = len(matches)
+		match = count > 0
+
+		return match, count, err
 
 	case "like":
 		// 简单的 SQL like 实现: % -> .*, _ -> .
 		pattern, ok := expected.(string)
 		if !ok {
-			return false, fmt.Errorf("like pattern must be string")
+			return false, 0, fmt.Errorf("like pattern must be string")
 		}
 		regexPattern := "^" + strings.ReplaceAll(strings.ReplaceAll(regexp.QuoteMeta(pattern), "%", ".*"), "_", ".") + "$"
 		if ignoreCase {
 			regexPattern = "(?i)" + regexPattern
 		}
 		match, err := regexp.MatchString(regexPattern, getStr(actual))
-		return match, err
+		if match {
+			return true, 1, err
+		}
+		return false, 0, err
 
 	case "in", "not_in":
 		// expected 应该是一个 slice
 		expectedVal := reflect.ValueOf(expected)
 		if expectedVal.Kind() != reflect.Slice && expectedVal.Kind() != reflect.Array {
-			return false, fmt.Errorf("in/not_in expected value must be a list")
+			return false, 0, fmt.Errorf("in/not_in expected value must be a list")
 		}
 		found := false
 		actualStr := getStr(actual)
@@ -336,15 +372,21 @@ func evaluateCondition(ctx context.Context, actual interface{}, operator string,
 			}
 		}
 		if operator == "in" {
-			return found, nil
+			if found {
+				return true, 1, nil
+			}
+			return false, 0, nil
 		}
-		return !found, nil
+		if !found {
+			return true, 1, nil
+		}
+		return false, 0, nil
 
 	case "list_contains":
 		// actual 应该是 slice/array
 		actualVal := reflect.ValueOf(actual)
 		if actualVal.Kind() != reflect.Slice && actualVal.Kind() != reflect.Array {
-			return false, nil // 字段值不是列表，不匹配
+			return false, 0, nil // 字段值不是列表，不匹配
 		}
 		// expected 是我们要查找的值
 		expectedStr := getStr(expected)
@@ -363,30 +405,41 @@ func evaluateCondition(ctx context.Context, actual interface{}, operator string,
 				break
 			}
 		}
-		return found, nil
+		if found {
+			return true, 1, nil
+		}
+		return false, 0, nil
 
 	// 数值比较 (支持字符串字典序降级)
 	case "greater_than", "less_than", "greater_than_or_equal", "less_than_or_equal":
-		return compareNumbers(actual, operator, expected, ignoreCase)
+		match, err := compareNumbers(actual, operator, expected, ignoreCase)
+		if match {
+			return true, 1, err
+		}
+		return false, 0, err
 
 	case "cidr":
 		ipStr, ok := actual.(string)
 		if !ok {
-			return false, nil // 不是 IP 字符串，不匹配
+			return false, 0, nil // 不是 IP 字符串，不匹配
 		}
 		cidrStr, ok := expected.(string)
 		if !ok {
-			return false, fmt.Errorf("cidr expected value must be string")
+			return false, 0, fmt.Errorf("cidr expected value must be string")
 		}
 		_, ipNet, err := net.ParseCIDR(cidrStr)
 		if err != nil {
-			return false, err
+			return false, 0, err
 		}
 		ip := net.ParseIP(ipStr)
 		if ip == nil {
-			return false, nil // 无效 IP
+			return false, 0, nil // 无效 IP
 		}
-		return ipNet.Contains(ip), nil
+		match := ipNet.Contains(ip)
+		if match {
+			return true, 1, nil
+		}
+		return false, 0, nil
 
 	case "row_inc":
 		delta, err := toInt(expected)
@@ -398,7 +451,7 @@ func evaluateCondition(ctx context.Context, actual interface{}, operator string,
 				rc.Inc(tagName, delta)
 			}
 		}
-		return true, nil
+		return true, delta, nil
 
 	case "global_inc":
 		delta, err := toInt(expected)
@@ -410,10 +463,10 @@ func evaluateCondition(ctx context.Context, actual interface{}, operator string,
 				gc.Inc(tagName, delta)
 			}
 		}
-		return true, nil
+		return true, delta, nil
 
 	default:
-		return false, fmt.Errorf("unknown operator: %s", operator)
+		return false, 0, fmt.Errorf("unknown operator: %s", operator)
 	}
 }
 

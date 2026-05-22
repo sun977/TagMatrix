@@ -475,7 +475,8 @@ const parseNeoScanRule = (neoRule: any): any => {
       field: neoRule.field || '',
       operator: neoRule.operator,
       value: value,
-      ignore_case: neoRule.ignore_case
+      ignore_case: neoRule.ignore_case,
+      action: neoRule.action || ''
     }
   }
   return { logic: 'and', conditions: [] }
@@ -542,8 +543,6 @@ const operatorHelpData = [
   { category: '集合/特殊', operator: 'list_contains', desc: '列表包含', example: '原始数据如果是数组 [1, 2]，列表包含 1' },
   { category: '集合/特殊', operator: 'cidr', desc: 'IP网段', example: '判断 IP "192.168.1.5" 是否属于网段 "192.168.1.0/24"' },
 
-  { category: '频次/副作用计数', operator: 'count_contains', desc: '统计子串频次', example: '统计目标子串在字段中出现的次数并在上下文中累加' },
-  { category: '频次/副作用计数', operator: 'count_regex', desc: '统计正则频次', example: '统计正则模式在字段中匹配的次数并在上下文中累加' },
   { category: '频次/副作用计数', operator: 'row_inc', desc: '行级计数+N', example: '无条件给当前数据行的当前标签增加 N 次计数 (常放在逻辑末尾避免短路)' },
   { category: '频次/副作用计数', operator: 'global_inc', desc: '全局计数+N', example: '无条件给全局标签统计增加 N 次计数' },
 ]
@@ -573,7 +572,8 @@ const buildNeoScanRule = (state: any): any => {
         value: ['in', 'not_in', 'list_contains'].includes(cond.operator) && typeof cond.value === 'string'
           ? cond.value.split(',').map((s: string) => s.trim())
           : cond.value,
-        ignore_case: cond.ignore_case ? true : undefined
+        ignore_case: cond.ignore_case ? true : undefined,
+        action: cond.action ? cond.action : undefined
       })
     }
   }

@@ -31,39 +31,10 @@ type MatchRule struct {
 }
 ```
 
-## 3. 支持的操作符 (Operators)
 
-目前支持多种基础与副作用操作符：
+## 3. 使用示例
 
-| 操作符 | 说明 | 适用类型 | 示例 |
-| :--- | :--- | :--- | :--- |
-| `equals` | 等于 | Any | `field == value` |
-| `not_equals` | 不等于 | Any | `field != value` |
-| `contains` | 包含 | String, List | `"hello" contains "he"` |
-| `not_contains` | 不包含 | String, List | `"hello" !contains "x"` |
-| `starts_with` | 以...开头 | String | `"server-01" starts_with "server"` |
-| `ends_with` | 以...结尾 | String | `"image.png" ends_with ".png"` |
-| `greater_than` | 大于 | Number | `count > 10` |
-| `less_than` | 小于 | Number | `count < 10` |
-| `greater_than_or_equal` | 大于等于 | Number | `count >= 10` |
-| `less_than_or_equal` | 小于等于 | Number | `count <= 10` |
-| `in` | 在列表中 | String/Number -> List | `"admin" in ["admin", "root"]` |
-| `not_in` | 不在列表中 | String/Number -> List | `"guest" not_in ["admin", "root"]` |
-| `is_null` | 为空 | Any | Field 不存在或值为 nil |
-| `is_not_null` | 不为空 | Any | Field 存在且值不为 nil |
-| `regex` | 正则匹配 | String | `ip regex "^192\.168\..*"` |
-| `like` | 模糊匹配 | String | `name like "test_%"` (支持 % 和 _) |
-| `exists` | 存在 | Any | 字段 Key 存在 (无论值是否为空) |
-| `cidr` | IP网段匹配 | String (IP) | `"192.168.1.5" cidr "192.168.1.0/24"` |
-| `list_contains` | 列表包含 | List | `["prod", "dev"] list_contains "prod"` |
-| **`count_contains`** | 统计子串出现次数并记录上下文 | String | 字段包含几个"高价值"则计数几次 |
-| **`count_regex`** | 统计正则匹配次数并记录上下文 | String | 记录符合特征的次数 |
-| **`row_inc`** | 行级计数器副作用 | Any | 永远返回true并给行级计数增加指定值 |
-| **`global_inc`** | 全局计数器副作用 | Any | 永远返回true并给全局计数增加指定值 |
-
-## 4. 使用示例
-
-### 4.1 JSON 配置示例
+### 3.1 JSON 配置示例
 
 #### 场景 1：基础布尔逻辑匹配
 **需求**：单纯判断设备类型是 `honeypot` 且系统包含 `linux`，不产生任何副作用。
@@ -84,24 +55,26 @@ type MatchRule struct {
 }
 ```
 
-#### 场景 2：单字段频次挖掘 ( count_contains )
+#### 场景 2：单字段频次挖掘 ( 普通算子外挂 Action )
 **需求**：判断 `content` 字段是否包含“高价值”，不仅要判断是否匹配，还要记录在这一行数据中“高价值”出现了几次（触发副作用，自动累加到上下文计数器中）。
 ```json
 {
   "field": "content",
-  "operator": "count_contains",
+  "operator": "contains",
   "value": "高价值",
+  "action": "row_inc",
   "ignore_case": false
 }
 ```
 
-#### 场景 3：正则模式频次挖掘 ( count_regex )
+#### 场景 3：正则模式频次挖掘 ( 普通算子外挂 Action )
 **需求**：提取 `error_log` 字段中所有符合 `failed_login_\d+` 模式的错误记录，计算其出现的次数，并在上下文中累加。
 ```json
 {
   "field": "error_log",
-  "operator": "count_regex",
-  "value": "failed_login_\\d+"
+  "operator": "regex",
+  "value": "failed_login_\\d+",
+  "action": "row_inc"
 }
 ```
 
@@ -147,14 +120,48 @@ type MatchRule struct {
     },
     {
       "field": "error_log",
-      "operator": "count_regex",
-      "value": "failed_login"
+      "operator": "regex",
+      "value": "failed_login",
+      "action": "row_inc"
     }
   ]
 }
 ```
 
-### 4.2 Go 调用示例
+#### 场景 6：复杂的风控计分卡模型 ( evaluate_all + 独立权重 )
+**需求**：假设需要给一个【高危用户】打标签，规则不仅仅是满足一条就打标，而是根据触发的不同风险行为累加不同的风险分数：
+- 触发了“短时间异地登录”记 2 次风险。
+- 触发了“密码输入错误”记 1 次风险。
+- 触发了“修改绑定手机”记 5 次风险。
+
+最后累加看这个用户总计多少次。此时最外层使用 `evaluate_all`，里面挂载 `and` 逻辑组，在每个组最后挂载一个独立的 `row_inc` 算子，并将 `value` 设定为该项对应的风险得分：
+
+```json
+{
+  "evaluate_all": [
+    {
+      "and": [
+        { "field": "login_status", "operator": "equals", "value": "异地" },
+        { "field": "", "operator": "row_inc", "value": 2 }
+      ]
+    },
+    {
+      "and": [
+        { "field": "pwd_error", "operator": "equals", "value": "true" },
+        { "field": "", "operator": "row_inc", "value": 1 }
+      ]
+    },
+    {
+      "and": [
+        { "field": "action", "operator": "equals", "value": "change_phone" },
+        { "field": "", "operator": "row_inc", "value": 5 }
+      ]
+    }
+  ]
+}
+```
+
+### 3.2 Go 调用示例
 
 ```go
 import (
@@ -191,8 +198,8 @@ if matched {
 }
 ```
 
-## 5. 工作逻辑与流程
-### 5.1 流程图
+## 4. 工作逻辑与流程
+### 4.1 流程图
 ```mermaid
 graph TD
     A["开始: Match(ctx, data, rule)"] --> B{"检查节点类型"}
@@ -249,7 +256,35 @@ graph TD
     - **数值比较**：引擎优先尝试将值转换为数字进行比较。
     - **字典序降级**：如果值无法转换为数字，引擎会自动降级为**字符串字典序比较**。
 
-## 6. 设计原则
+## 5. 支持的操作符 (Operators)
+
+| 操作符 | 说明 | 类型映射 / 备注 | 示例 |
+| :--- | :--- | :--- | :--- |
+| `equals` | 等于 | String / Number | `status equals "active"` |
+| `not_equals` | 不等于 | String / Number | `status not_equals "disabled"` |
+| `contains` | 包含 | String | `"hello world" contains "world"` |
+| `not_contains`| 不包含 | String | `"hello" not_contains "world"` |
+| `starts_with` | 开头是 | String | `"admin123" starts_with "admin"` |
+| `ends_with` | 结尾是 | String | `"report.pdf" ends_with ".pdf"` |
+| `greater_than`| 大于 | Number / String (字典序) | `age > 30` |
+| `less_than` | 小于 | Number / String (字典序) | `score < 60` |
+| `greater_than_or_equal` | 大于等于 | Number / String (字典序) | `level >= 3` |
+| `less_than_or_equal` | 小于等于 | Number / String (字典序) | `rank <= 5` |
+| `in` | 在列表中 | String/Number -> List | `"admin" in ["admin", "root"]` |
+| `not_in` | 不在列表中 | String/Number -> List | `"guest" not_in ["admin", "root"]` |
+| `is_null` | 为空 | Any | Field 不存在或值为 nil |
+| `is_not_null` | 不为空 | Any | Field 存在且值不为 nil |
+| `regex` | 正则匹配 | String | `ip regex "^192\.168\..*"` |
+| `like` | 模糊匹配 | String | `name like "test_%"` (支持 % 和 _) |
+| `exists` | 存在 | Any | 字段 Key 存在 (无论值是否为空) |
+| `cidr` | IP网段匹配 | String (IP) | `"192.168.1.5" cidr "192.168.1.0/24"` |
+| `list_contains` | 列表包含 | List | `["prod", "dev"] list_contains "prod"` |
+| **`row_inc`** | 行级计数器动作 | Any | 独立作为算子时永远返回true并给行级计数增加指定值 |
+| **`global_inc`** | 全局计数器动作 | Any | 独立作为算子时永远返回true并给全局计数增加指定值 |
+
+> **注：** 所有算子配合 `Action: "row_inc"` 时均可实现频次统计功能，详见第 2 节。
+
+## 6. 特性：数值比较与降级处理
 1.  **Context-Aware**: 支持通过 `context.Context` 注入外部状态容器（如计数器、当前标签等），实现匹配过程中的副作用管理。
 2.  **Fail Safe**: 如果字段不存在或类型不匹配，默认返回 false 并报错。
 3.  **Recursion**: 支持任意深度的嵌套逻辑。
@@ -267,5 +302,5 @@ graph TD
 | `equals`, `not_equals` | `==` | `strings.EqualFold` |
 | `contains`, `starts_with` 等 | 大小写敏感 | 转换为小写后比较 |
 | `in`, `list_contains` | 精确匹配 | 列表中元素逐个忽略大小写比较 |
-| `regex`, `count_regex` | 原样正则 | 自动添加 `(?i)` 前缀 |
+| `regex` | 原样正则 | 自动添加 `(?i)` 前缀 |
 | `greater_than` (字符串比较) | ASCII 比较 | 转换为小写后比较 (例如 "B" > "a") |
