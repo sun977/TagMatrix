@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -87,9 +88,10 @@ type tagTaskContext struct {
 // datasetID: 任务针对的数据集
 // ruleIDs: 需要执行的规则ID列表
 // batchName: 此次打标任务的自定义名称
+// desc: 任务描述
 // isOverwrite: 是否为覆盖模式（清除原有标签）
 // tagMode: 打标模式（single: 单标签, multiple: 多标签, mixed: 混合模式）
-func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, isOverwrite bool, tagMode string, sourceFile string) (uint64, error) {
+func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, desc string, isOverwrite bool, tagMode string, sourceFile string) (uint64, error) {
 	if datasetID == 0 {
 		return 0, fmt.Errorf("dataset_id cannot be empty")
 	}
@@ -106,6 +108,21 @@ func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, b
 		return 0, fmt.Errorf("no valid rules found for this dataset")
 	}
 
+	// 提取规则名称用于展示
+	var ruleNames []string
+	for _, r := range rules {
+		ruleNames = append(ruleNames, r.Name)
+	}
+	rulesStr := strings.Join(ruleNames, ", ")
+	if len(rulesStr) > 500 {
+		rulesStr = rulesStr[:497] + "..." // 截断防止过长
+	}
+
+	execStrategy := "append"
+	if isOverwrite {
+		execStrategy = "overwrite"
+	}
+
 	// 2. 生成任务批次
 	batchID := uint64(time.Now().UnixMilli())
 	if batchName == "" {
@@ -113,12 +130,15 @@ func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, b
 	}
 
 	batch := model.TagTaskBatch{
-		BaseModel:  model.BaseModel{ID: batchID},
-		DatasetID:  datasetID,
-		Name:       batchName,
-		Status:     "running",
-		TagMode:    tagMode,
-		SourceFile: sourceFile,
+		BaseModel:    model.BaseModel{ID: batchID},
+		DatasetID:    datasetID,
+		Name:         batchName,
+		Desc:         desc,
+		Status:       "running",
+		TagMode:      tagMode,
+		SourceFile:   sourceFile,
+		ExecStrategy: execStrategy,
+		Rules:        rulesStr,
 	}
 	if err := s.db.Create(&batch).Error; err != nil {
 		return 0, fmt.Errorf("failed to create task batch: %w", err)

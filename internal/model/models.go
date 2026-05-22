@@ -59,10 +59,13 @@ type TagTaskBatch struct {
 	BaseModel
 	DatasetID      uint64         `json:"dataset_id" gorm:"index;not null;comment:关联的数据集ID"`
 	Name           string         `json:"name" gorm:"size:100;comment:任务名称，比如 20240101-打标任务"`
+	Desc           string         `json:"desc" gorm:"type:text;comment:任务描述"`
 	Status         string         `json:"status" gorm:"size:20;index;comment:状态：running, completed, failed, rolled_back"`
 	TotalProcessed int            `json:"total_processed" gorm:"default:0;comment:总处理条数"`
 	TagMode        string         `json:"tag_mode" gorm:"size:20;comment:打标模式"`
 	SourceFile     string         `json:"source_file" gorm:"size:255;comment:来源文件过滤条件"`
+	ExecStrategy   string         `json:"exec_strategy" gorm:"size:20;comment:执行策略"`
+	Rules          string         `json:"rules" gorm:"type:text;comment:生效规则"`
 	FinishedAt     *time.Time     `json:"finished_at" gorm:"comment:任务完成时间"`
 	DeletedAt      gorm.DeletedAt `json:"-" gorm:"index;comment:软删除时间"`
 }
