@@ -543,6 +543,7 @@ const operatorHelpData = [
   { category: '集合/特殊', operator: 'list_contains', desc: '列表包含', example: '原始数据如果是数组 [1, 2]，列表包含 1' },
   { category: '集合/特殊', operator: 'cidr', desc: 'IP网段', example: '判断 IP "192.168.1.5" 是否属于网段 "192.168.1.0/24"' },
 
+  { category: '频次/副作用动作', operator: '附加动作 (Action)', desc: '挂载至其他算子', example: '在任意算子后附加行计数或全局计数。如果是 contains/regex，将按真实命中次数累加；如果是普通算子，命中后固定 +1 (即状态点亮器)' },
   { category: '频次/副作用计数', operator: 'row_inc', desc: '行级计数+N', example: '无条件给当前数据行的当前标签增加 N 次计数 (常放在逻辑末尾避免短路)' },
   { category: '频次/副作用计数', operator: 'global_inc', desc: '全局计数+N', example: '无条件给全局标签统计增加 N 次计数' },
 ]

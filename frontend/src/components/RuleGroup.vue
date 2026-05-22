@@ -40,7 +40,9 @@
             placeholder="字段名 (可手写)" 
             size="small" 
             style="width: 180px;"
+            clearable
           >
+            <el-option label="[空] (无需字段)" value="" />
             <el-option v-for="key in schemaKeys" :key="key" :label="key" :value="key" />
           </el-select>
           <el-select v-model="item.operator" size="small" style="width: 120px;">
@@ -99,8 +101,8 @@
             clearable
             style="width: 140px; margin-left: 4px;"
           >
-            <el-option label="行级计数+N" value="row_inc" />
-            <el-option label="全局计数+N" value="global_inc" />
+            <el-option label="行级计数+N (row_inc)" value="row_inc" />
+            <el-option label="全局计数+N (global_inc)" value="global_inc" />
           </el-select>
 
           <!-- 忽略大小写开关 -->
