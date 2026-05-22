@@ -103,7 +103,7 @@
 
     <!-- 数据表格区 (卡片) -->
     <div class="table-card card-panel">
-      <div class="table-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div class="table-header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 12px 12px 0 12px;">
         <span style="font-size: 14px; color: var(--tm-text-secondary);">共 {{ totalItems }} 条数据</span>
         <div class="action-icons">
           <el-button circle @click="handleFilterChange">
