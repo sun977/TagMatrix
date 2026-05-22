@@ -35,11 +35,23 @@
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column prop="name" label="数据集名称" min-width="150" show-overflow-tooltip />
           <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-          <el-table-column label="包含字段" min-width="200">
+          <el-table-column label="包含字段" min-width="250">
             <template #default="scope">
               <div class="tags-container" v-if="scope.row.schema_keys">
                 <span class="mock-tag tag-gray" v-for="col in parseSchema(scope.row.schema_keys).slice(0, 3)" :key="col">{{ col }}</span>
-                <span class="mock-tag tag-gray" v-if="parseSchema(scope.row.schema_keys).length > 3">...</span>
+                <el-popover
+                  v-if="parseSchema(scope.row.schema_keys).length > 3"
+                  placement="top"
+                  trigger="hover"
+                  width="300"
+                >
+                  <template #reference>
+                    <span class="mock-tag tag-gray" style="cursor: pointer;">...</span>
+                  </template>
+                  <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+                    <span class="mock-tag tag-gray" v-for="col in parseSchema(scope.row.schema_keys)" :key="col">{{ col }}</span>
+                  </div>
+                </el-popover>
               </div>
             </template>
           </el-table-column>
