@@ -137,6 +137,29 @@
           <el-button circle @click="fetchBatches" :loading="loadingBatches">
             <el-icon><RefreshRight /></el-icon>
           </el-button>
+          
+          <el-popover
+            placement="bottom-end"
+            title="展示列设置"
+            :width="200"
+            trigger="click"
+          >
+            <template #reference>
+              <el-button circle>
+                <el-icon><Setting /></el-icon>
+              </el-button>
+            </template>
+            <div class="column-settings">
+              <el-checkbox 
+                v-for="col in allToggleableColumns" 
+                :key="col" 
+                :model-value="!hiddenColumns.includes(col)"
+                @change="toggleColumn(col)"
+              >
+                {{ col }}
+              </el-checkbox>
+            </div>
+          </el-popover>
         </div>
       </div>
 
@@ -147,13 +170,18 @@
         v-loading="loadingBatches"
         @selection-change="handleSelectionChange"
       >
-        <el-table-column type="selection" width="55" />
-        <el-table-column prop="name" label="任务名称" min-width="180" />
-        <el-table-column label="目标数据集" min-width="120">
+        <el-table-column type="selection" width="55" fixed="left" />
+        <el-table-column prop="name" label="任务名称" min-width="180" fixed="left" />
+        <el-table-column v-if="!hiddenColumns.includes('任务描述')" prop="desc" label="任务描述" min-width="150" show-overflow-tooltip />
+        <el-table-column v-if="!hiddenColumns.includes('目标数据集')" label="目标数据集" min-width="120">
           <template #default="scope">
             {{ getDatasetName(scope.row.datasetId) }}
           </template>
         </el-table-column>
+        <el-table-column v-if="!hiddenColumns.includes('文件来源')" prop="sourceFile" label="文件来源" min-width="120" show-overflow-tooltip />
+        <el-table-column v-if="!hiddenColumns.includes('生效规则')" prop="rules" label="生效规则" min-width="180" show-overflow-tooltip />
+        <el-table-column v-if="!hiddenColumns.includes('执行策略')" prop="execStrategy" label="执行策略" min-width="100" />
+        <el-table-column v-if="!hiddenColumns.includes('打标模式')" prop="tagMode" label="打标模式" min-width="100" />
         <el-table-column prop="status" label="状态" width="120">
           <template #default="scope">
             <div class="status-pill" :class="scope.row.statusType">
@@ -176,13 +204,13 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="processed" label="处理数据量" width="160" />
-        <el-table-column prop="time" label="耗时" width="100" />
-        <el-table-column prop="creator" label="创建人" width="100" />
-        <el-table-column prop="createTime" label="创建时间" width="160" />
-        <el-table-column width="220" align="right">
+        <el-table-column v-if="!hiddenColumns.includes('处理数据量')" prop="processed" label="处理数据量" width="160" />
+        <el-table-column v-if="!hiddenColumns.includes('耗时')" prop="time" label="耗时" width="100" />
+        <el-table-column v-if="!hiddenColumns.includes('创建人')" prop="creator" label="创建人" width="100" />
+        <el-table-column v-if="!hiddenColumns.includes('创建时间')" prop="createTime" label="创建时间" width="160" />
+        <el-table-column width="140" align="center" fixed="right">
           <template #header>
-            <div style="display: flex; align-items: center; justify-content: flex-end;">
+            <div style="display: flex; align-items: center; justify-content: center;">
               操作
               <el-tooltip effect="dark" placement="top-end">
                 <template #content>
@@ -199,33 +227,47 @@
           </template>
           <template #default="scope">
             <template v-if="scope.row.statusType === 'running'">
-              <el-button size="small" class="action-btn">查看详情</el-button>
-              <el-button type="danger" link size="small">终止</el-button>
+              <div style="display: flex; gap: 4px; justify-content: center;">
+                <el-button size="small" class="action-btn">查看详情</el-button>
+                <el-button type="danger" link size="small">终止</el-button>
+              </div>
             </template>
             <template v-else-if="scope.row.statusType === 'completed'">
-              <div style="margin-bottom: 6px;">
-                <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看</el-button>
-                <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
+              <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
+                <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)" style="margin: 0;">查看</el-button>
+                <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)" style="margin: 0;">导出</el-button>
               </div>
-              <div>
-              <el-button size="small" class="action-btn" @click="handleRollback(scope.row.id)" style="color: #67C23A; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color);">回退</el-button>
-              <el-button size="small" class="action-btn" @click="handleSingleDelete(scope.row.id)" style="color: #F56C6C; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color);">删除</el-button>
+              <div style="display: flex; gap: 4px; justify-content: center;">
+                <el-button size="small" class="action-btn" @click="handleRollback(scope.row.id)" style="color: #67C23A; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color); margin: 0;">回退</el-button>
+                <el-button size="small" class="action-btn" @click="handleSingleDelete(scope.row.id)" style="color: #F56C6C; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color); margin: 0;">删除</el-button>
               </div>
             </template>
             <template v-else-if="scope.row.statusType === 'failed'">
-              <el-button type="danger" link size="small">查看错误日志</el-button>
-              <el-button type="success" size="small" class="action-btn retry-btn">重试</el-button>
-              <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)">删除</el-button>
+              <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
+                <el-button type="danger" link size="small" style="margin: 0;">错误日志</el-button>
+              </div>
+              <div style="display: flex; gap: 4px; justify-content: center;">
+                <el-button type="success" size="small" class="action-btn retry-btn" style="margin: 0;">重试</el-button>
+                <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)" style="margin: 0;">删除</el-button>
+              </div>
             </template>
             <template v-else-if="scope.row.statusType === 'rolled_back'">
-              <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看日志</el-button>
-              <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
-              <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)">删除</el-button>
+              <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
+                <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)" style="margin: 0;">日志</el-button>
+                <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)" style="margin: 0;">导出</el-button>
+              </div>
+              <div style="display: flex; gap: 4px; justify-content: center;">
+                <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)" style="margin: 0;">删除</el-button>
+              </div>
             </template>
             <template v-else-if="scope.row.statusType === 'pending'">
-              <el-button size="small" class="action-btn">编辑</el-button>
-              <el-button type="success" size="small" class="action-btn retry-btn">立即执行</el-button>
-              <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)">删除</el-button>
+              <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
+                <el-button size="small" class="action-btn" style="margin: 0;">编辑</el-button>
+                <el-button type="success" size="small" class="action-btn retry-btn" style="margin: 0;">执行</el-button>
+              </div>
+              <div style="display: flex; gap: 4px; justify-content: center;">
+                <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)" style="margin: 0;">删除</el-button>
+              </div>
             </template>
           </template>
         </el-table-column>
@@ -284,11 +326,34 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { VideoPlay, RefreshRight, QuestionFilled, Loading } from '@element-plus/icons-vue'
+import { VideoPlay, RefreshRight, QuestionFilled, Loading, Setting } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, GetTaskLogsPaged, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
+
+const allToggleableColumns = [
+  '任务描述',
+  '目标数据集',
+  '文件来源',
+  '生效规则',
+  '执行策略',
+  '打标模式',
+  '处理数据量',
+  '耗时',
+  '创建人',
+  '创建时间'
+]
+const hiddenColumns = ref<string[]>([]) // 默认显示所有列
+
+const toggleColumn = (col: string) => {
+  const idx = hiddenColumns.value.indexOf(col)
+  if (idx > -1) {
+    hiddenColumns.value.splice(idx, 1)
+  } else {
+    hiddenColumns.value.push(col)
+  }
+}
 
 const loadingBatches = ref(false)
 
@@ -567,6 +632,11 @@ const fetchBatches = async () => {
       return {
         id: b.id,
         name: b.name,
+        desc: b.desc || '-',
+        sourceFile: b.source_file || '全部记录',
+        rules: b.rules || '-',
+        execStrategy: b.exec_strategy === 'overwrite' ? '覆盖模式' : '追加模式',
+        tagMode: b.tag_mode === 'single' ? '单标签模式' : (b.tag_mode === 'mixed' ? '混合模式' : '多标签模式'),
         datasetId: b.dataset_id,
         statusType: b.status,
         statusText: statusText,
@@ -602,7 +672,15 @@ const submitTask = async () => {
 
     const isOverwrite = taskForm.value.execStrategy === 'overwrite'
 
-    await RunTaggingTask(taskForm.value.datasetId!, ruleIDs, taskForm.value.batchName, isOverwrite, taskForm.value.tagMode, taskForm.value.sourceFile === 'all' ? '' : taskForm.value.sourceFile)
+    await RunTaggingTask(
+      taskForm.value.datasetId!,
+      ruleIDs,
+      taskForm.value.batchName,
+      taskForm.value.desc,
+      isOverwrite,
+      taskForm.value.tagMode,
+      taskForm.value.sourceFile === 'all' ? '' : taskForm.value.sourceFile
+    )
     ElMessage.success(`任务提交成功`)
     
     taskForm.value.batchName = ''
@@ -685,6 +763,22 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
+.column-settings {
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.column-settings::-webkit-scrollbar {
+  width: 6px;
+}
+.column-settings::-webkit-scrollbar-thumb {
+  background-color: var(--tm-border-color);
+  border-radius: 3px;
+}
+
 .page-container {
   padding: 24px 32px 40px;
 }
