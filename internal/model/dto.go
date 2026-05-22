@@ -115,3 +115,10 @@ type SourceFileOption struct {
 	SourceName string `json:"source_name" gorm:"column:source_name"`
 	Count      int64  `json:"count" gorm:"column:count"`
 }
+
+// PagedTaskLogs 用于分页返回打标日志
+type PagedTaskLogs struct {
+	Total int64           `json:"total"`
+	Logs  []TagTaskLogDto `json:"logs"`
+}
+

@@ -70,12 +70,12 @@
                 打标模式
                 <el-tooltip effect="dark" placement="top" :hide-after="0" popper-class="tag-mode-tooltip">
                   <template #content>
-                    <div style="line-height: 1.6; max-width: 320px;">
+                    <div style="line-height: 1.6; max-width: 350px;">
                       <div style="margin-bottom: 4px;"><b>多标签模式</b>：数据命中几条规则，就打上几个平级的标签。</div>
-                      <div style="margin-bottom: 4px;"><b>单标签模式</b>：命中多条规则时，仅取优先级最高的一个标签。</div>
-                      <div style="margin-bottom: 4px;"><b>混合模式</b>：命中的所有标签均入库，但优先级最高的一个设为主标签。</div>
+                      <div style="margin-bottom: 4px;"><b>单标签模式</b>：命中多条规则时，根据MDCT算法仅取优最优的一个标签入库。</div>
+                      <div style="margin-bottom: 4px;"><b>混合模式</b>：命中的所有标签均入库，根据MDCT算法选取最优的一个设为主标签。</div>
                       <div style="margin-top: 8px; color: #a0cfff;">
-                        <i>* 注：后续将引入智能“主标签推导策略”（如基于业务线权重、ML打分）来更精准地推导和选取主/单标签。</i>
+                        <i>注：若开启MDCT的算法AI介入裁决功能，在遇到标签冲突的时候将由AI智能判断选出主标签。</i>
                       </div>
                     </div>
                   </template>
@@ -266,6 +266,18 @@
         <el-table-column prop="reason" label="匹配原因" min-width="250" />
         <el-table-column prop="createdAt" label="时间" width="180" />
       </el-table>
+      <div class="pagination-container" style="margin-top: 15px; display: flex; justify-content: flex-end;">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="logTotal"
+          :page-sizes="[10, 20, 50, 100]"
+          :page-size="logPageSize"
+          :current-page="logCurrentPage"
+          @size-change="handleLogSizeChange"
+          @current-change="handleLogCurrentChange"
+        />
+      </div>
     </el-dialog>
   </div>
 </template>
@@ -274,7 +286,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, QuestionFilled, Loading } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, GetTaskLogsPaged, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -402,6 +414,10 @@ watch([filterDataset, filterStatus, filterTime], () => {
 const logDialogVisible = ref(false)
 const loadingLogs = ref(false)
 const taskLogs = ref<model.TagTaskLogDto[]>([])
+const logTotal = ref(0)
+const logCurrentPage = ref(1)
+const logPageSize = ref(20)
+const currentLogBatchId = ref<number>(0)
 
 // 批量删除相关
 const selectedTaskIds = ref<number[]>([])
@@ -463,17 +479,35 @@ const handleSingleDelete = async (id: number) => {
   }
 }
 
-const viewLogs = async (batchId: number) => {
-  logDialogVisible.value = true
+const fetchLogs = async () => {
   loadingLogs.value = true
   try {
-    const logs = await GetTaskLogs(batchId)
-    taskLogs.value = logs || []
+    const result = await GetTaskLogsPaged(currentLogBatchId.value, logCurrentPage.value, logPageSize.value)
+    taskLogs.value = result.logs || []
+    logTotal.value = result.total || 0
   } catch (e: any) {
     ElMessage.error('获取日志失败: ' + String(e))
   } finally {
     loadingLogs.value = false
   }
+}
+
+const viewLogs = async (batchId: number) => {
+  currentLogBatchId.value = batchId
+  logCurrentPage.value = 1
+  logDialogVisible.value = true
+  await fetchLogs()
+}
+
+const handleLogSizeChange = (val: number) => {
+  logPageSize.value = val
+  logCurrentPage.value = 1
+  fetchLogs()
+}
+
+const handleLogCurrentChange = (val: number) => {
+  logCurrentPage.value = val
+  fetchLogs()
 }
 
 const exportLogs = async (batchId: number) => {

@@ -1045,6 +1045,11 @@ func (a *App) GetTaskLogs(batchID uint64) ([]model.TagTaskLogDto, error) {
 	return a.taskEngine.GetTaskLogs(batchID)
 }
 
+// GetTaskLogsPaged 分页获取某个批次的打标日志
+func (a *App) GetTaskLogsPaged(batchID uint64, page int, pageSize int) (*model.PagedTaskLogs, error) {
+	return a.taskEngine.GetTaskLogsPaged(batchID, page, pageSize)
+}
+
 // ExportTaskLogsCSV exports task logs to a CSV file selected by the user
 func (a *App) ExportTaskLogsCSV(batchID uint64) (string, error) {
 	// 1. Fetch logs

@@ -196,6 +196,18 @@
         <el-table-column prop="reason" label="匹配原因" min-width="250" />
         <el-table-column prop="createdAt" label="时间" width="180" />
       </el-table>
+      <div class="pagination-container" style="margin-top: 15px; display: flex; justify-content: flex-end;">
+        <el-pagination
+          background
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="logTotal"
+          :page-sizes="[10, 20, 50, 100]"
+          :page-size="logPageSize"
+          :current-page="logCurrentPage"
+          @size-change="handleLogSizeChange"
+          @current-change="handleLogCurrentChange"
+        />
+      </div>
     </el-dialog>
 
     <!-- 总数据量（按数据集）弹窗 -->
@@ -229,7 +241,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { Loading, Setting, Coin, PriceTag, Collection, Document, UploadFilled, ArrowRight } from '@element-plus/icons-vue'
-import { GetDashboardStats, GetTaskBatches, GetAllTags, GetAllRules, GetTaskLogs, ExportTaskLogsCSV, ListDatasets } from '../../wailsjs/go/main/App'
+import { GetDashboardStats, GetTaskBatches, GetAllTags, GetAllRules, GetTaskLogs, GetTaskLogsPaged, ExportTaskLogsCSV, ListDatasets } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { ElMessage } from 'element-plus'
@@ -319,18 +331,40 @@ const showRulesDialog = async () => {
 const logDialogVisible = ref(false)
 const loadingLogs = ref(false)
 const taskLogs = ref<model.TagTaskLogDto[]>([])
+const logTotal = ref(0)
+const logCurrentPage = ref(1)
+const logPageSize = ref(20)
+const currentLogBatchId = ref<number>(0)
 
-const viewLogs = async (batchId: number) => {
-  logDialogVisible.value = true
+const fetchLogs = async () => {
   loadingLogs.value = true
   try {
-    const logs = await GetTaskLogs(batchId)
-    taskLogs.value = logs || []
+    const result = await GetTaskLogsPaged(currentLogBatchId.value, logCurrentPage.value, logPageSize.value)
+    taskLogs.value = result.logs || []
+    logTotal.value = result.total || 0
   } catch (e: any) {
     ElMessage.error('获取日志失败: ' + String(e))
   } finally {
     loadingLogs.value = false
   }
+}
+
+const viewLogs = async (batchId: number) => {
+  currentLogBatchId.value = batchId
+  logCurrentPage.value = 1
+  logDialogVisible.value = true
+  await fetchLogs()
+}
+
+const handleLogSizeChange = (val: number) => {
+  logPageSize.value = val
+  logCurrentPage.value = 1
+  fetchLogs()
+}
+
+const handleLogCurrentChange = (val: number) => {
+  logCurrentPage.value = val
+  fetchLogs()
 }
 
 const exportLogs = async (batchId: number) => {

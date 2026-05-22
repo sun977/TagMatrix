@@ -508,6 +508,76 @@ func (s *TaskEngineService) GetTaskLogs(batchID uint64) ([]model.TagTaskLogDto, 
 	return dtos, nil
 }
 
+// GetTaskLogsPaged 分页获取某个批次的打标日志
+func (s *TaskEngineService) GetTaskLogsPaged(batchID uint64, page int, pageSize int) (*model.PagedTaskLogs, error) {
+	var total int64
+	if err := s.db.Model(&model.TagTaskLog{}).Where("batch_id = ?", batchID).Count(&total).Error; err != nil {
+		return nil, err
+	}
+
+	var logs []model.TagTaskLog
+	offset := (page - 1) * pageSize
+	if err := s.db.Where("batch_id = ?", batchID).Offset(offset).Limit(pageSize).Find(&logs).Error; err != nil {
+		return nil, err
+	}
+
+	// 批量查询相关 Tag 和 Rule 以减少查询次数
+	tagMap := make(map[uint64]string)
+	ruleMap := make(map[uint64]string)
+
+	var tagIDs []uint64
+	var ruleIDs []uint64
+	for _, l := range logs {
+		tagIDs = append(tagIDs, l.TagID)
+		if l.RuleID > 0 {
+			ruleIDs = append(ruleIDs, l.RuleID)
+		}
+	}
+
+	if len(tagIDs) > 0 {
+		var tags []model.SysTag
+		s.db.Where("id IN ?", tagIDs).Find(&tags)
+		for _, t := range tags {
+			if t.Path != "" {
+				tagMap[t.ID] = t.Path
+			} else {
+				tagMap[t.ID] = t.Name
+			}
+		}
+	}
+
+	if len(ruleIDs) > 0 {
+		var rules []model.SysMatchRule
+		s.db.Where("id IN ?", ruleIDs).Find(&rules)
+		for _, r := range rules {
+			ruleMap[r.ID] = r.Name
+		}
+	}
+
+	var dtos []model.TagTaskLogDto
+	for _, l := range logs {
+		dtos = append(dtos, model.TagTaskLogDto{
+			ID:        l.ID,
+			RecordID:  l.RecordID,
+			TagName:   tagMap[l.TagID],
+			RuleName:  ruleMap[l.RuleID],
+			Action:    l.Action,
+			Reason:    l.Reason,
+			CreatedAt: l.CreatedAt.Format("2006-01-02 15:04:05"),
+		})
+	}
+
+	// If dtos is nil, make it an empty slice instead of null in JSON
+	if dtos == nil {
+		dtos = []model.TagTaskLogDto{}
+	}
+
+	return &model.PagedTaskLogs{
+		Total: total,
+		Logs:  dtos,
+	}, nil
+}
+
 // DeleteTaskBatches 硬删除指定的打标批次及其关联的日志和标签
 func (s *TaskEngineService) DeleteTaskBatches(ctx context.Context, batchIDs []uint64) error {
 	if len(batchIDs) == 0 {
