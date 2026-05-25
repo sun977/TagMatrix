@@ -84,6 +84,13 @@ type tagTaskContext struct {
 	TagMode     string // 打标模式：single, multiple, mixed
 }
 
+// GetTaskBatches 获取所有任务批次
+func (s *TaskEngineService) GetTaskBatches() ([]model.TagTaskBatch, error) {
+	var batches []model.TagTaskBatch
+	err := s.db.Order("id desc").Find(&batches).Error
+	return batches, err
+}
+
 // RunTaggingTask 异步执行规则打标任务
 // datasetID: 任务针对的数据集
 // ruleIDs: 需要执行的规则ID列表

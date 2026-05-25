@@ -71,6 +71,20 @@
     *   `pkg/`: 可在内部项目间复用的公共组件包（如 `matcher/` 规则引擎）。
 *   `frontend/`: 存放 Wails 的前端源码（Vue3 + Vite）。
 
+#### 2.1.1 核心架构原则：三层架构 (Three-Tier Architecture)
+后端开发必须严格遵循 **Controller/App 层 -> Service 层 -> Model/DB 层** 的单向调用关系：
+1. **Controller/App 层 (`app.go`)**:
+   - 作为 Wails 框架的 Facade (门面) 层。
+   - 职责仅限于：接收前端 IPC 请求、参数简单校验、调用对应的 `Service` 方法、返回结果给前端。
+   - **绝对禁止**：在此层直接引用或调用 `model.DB` 进行数据库查询或操作。
+2. **Service 层 (`internal/service/*`)**:
+   - 承载所有的核心业务逻辑。
+   - 职责：处理业务规则、组装数据、调用 `Model/DB` 层进行数据持久化。
+3. **Model/DB 层 (`internal/model/`)**:
+   - 仅包含数据结构定义（GORM 模型）和数据库连接的初始化。
+
+**架构整洁度红线**：任何新增的数据库操作，必须封装在 `service` 对应业务域下的方法中，`app.go` 只能通过形如 `a.xxxService.DoSomething()` 的方式进行委托调用。
+
 ### 2.2 前端结构 (Vue3)
 *   `src/components/`: 可复用组件（如 `RuleBuilder`, `TagSelector`）。
 *   `src/views/` (或 `pages/`): 页面级组件（如 `DataImport.vue`, `TagManager.vue`）。

@@ -1007,9 +1007,7 @@ func (a *App) DeleteRule(id uint64) error {
 
 // GetAllRules 获取所有规则
 func (a *App) GetAllRules() ([]model.SysMatchRule, error) {
-	var rules []model.SysMatchRule
-	err := model.DB.Find(&rules).Error
-	return rules, err
+	return a.tagLogic.GetAllRules()
 }
 
 // DryRunRule 规则试算
@@ -1040,9 +1038,7 @@ func (a *App) DeleteTaskBatches(batchIDs []uint64) error {
 
 // GetTaskBatches 获取所有打标批次
 func (a *App) GetTaskBatches() ([]model.TagTaskBatch, error) {
-	var batches []model.TagTaskBatch
-	err := model.DB.Order("id desc").Find(&batches).Error
-	return batches, err
+	return a.taskEngine.GetTaskBatches()
 }
 
 // GetTaskLogs 获取某个批次的打标日志

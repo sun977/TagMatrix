@@ -386,6 +386,13 @@ func (s *TagLogicService) GetRulesByTagAndDataset(tagID uint64, datasetID uint64
 	return &rule, nil
 }
 
+// GetAllRules 获取所有规则
+func (s *TagLogicService) GetAllRules() ([]model.SysMatchRule, error) {
+	var rules []model.SysMatchRule
+	err := s.db.Find(&rules).Error
+	return rules, err
+}
+
 // DeleteRule 删除规则
 func (s *TagLogicService) DeleteRule(id uint64) error {
 	return s.db.Transaction(func(tx *gorm.DB) error {
