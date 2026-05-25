@@ -37,15 +37,15 @@
               </el-select>
             </div>
           </el-col>
-          <el-col :span="4">
-            <div class="form-item">
-              <label>选择来源文件</label>
-              <el-select v-model="taskForm.sourceFile" placeholder="请选择来源文件" class="w-100">
-                  <el-option :label="`全量库内数据 (${totalRecords}条)`" value="all" />
-                  <el-option v-for="ds in availableSourceFiles" :key="ds.source_name" :label="`${ds.source_name} (${ds.count}条)`" :value="ds.source_name" />
-                </el-select>
-            </div>
-          </el-col>
+<el-col :span="4">
+<div class="form-item">
+<label>选择来源文件</label>
+<el-select v-model="taskForm.sourceFile" multiple collapse-tags collapse-tags-tooltip placeholder="请选择来源文件" class="w-100" @change="handleSourceFileChange">
+<el-option :label="`全量库内数据 (${totalRecords}条)`" value="all" />
+<el-option v-for="ds in availableSourceFiles" :key="ds.source_name" :label="`${ds.source_name} (${ds.count}条)`" :value="ds.source_name" />
+</el-select>
+</div>
+</el-col>
           <el-col :span="4">
             <div class="form-item">
               <label>选择要执行的标签规则</label>
@@ -365,12 +365,25 @@ const availableDatasets = ref<model.SysDataset[]>([])
 const taskForm = ref({
   batchName: '',
   datasetId: undefined as number | undefined,
-  sourceFile: 'all',
+  sourceFile: ['all'],
   rules: ['all'],
   execStrategy: 'append',
   tagMode: 'multiple',
   desc: ''
 })
+
+const handleSourceFileChange = (val: string[]) => {
+  if (!val || val.length === 0) {
+    taskForm.value.sourceFile = ['all']
+    return
+  }
+  const lastSelected = val[val.length - 1]
+  if (lastSelected === 'all') {
+    taskForm.value.sourceFile = ['all']
+  } else if (val.includes('all')) {
+    taskForm.value.sourceFile = val.filter(v => v !== 'all')
+  }
+}
 
 const handleRuleChange = (val: string[]) => {
   if (!val || val.length === 0) {
@@ -387,7 +400,7 @@ const handleRuleChange = (val: string[]) => {
 
 const handleDatasetChange = async () => {
   taskForm.value.rules = ['all']
-  taskForm.value.sourceFile = 'all'
+  taskForm.value.sourceFile = ['all']
   availableRules.value = []
   availableSourceFiles.value = []
   if (!taskForm.value.datasetId) {
@@ -674,7 +687,7 @@ const submitTask = async () => {
       taskForm.value.desc,
       isOverwrite,
       taskForm.value.tagMode,
-      taskForm.value.sourceFile === 'all' ? '' : taskForm.value.sourceFile
+      taskForm.value.sourceFile.includes('all') ? [] : taskForm.value.sourceFile
     )
     ElMessage.success(`任务提交成功`)
     

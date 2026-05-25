@@ -98,7 +98,7 @@ func (s *TaskEngineService) GetTaskBatches() ([]model.TagTaskBatch, error) {
 // desc: 任务描述
 // isOverwrite: 是否为覆盖模式（清除原有标签）
 // tagMode: 打标模式（single: 单标签, multiple: 多标签, mixed: 混合模式）
-func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, desc string, isOverwrite bool, tagMode string, sourceFile string) (uint64, error) {
+func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, desc string, isOverwrite bool, tagMode string, sourceFiles []string) (uint64, error) {
 	if datasetID == 0 {
 		return 0, fmt.Errorf("dataset_id cannot be empty")
 	}
@@ -136,6 +136,8 @@ func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, b
 		batchName = fmt.Sprintf("AutoTag_%d", batchID)
 	}
 
+	sourceFileStr := strings.Join(sourceFiles, ",")
+
 	batch := model.TagTaskBatch{
 		BaseModel:    model.BaseModel{ID: batchID},
 		DatasetID:    datasetID,
@@ -143,7 +145,7 @@ func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, b
 		Desc:         desc,
 		Status:       "running",
 		TagMode:      tagMode,
-		SourceFile:   sourceFile,
+		SourceFile:   sourceFileStr,
 		ExecStrategy: execStrategy,
 		Rules:        rulesStr,
 	}
@@ -152,7 +154,7 @@ func (s *TaskEngineService) RunTaggingTask(datasetID uint64, ruleIDs []uint64, b
 	}
 
 	// 3. 异步启动打标引擎
-	go s.executeTask(batchID, datasetID, rules, isOverwrite, tagMode, sourceFile)
+	go s.executeTask(batchID, datasetID, rules, isOverwrite, tagMode, sourceFiles)
 
 	return batchID, nil
 }
@@ -187,8 +189,8 @@ type parsedRule struct {
 }
 
 // executeTask 核心调度引擎，使用 Worker Pool 模式流式处理海量数据
-func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string, sourceFile string) {
-	log.Printf("[TaskEngine] Starting batch %d, datasetID: %d, sourceFile: %s", batchID, datasetID, sourceFile)
+func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules []model.SysMatchRule, isOverwrite bool, tagMode string, sourceFiles []string) {
+	log.Printf("[TaskEngine] Starting batch %d, datasetID: %d, sourceFiles: %v", batchID, datasetID, sourceFiles)
 
 	// 提取所有涉及的 TagID
 	// [优化]: 此处提前批量提取并查询相关的 Tag 信息，是为了避免在海量数据执行 MDCT 仲裁时引发 N+1 查库导致性能崩溃。
@@ -241,8 +243,8 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	// 先获取总记录数用于进度计算
 	var totalRecords int64
 	query := s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
-	if sourceFile != "" && sourceFile != "all" {
-		query = query.Where("json_extract(data, '$.\"TagM_sourceFile\"') = ?", sourceFile)
+	if len(sourceFiles) > 0 {
+		query = query.Where("source_name IN ?", sourceFiles)
 	}
 	query.Count(&totalRecords)
 
@@ -278,8 +280,8 @@ func (s *TaskEngineService) executeTask(batchID uint64, datasetID uint64, rules 
 	batchSize := 1000
 	var results []model.RawDataRecord
 	query = s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ?", datasetID)
-	if sourceFile != "" && sourceFile != "all" {
-		query = query.Where("json_extract(data, '$.\"TagM_sourceFile\"') = ?", sourceFile)
+	if len(sourceFiles) > 0 {
+		query = query.Where("source_name IN ?", sourceFiles)
 	}
 	err := query.FindInBatches(&results, batchSize, func(tx *gorm.DB, batch int) error {
 		// 将当前的 records 深拷贝发送给 channel，避免并发修改

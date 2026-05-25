@@ -1017,8 +1017,8 @@ func (a *App) DryRunRule(ruleJSON string, limit int, datasetID uint64) ([]taglog
 
 // ----------------- Task Engine API -----------------
 // RunTaggingTask 异步执行规则打标任务
-func (a *App) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, desc string, isOverwrite bool, tagMode string, sourceFile string) (uint64, error) {
-	return a.taskEngine.RunTaggingTask(datasetID, ruleIDs, batchName, desc, isOverwrite, tagMode, sourceFile)
+func (a *App) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, desc string, isOverwrite bool, tagMode string, sourceFiles []string) (uint64, error) {
+	return a.taskEngine.RunTaggingTask(datasetID, ruleIDs, batchName, desc, isOverwrite, tagMode, sourceFiles)
 }
 
 // GetAvailableSourceFiles 获取所有可用的来源文件选项
