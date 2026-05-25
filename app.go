@@ -239,6 +239,11 @@ func (a *App) GetDashboardStats() (*model.DashboardStats, error) {
 
 // ----------------- Dataset API -----------------
 
+// GetDatasetTotalRecords 获取指定数据集的总记录数（轻量级接口）
+func (a *App) GetDatasetTotalRecords(datasetID uint64) (int64, error) {
+	return a.dataset.GetDatasetTotalRecords(datasetID)
+}
+
 // ListDatasets 获取所有数据集
 func (a *App) ListDatasets() ([]model.SysDataset, error) {
 	return a.dataset.ListDatasets()
@@ -559,7 +564,7 @@ func (a *App) GetTaggedDataList(datasetID, keyword, tag, batch, searchCol, sourc
 					if primaryTagMap[t.ID] {
 						dto.PrimaryTag = &tagDto
 					}
-					
+
 					// 如果有命中次数，放入 DTO 的 TagHits 中
 					if hitsMap[t.ID] > 0 {
 						if dto.TagHits == nil {

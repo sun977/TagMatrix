@@ -6,6 +6,7 @@ import (
 
 	"TagMatrix/internal/pkg/logger"
 	"github.com/glebarez/sqlite"
+	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -35,6 +36,12 @@ func InitDB(dbPath string) error {
 	err = autoMigrate()
 	if err != nil {
 		return fmt.Errorf("failed to auto migrate database schemas: %w", err)
+	}
+
+	// 补救历史数据：将 json 中的 TagM_sourceFile 提取到物理列 source_name
+	err = DB.Exec(`UPDATE raw_data_records SET source_name = json_extract(data, '$."TagM_sourceFile"') WHERE (source_name IS NULL OR source_name = '') AND json_extract(data, '$."TagM_sourceFile"') IS NOT NULL`).Error
+	if err != nil {
+		logger.Warn("Failed to migrate source_name from json data", zap.Error(err))
 	}
 
 	logger.Info(fmt.Sprintf("Successfully connected to SQLite at %s and migrated models", dbPath))

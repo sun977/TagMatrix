@@ -328,7 +328,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { VideoPlay, RefreshRight, QuestionFilled, Loading, Setting } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, GetTaskLogsPaged, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset } from '../../wailsjs/go/main/App'
+import { GetTaskBatches, RunTaggingTask, RollbackTask, GetDashboardStats, GetTaskLogs, GetTaskLogsPaged, ExportTaskLogsCSV, DeleteTaskBatches, GetAvailableSourceFiles, ListDatasets, GetRulesByDataset, GetDatasetTotalRecords } from '../../wailsjs/go/main/App'
 import { model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 
@@ -400,19 +400,14 @@ const handleDatasetChange = async () => {
     const sources = await GetAvailableSourceFiles(taskForm.value.datasetId)
     availableSourceFiles.value = sources || []
     
-    const rules = await GetRulesByDataset(taskForm.value.datasetId)
-    availableRules.value = rules || []
-    
-    const stats = await GetDashboardStats()
-    if (stats.datasetStats) {
-      const dsStat = stats.datasetStats.find(s => s.datasetId === taskForm.value.datasetId)
-      totalRecords.value = dsStat ? dsStat.totalRecords : 0
-    } else {
-      totalRecords.value = 0
-    }
-  } catch (e: any) {
-    ElMessage.error('加载数据集相关信息失败: ' + String(e))
-  }
+		const rules = await GetRulesByDataset(taskForm.value.datasetId)
+		availableRules.value = rules || []
+
+		const totalCount = await GetDatasetTotalRecords(taskForm.value.datasetId)
+		totalRecords.value = totalCount
+	} catch (e: any) {
+		ElMessage.error('加载数据集相关信息失败: ' + String(e))
+	}
 }
 
 const filterDataset = ref<string | number>('all')

@@ -56,6 +56,16 @@ func (s *DatasetService) UpdateDataset(id uint64, name, description string) erro
 	return nil
 }
 
+// GetDatasetTotalRecords 获取指定数据集的总记录数
+func (s *DatasetService) GetDatasetTotalRecords(datasetID uint64) (int64, error) {
+	if s.db == nil {
+		return 0, fmt.Errorf("database not initialized")
+	}
+	var count int64
+	err := s.db.Model(&model.RawDataRecord{}).Where("dataset_id = ? AND deleted_at IS NULL", datasetID).Count(&count).Error
+	return count, err
+}
+
 // DeleteDataset 删除数据集及关联数据
 func (s *DatasetService) DeleteDataset(id uint64) error {
 	if s.db == nil {

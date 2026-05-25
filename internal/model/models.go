@@ -25,8 +25,9 @@ type SysDataset struct {
 type RawDataRecord struct {
 	BaseModel
 	DatasetID uint64         `json:"dataset_id" gorm:"index;not null;comment:关联的数据集ID"`
-	BatchID   uint64         `json:"batch_id" gorm:"index;comment:导入时的批次 ID"`
-	Data      string         `json:"data" gorm:"type:text;comment:动态列数据 (建议存储 JSON 字符串)"`
+	BatchID    uint64         `json:"batch_id" gorm:"index;comment:导入时的批次 ID"`
+	SourceName string         `json:"source_name" gorm:"index;type:varchar(255);comment:来源名称(文件名/表名等)"`
+	Data       string         `json:"data" gorm:"type:text;comment:动态列数据 (建议存储 JSON 字符串)"`
 	DeletedAt gorm.DeletedAt `json:"-" gorm:"index;comment:软删除时间"`
 }
 

@@ -367,15 +367,22 @@ func (s *DataImportService) batchInsertRecordsTx(tx *gorm.DB, records []map[stri
 	var batchData []model.RawDataRecord
 
 	for i, record := range records {
+		// 提取 SourceName 并保留在 JSON 中兼容【如果 source_name 为空，就检查JSON字段中的 TagM_sourceFile】
+		sourceName := ""
+		if val, ok := record["TagM_sourceFile"].(string); ok {
+			sourceName = val
+		}
+
 		jsonData, err := json.Marshal(record)
 		if err != nil {
 			return fmt.Errorf("failed to marshal record to JSON: %w", err)
 		}
 
 		batchData = append(batchData, model.RawDataRecord{
-			DatasetID: datasetID,
-			BatchID:   batchID,
-			Data:      string(jsonData),
+			DatasetID:  datasetID,
+			BatchID:    batchID,
+			SourceName: sourceName,
+			Data:       string(jsonData),
 		})
 
 		if len(batchData) >= batchSize || i == len(records)-1 {

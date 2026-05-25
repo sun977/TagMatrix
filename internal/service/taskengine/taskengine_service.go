@@ -155,14 +155,14 @@ func (s *TaskEngineService) GetAvailableSourceFiles(ctx context.Context, dataset
 	var results []model.SourceFileOption
 
 	query := s.db.WithContext(ctx).Table("raw_data_records").
-		Select("json_extract(data, '$.\"TagM_sourceFile\"') as source_name, count(id) as count").
-		Where("deleted_at IS NULL AND json_extract(data, '$.\"TagM_sourceFile\"') IS NOT NULL")
+		Select("source_name, count(id) as count").
+		Where("deleted_at IS NULL AND source_name IS NOT NULL AND source_name != ''")
 
 	if datasetID > 0 {
 		query = query.Where("dataset_id = ?", datasetID)
 	}
 
-	err := query.Group("json_extract(data, '$.\"TagM_sourceFile\"')").
+	err := query.Group("source_name").
 		Order("source_name ASC").
 		Find(&results).Error
 

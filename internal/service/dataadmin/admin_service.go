@@ -295,9 +295,14 @@ func (s *DataAdminService) InsertVirtualRecord(datasetId uint, payload map[strin
 	if err != nil {
 		return err
 	}
+	sourceName := ""
+	if val, ok := payload["TagM_sourceFile"].(string); ok {
+		sourceName = val
+	}
 	return s.db.Table("raw_data_records").Create(map[string]interface{}{
-		"dataset_id": datasetId,
-		"data":       string(newData),
+		"dataset_id":  datasetId,
+		"source_name": sourceName,
+		"data":        string(newData),
 	}).Error
 }
 
