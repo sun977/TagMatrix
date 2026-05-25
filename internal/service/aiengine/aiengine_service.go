@@ -258,7 +258,7 @@ TagMatrix操作指南：
 2.格式规范：SQL/正则/JSON/代码等必用Markdown代码块包裹。涉及界面操作用有序列表。`
 	}
 
-	actionInstruction := "\n\n[系统交互指令]\n如果请求编写SQL，除Markdown代码块外，请务必在末尾输出动作标签：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n前端将渲染为按钮。*(注意：Action属性用双引号。SQL内字符串字面量用单引号避免冲突。罕见双引号用HTML实体&quot;转义。换行保留)*"
+	actionInstruction := "\n\n[系统交互指令]\n如果请求编写SQL，你必须先使用 Markdown 代码块 ```sql ... ``` 展示 SQL 语句给用户看，然后再在回答末尾附上动作标签：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n前端将渲染为按钮。*(注意：Action属性用双引号。SQL内字符串字面量用单引号避免冲突。罕见双引号用HTML实体&quot;转义。换行保留)*"
 
 	fullSystemPrompt := systemPrompt + actionInstruction + "\n\n以下是当前系统的数据库结构信息：\n" + schema
 
