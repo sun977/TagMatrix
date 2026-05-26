@@ -92,12 +92,20 @@
           </div>
         </el-tab-pane>
 
-        <!-- Prompt 与策略 -->
-        <el-tab-pane label="Prompt 设置" name="prompts">
+        <!-- Prompt 与策略 (仅开发者模式可见) -->
+        <el-tab-pane label="Prompt 设置" name="prompts" v-if="form.developerMode">
           <div class="settings-section">
-            <h3>系统提示词</h3>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+              <h3 style="margin: 0;">系统提示词</h3>
+              <el-tag size="small" type="warning" effect="light">开发者模式</el-tag>
+            </div>
             <div class="setting-item">
-              <!-- <label>System Prompt</label> -->
+              <el-alert
+                title="警告：此页面直接修改 TagMatrix 核心解析引擎的提示词，请谨慎操作。"
+                type="warning"
+                :closable="false"
+                style="margin-bottom: 12px;"
+              />
               <el-input 
                 v-model="form.systemPrompt" 
                 type="textarea" 
