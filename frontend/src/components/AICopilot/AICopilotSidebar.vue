@@ -158,11 +158,16 @@ const handleSend = async (text: string) => {
     }
   }
 
+  const payloadObj = {
+    messages: payloadMsgs,
+    is_agent: aiStore.isAgentMode
+  }
+
   // 4. 调用后端流式接口
   try {
     // 强制转换为 any 以兼容 TS，因为我们在 app.go 修改了参数但前端的绑定位未重新生成
     // 原生 wails 绑定会限制参数数量 (因为 JS 代理层中只有一个 arg)，可以直接使用 window.go 对象绕过这个限制
-    await (window as any).go.main.App.ChatWithAIStream(reqId, JSON.stringify(payloadMsgs))
+    await (window as any).go.main.App.ChatWithAIStream(reqId, JSON.stringify(payloadObj))
   } catch (e: any) {
     currentGeneratingContent = `[系统错误: ${e.message || e}]`
     aiStore.updateLastMessage(currentGeneratingContent)

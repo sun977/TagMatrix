@@ -32,13 +32,13 @@
       
       <div class="action-bar">
         <div class="left-actions">
-          <el-tooltip :content="isAgentMode ? 'Agent 模式 (规划中)' : 'Ask 模式 (规划中)'" placement="top" :show-after="500">
-            <div class="mode-switch-btn" :class="{ 'is-agent': isAgentMode }" @click="toggleMode">
+          <el-tooltip :content="aiStore.isAgentMode ? 'Agent 模式' : 'Ask 模式'" placement="top" :show-after="500">
+            <div class="mode-switch-btn" :class="{ 'is-agent': aiStore.isAgentMode }" @click="aiStore.toggleAgentMode">
               <el-icon class="mode-icon">
-                <svg v-if="!isAgentMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+                <svg v-if="!aiStore.isAgentMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
                 <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
               </el-icon>
-              <span class="mode-text">{{ isAgentMode ? 'Agent' : 'Ask' }}</span>
+              <span class="mode-text">{{ aiStore.isAgentMode ? 'Agent' : 'Ask' }}</span>
             </div>
           </el-tooltip>
           <el-tooltip content="添加附件 (规划中)" placement="top" :show-after="500">
@@ -68,14 +68,13 @@
 import { ref, nextTick, computed } from 'vue'
 import { Promotion, Loading, MagicStick, Document, Search, Plus } from '@element-plus/icons-vue'
 
+import { useAIStore } from '../../store/useAIStore'
+
+const aiStore = useAIStore()
+
 const props = defineProps<{
   disabled?: boolean
 }>()
-
-const isAgentMode = ref(false)
-const toggleMode = () => {
-  isAgentMode.value = !isAgentMode.value
-}
 
 const inputText = ref('')
 const textareaRef = ref<HTMLTextAreaElement | null>(null)

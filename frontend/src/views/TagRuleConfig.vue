@@ -281,10 +281,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled, Filter, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRulesByTag, CheckTagHasRules, ListDatasets, DeleteRule, MoveTag } from '../../wailsjs/go/main/App'
+import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { model } from '../../wailsjs/go/models'
 import RuleGroup from '../components/RuleGroup.vue'
 
@@ -799,6 +800,17 @@ const submitAddTag = async () => {
 onMounted(() => {
   fetchTags()
   fetchDatasets()
+  EventsOn('tag_tree_updated', fetchTags)
+  EventsOn('rule_list_updated', () => {
+    if (selectedTag.value) {
+      handleNodeClick(selectedTag.value)
+    }
+  })
+})
+
+onUnmounted(() => {
+  EventsOff('tag_tree_updated')
+  EventsOff('rule_list_updated')
 })
 </script>
 

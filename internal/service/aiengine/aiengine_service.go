@@ -32,6 +32,7 @@ import (
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
 	"TagMatrix/internal/service/network"
+	"TagMatrix/internal/service/taglogic"
 
 	"github.com/sashabaranov/go-openai"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -69,6 +70,7 @@ func getAISemaphore() *semaphore.Weighted {
 type AIEngineService struct {
 	db           *gorm.DB
 	proxyService *network.ProxyService
+	tagLogic     *taglogic.TagLogicService
 }
 
 // NewAIEngineService 创建 AIEngineService 实例
@@ -76,6 +78,7 @@ func NewAIEngineService() *AIEngineService {
 	return &AIEngineService{
 		db:           model.DB,
 		proxyService: network.NewProxyService(), // 引入网络代理服务
+		tagLogic:     taglogic.NewTagLogicService(),
 	}
 }
 
@@ -258,18 +261,34 @@ TagMatrix操作指南：
 2.格式规范：SQL/正则/JSON/代码等必用Markdown代码块包裹。涉及界面操作用有序列表。`
 	}
 
-	actionInstruction := "\n\n[系统交互指令]\n如果请求编写SQL，你必须先使用 Markdown 代码块 ```sql ... ``` 展示 SQL 语句给用户看，然后再在回答末尾附上动作标签：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n前端将渲染为按钮。*(注意：Action属性用双引号。SQL内字符串字面量用单引号避免冲突。罕见双引号用HTML实体&quot;转义。换行保留)*"
+	actionInstruction := "\n\n[系统交互指令]\n如果请求编写SQL，你必须先使用 Markdown 代码块 ```sql ... ``` 展示 SQL 语句给用户看，然后再在回答末尾附上动作标签：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n前端将渲染为按钮。*(注意：Action属性用双引号。SQL内字符串字面量用单引号避免冲突。罕见双引号用HTML实体&quot;转义。换行保留)*\n" +
+		"如果用户请求删除标签，请务必不要尝试直接操作数据库，而是输出如下动作标签供用户确认（将目标标签路径填入query中）：\n<action type=\"delete_tag\" query=\"/目标/标签/路径/\" label=\"确认删除该标签\" />"
 
 	fullSystemPrompt := systemPrompt + actionInstruction + "\n\n以下是当前系统的数据库结构信息：\n" + schema
 
-	// 解析传入的 message (可能是 JSON 数组)
+	// 解析传入的 message (可能是一个包含 is_agent 的对象，或者是单纯的消息数组)
 	type ChatMsgJSON struct {
 		Role    string `json:"role"`
 		Content string `json:"content"`
 	}
-	var incomingMsgs []ChatMsgJSON
+	type PayloadJSON struct {
+		Messages []ChatMsgJSON `json:"messages"`
+		IsAgent  bool          `json:"is_agent"`
+	}
 
-	if strings.HasPrefix(strings.TrimSpace(message), "[") {
+	var incomingMsgs []ChatMsgJSON
+	var isAgentMode bool
+	var tagTreeContext string
+
+	if strings.HasPrefix(strings.TrimSpace(message), "{") {
+		var payload PayloadJSON
+		if err := json.Unmarshal([]byte(message), &payload); err == nil {
+			incomingMsgs = payload.Messages
+			isAgentMode = payload.IsAgent
+		} else {
+			incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
+		}
+	} else if strings.HasPrefix(strings.TrimSpace(message), "[") {
 		if err := json.Unmarshal([]byte(message), &incomingMsgs); err != nil {
 			// 解析失败，作为一个普通字符串处理
 			incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
@@ -279,11 +298,18 @@ TagMatrix操作指南：
 		incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
 	}
 
+	if isAgentMode {
+		// 获取当前系统的标签树作为上下文
+		treeNodes, _ := s.tagLogic.GetTagTree()
+		treeBytes, _ := json.MarshalIndent(treeNodes, "", "  ")
+		tagTreeContext = "\n\n【系统当前已有标签目录树(仅供参考目录结构)】\n" + string(treeBytes)
+	}
+
 	// 构造发送给大模型的 Messages 数组
 	var messages []openai.ChatCompletionMessage
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: fullSystemPrompt,
+		Content: fullSystemPrompt + tagTreeContext,
 	})
 
 	for _, m := range incomingMsgs {
@@ -303,59 +329,231 @@ TagMatrix操作指南：
 		Stream:   true,
 	}
 
-	// 控制 AI 并发请求
-	sem := getAISemaphore()
-	if acquireErr := sem.Acquire(ctx, 1); acquireErr != nil {
-		return fmt.Errorf("failed to acquire AI semaphore: %w", acquireErr)
-	}
-	defer sem.Release(1)
-
-	var stream *openai.ChatCompletionStream
-	retries := config.GetConfig().Adv.Retries
-	if retries < 0 {
-		retries = 0
-	}
-	for i := 0; i <= retries; i++ {
-		stream, err = client.CreateChatCompletionStream(ctx, req)
-		if err == nil {
-			break
+	if isAgentMode {
+		req.Tools = []openai.Tool{
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "create_system_tag",
+					Description: "在系统中创建新标签",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"tag_name": map[string]interface{}{
+								"type":        "string",
+								"description": "要创建的标签名称，例如 '日志'",
+							},
+							"parent_path": map[string]interface{}{
+								"type":        "string",
+								"description": "父级标签的完整路径，以 / 开头。如果在根目录下创建，则传 '/'",
+							},
+							"description": map[string]interface{}{
+								"type":        "string",
+								"description": "标签描述",
+							},
+						},
+						"required": []string{"tag_name", "parent_path"},
+					},
+				},
+			},
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "update_system_tag",
+					Description: "修改标签的名称、颜色或描述",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"target_tag_path": map[string]interface{}{
+								"type":        "string",
+								"description": "要修改的目标标签当前完整路径，例如 '/系统/日志'",
+							},
+							"new_name": map[string]interface{}{
+								"type":        "string",
+								"description": "可选。新的标签名称",
+							},
+							"new_color": map[string]interface{}{
+								"type":        "string",
+								"description": "可选。新的标签颜色(HEX，如 #ff0000)",
+							},
+							"new_description": map[string]interface{}{
+								"type":        "string",
+								"description": "可选。新的标签描述",
+							},
+						},
+						"required": []string{"target_tag_path"},
+					},
+				},
+			},
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "move_system_tag",
+					Description: "移动标签到新的父级路径下",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"target_tag_path": map[string]interface{}{
+								"type":        "string",
+								"description": "要移动的目标标签完整路径",
+							},
+							"new_parent_path": map[string]interface{}{
+								"type":        "string",
+								"description": "新的父级标签完整路径，如果在根目录下创建，则传 '/'",
+							},
+						},
+						"required": []string{"target_tag_path", "new_parent_path"},
+					},
+				},
+			},
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "create_tag_rule",
+					Description: "为目标标签挂载匹配/提取规则",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"target_tag_path": map[string]interface{}{
+								"type":        "string",
+								"description": "目标标签完整路径，例如 '/系统/日志'",
+							},
+							"condition_json": map[string]interface{}{
+								"type":        "string",
+								"description": "符合 TagMatrix 规则引擎规范的 JSON 字符串",
+							},
+							"is_count_mode": map[string]interface{}{
+								"type":        "boolean",
+								"description": "是否开启行级计数模式",
+							},
+						},
+						"required": []string{"target_tag_path", "condition_json"},
+					},
+				},
+			},
 		}
-		if i < retries {
-			continue
-		}
 	}
-	if err != nil {
-		return fmt.Errorf("AI response error after %d retries: %w", retries, err)
-	}
-	defer stream.Close()
 
 	for {
-		response, err := stream.Recv()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				if reqId != "" {
-					runtime.EventsEmit(ctx, "ai_chat_end_"+reqId)
-				} else {
-					runtime.EventsEmit(ctx, "ai_chat_end")
-				}
+		// 控制 AI 并发请求
+		sem := getAISemaphore()
+		if acquireErr := sem.Acquire(ctx, 1); acquireErr != nil {
+			return fmt.Errorf("failed to acquire AI semaphore: %w", acquireErr)
+		}
+
+		var stream *openai.ChatCompletionStream
+		retries := config.GetConfig().Adv.Retries
+		if retries < 0 {
+			retries = 0
+		}
+		for i := 0; i <= retries; i++ {
+			stream, err = client.CreateChatCompletionStream(ctx, req)
+			if err == nil {
 				break
 			}
-			if reqId != "" {
-				runtime.EventsEmit(ctx, "ai_chat_error_"+reqId, err.Error())
-			} else {
-				runtime.EventsEmit(ctx, "ai_chat_error", err.Error())
+			if i < retries {
+				continue
 			}
-			return err
 		}
-		if len(response.Choices) > 0 {
-			content := response.Choices[0].Delta.Content
-			if content != "" {
+		if err != nil {
+			sem.Release(1)
+			return fmt.Errorf("AI response error after %d retries: %w", retries, err)
+		}
+
+		var collectedToolCalls []openai.ToolCall
+		var assistantMessage string
+
+		for {
+			response, streamErr := stream.Recv()
+			if streamErr != nil {
+				if errors.Is(streamErr, io.EOF) {
+					break
+				}
+				stream.Close()
+				sem.Release(1)
 				if reqId != "" {
-					runtime.EventsEmit(ctx, "ai_chat_chunk_"+reqId, content)
+					runtime.EventsEmit(ctx, "ai_chat_error_"+reqId, streamErr.Error())
 				} else {
-					runtime.EventsEmit(ctx, "ai_chat_chunk", content)
+					runtime.EventsEmit(ctx, "ai_chat_error", streamErr.Error())
+				}
+				return streamErr
+			}
+			
+			if len(response.Choices) > 0 {
+				delta := response.Choices[0].Delta
+				
+				// Handle Tool Calls in stream
+				for _, tc := range delta.ToolCalls {
+					idx := 0
+					if tc.Index != nil {
+						idx = *tc.Index
+					}
+					for len(collectedToolCalls) <= idx {
+						collectedToolCalls = append(collectedToolCalls, openai.ToolCall{
+							Type: openai.ToolTypeFunction,
+						})
+					}
+					if tc.ID != "" {
+						collectedToolCalls[idx].ID = tc.ID
+					}
+					if tc.Function.Name != "" {
+						collectedToolCalls[idx].Function.Name = tc.Function.Name
+					}
+					if tc.Function.Arguments != "" {
+						collectedToolCalls[idx].Function.Arguments += tc.Function.Arguments
+					}
+				}
+
+				content := delta.Content
+				if content != "" {
+					assistantMessage += content
+					if reqId != "" {
+						runtime.EventsEmit(ctx, "ai_chat_chunk_"+reqId, content)
+					} else {
+						runtime.EventsEmit(ctx, "ai_chat_chunk", content)
+					}
 				}
 			}
+		}
+		stream.Close()
+		sem.Release(1)
+
+		if len(collectedToolCalls) > 0 {
+			// Append assistant's tool call message
+			messages = append(messages, openai.ChatCompletionMessage{
+				Role:       openai.ChatMessageRoleAssistant,
+				Content:    assistantMessage,
+				ToolCalls:  collectedToolCalls,
+			})
+
+			// Execute tools and append results
+			for _, tc := range collectedToolCalls {
+				// Emit an event to UI that AI is executing a tool
+				toolMsg := fmt.Sprintf("\n\n> 🤖 [Agent] 正在执行系统操作: `%s`...\n\n", tc.Function.Name)
+				if reqId != "" {
+					runtime.EventsEmit(ctx, "ai_chat_chunk_"+reqId, toolMsg)
+				} else {
+					runtime.EventsEmit(ctx, "ai_chat_chunk", toolMsg)
+				}
+
+				result := s.executeAITool(ctx, tc)
+				messages = append(messages, openai.ChatCompletionMessage{
+					Role:       openai.ChatMessageRoleTool,
+					Content:    result,
+					ToolCallID: tc.ID,
+				})
+			}
+			// Update request messages and loop again
+			req.Messages = messages
+			continue
+		} else {
+			// No more tool calls, we are done
+			if reqId != "" {
+				runtime.EventsEmit(ctx, "ai_chat_end_"+reqId)
+			} else {
+				runtime.EventsEmit(ctx, "ai_chat_end")
+			}
+			break
 		}
 	}
 	return nil

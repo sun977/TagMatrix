@@ -180,6 +180,42 @@ const handleBubbleClick = (e: MouseEvent) => {
       }).catch(() => {
         // 用户取消
       })
+    } else if (type === 'delete_tag') {
+      ElMessageBox.confirm(
+        '此操作将永久删除该标签及其所有子标签，且会级联删除关联的配置规则。确认删除？',
+        '高危操作确认',
+        {
+          confirmButtonText: '确认删除',
+          cancelButtonText: '取消',
+          type: 'warning',
+        }
+      ).then(async () => {
+        try {
+          const tagPath = query // 这里我们把 tag_path 放在 query 属性里传递过来
+          if (!tagPath) {
+             ElMessage.error('找不到标签路径')
+             return
+          }
+          // 因为 DeleteTag 接口需要 ID，我们需要先通过 App 获取 Tag ID
+          const tag = await (window as any).go.main.App.GetTagByPath(tagPath)
+          if (!tag) {
+             ElMessage.error('找不到该标签')
+             return
+          }
+          await (window as any).go.main.App.DeleteTag(tag.id)
+          ElMessage.success('标签删除成功')
+          window.dispatchEvent(new CustomEvent('tag_tree_updated'))
+          // 因为目前在 sidebar 里面可能监听不到 events，可以通过全局方式
+          // 更好的方式是直接抛出一个刷新事件
+          import('../../../wailsjs/runtime/runtime').then((runtime) => {
+             runtime.EventsEmit('tag_tree_updated')
+          })
+        } catch (error: any) {
+          ElMessage.error('删除失败: ' + error)
+        }
+      }).catch(() => {
+        // 用户取消
+      })
     }
   }
 }

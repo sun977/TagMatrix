@@ -24,6 +24,7 @@ export const useAIStore = defineStore('aiStore', {
     pendingSQL: '', // SQL pending to be executed
     sidebarWidth: 400, // AI 侧边栏宽度
     isDragging: false, // 是否正在拖拽侧边栏
+    isAgentMode: false, // 是否处于 Agent 模式
   }),
   getters: {
     currentChatHistory(state): ChatMessage[] {
@@ -57,6 +58,9 @@ export const useAIStore = defineStore('aiStore', {
       } catch (e) {
         console.error('Failed to check API Key', e)
       }
+    },
+    toggleAgentMode() {
+      this.isAgentMode = !this.isAgentMode
     },
     async togglePanel() {
       this.isOpen = !this.isOpen

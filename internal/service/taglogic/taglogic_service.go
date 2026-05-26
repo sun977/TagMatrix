@@ -124,7 +124,7 @@ func (s *TagLogicService) GetTagTree() ([]model.TagTreeNode, error) {
 	return buildTagTree(tags, 0, ruleMap), nil
 }
 
-// 递归构建标签树
+// buildTagTree 递归构建标签树
 func buildTagTree(tags []model.SysTag, parentID uint64, ruleMap map[uint64]bool) []model.TagTreeNode {
 	var tree []model.TagTreeNode
 	for _, tag := range tags {
@@ -141,6 +141,18 @@ func buildTagTree(tags []model.SysTag, parentID uint64, ruleMap map[uint64]bool)
 		}
 	}
 	return tree
+}
+
+// GetTagByPath 根据路径精确查找标签
+func (s *TagLogicService) GetTagByPath(path string) (*model.SysTag, error) {
+	if !strings.HasSuffix(path, "/") {
+		path += "/"
+	}
+	var tag model.SysTag
+	if err := s.db.Where("path = ?", path).First(&tag).Error; err != nil {
+		return nil, err
+	}
+	return &tag, nil
 }
 
 // GetAllTags 获取所有标签 (平铺列表)
@@ -220,6 +232,82 @@ func (s *TagLogicService) CheckTagHasRules(id uint64) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+// MoveTag 移动标签到新的父节点下，支持拖拽层级结构变化
+func (s *TagLogicService) MoveTag(tagID uint64, newParentID uint64) error {
+	if tagID == 0 {
+		return fmt.Errorf("tag id cannot be empty")
+	}
+	if tagID == newParentID {
+		return fmt.Errorf("cannot move tag to itself")
+	}
+
+	return s.db.Transaction(func(tx *gorm.DB) error {
+		var currentTag model.SysTag
+		if err := tx.First(&currentTag, tagID).Error; err != nil {
+			return fmt.Errorf("tag not found: %w", err)
+		}
+
+		oldPath := currentTag.Path
+		oldLevel := currentTag.Level
+
+		var newParentPath string
+		var newLevel int
+
+		if newParentID > 0 {
+			var parent model.SysTag
+			if err := tx.First(&parent, newParentID).Error; err != nil {
+				return fmt.Errorf("parent tag not found: %w", err)
+			}
+			// 防环校验：不能将父节点移动到它的子孙节点下面
+			if strings.HasPrefix(parent.Path, oldPath) {
+				return fmt.Errorf("cannot move a tag into its own descendant")
+			}
+			newParentPath = parent.Path
+			newLevel = parent.Level + 1
+		} else {
+			newParentPath = ""
+			newLevel = 0
+		}
+
+		// 计算当前节点的新 Path
+		newPath := fmt.Sprintf("%s/%s/", strings.TrimSuffix(newParentPath, "/"), currentTag.Name)
+		if newParentPath == "" {
+			newPath = fmt.Sprintf("/%s/", currentTag.Name)
+		}
+		newPath = strings.ReplaceAll(newPath, "//", "/") // 安全处理多余斜杠
+
+		// 1. 更新当前节点
+		if err := tx.Model(&currentTag).Updates(map[string]interface{}{
+			"parent_id": newParentID,
+			"path":      newPath,
+			"level":     newLevel,
+		}).Error; err != nil {
+			return fmt.Errorf("failed to update tag: %w", err)
+		}
+
+		// 2. 查找并级联更新所有子孙节点
+		var descendants []model.SysTag
+		if err := tx.Where("path LIKE ? AND id != ?", oldPath+"%", tagID).Find(&descendants).Error; err != nil {
+			return fmt.Errorf("failed to find descendants: %w", err)
+		}
+
+		for _, desc := range descendants {
+			// 替换路径前缀
+			descNewPath := strings.Replace(desc.Path, oldPath, newPath, 1)
+			descNewLevel := desc.Level + (newLevel - oldLevel)
+
+			if err := tx.Model(&desc).Updates(map[string]interface{}{
+				"path":  descNewPath,
+				"level": descNewLevel,
+			}).Error; err != nil {
+				return fmt.Errorf("failed to cascade update descendant %d: %w", desc.ID, err)
+			}
+		}
+
+		return nil
+	})
 }
 
 // ----------------- 标签导入导出 (Import/Export) -----------------
@@ -464,80 +552,4 @@ func (s *TagLogicService) DryRunRule(ruleJSON string, limit int, datasetID uint6
 	}
 
 	return results, nil
-}
-
-// MoveTag 移动标签到新的父节点下，支持拖拽层级结构变化
-func (s *TagLogicService) MoveTag(tagID uint64, newParentID uint64) error {
-	if tagID == 0 {
-		return fmt.Errorf("tag id cannot be empty")
-	}
-	if tagID == newParentID {
-		return fmt.Errorf("cannot move tag to itself")
-	}
-
-	return s.db.Transaction(func(tx *gorm.DB) error {
-		var currentTag model.SysTag
-		if err := tx.First(&currentTag, tagID).Error; err != nil {
-			return fmt.Errorf("tag not found: %w", err)
-		}
-
-		oldPath := currentTag.Path
-		oldLevel := currentTag.Level
-
-		var newParentPath string
-		var newLevel int
-
-		if newParentID > 0 {
-			var parent model.SysTag
-			if err := tx.First(&parent, newParentID).Error; err != nil {
-				return fmt.Errorf("parent tag not found: %w", err)
-			}
-			// 防环校验：不能将父节点移动到它的子孙节点下面
-			if strings.HasPrefix(parent.Path, oldPath) {
-				return fmt.Errorf("cannot move a tag into its own descendant")
-			}
-			newParentPath = parent.Path
-			newLevel = parent.Level + 1
-		} else {
-			newParentPath = ""
-			newLevel = 0
-		}
-
-		// 计算当前节点的新 Path
-		newPath := fmt.Sprintf("%s/%s/", strings.TrimSuffix(newParentPath, "/"), currentTag.Name)
-		if newParentPath == "" {
-			newPath = fmt.Sprintf("/%s/", currentTag.Name)
-		}
-		newPath = strings.ReplaceAll(newPath, "//", "/") // 安全处理多余斜杠
-
-		// 1. 更新当前节点
-		if err := tx.Model(&currentTag).Updates(map[string]interface{}{
-			"parent_id": newParentID,
-			"path":      newPath,
-			"level":     newLevel,
-		}).Error; err != nil {
-			return fmt.Errorf("failed to update tag: %w", err)
-		}
-
-		// 2. 查找并级联更新所有子孙节点
-		var descendants []model.SysTag
-		if err := tx.Where("path LIKE ? AND id != ?", oldPath+"%", tagID).Find(&descendants).Error; err != nil {
-			return fmt.Errorf("failed to find descendants: %w", err)
-		}
-
-		for _, desc := range descendants {
-			// 替换路径前缀
-			descNewPath := strings.Replace(desc.Path, oldPath, newPath, 1)
-			descNewLevel := desc.Level + (newLevel - oldLevel)
-
-			if err := tx.Model(&desc).Updates(map[string]interface{}{
-				"path":  descNewPath,
-				"level": descNewLevel,
-			}).Error; err != nil {
-				return fmt.Errorf("failed to cascade update descendant %d: %w", desc.ID, err)
-			}
-		}
-
-		return nil
-	})
 }

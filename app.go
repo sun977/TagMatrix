@@ -944,6 +944,11 @@ func (a *App) GetTagTree() ([]model.TagTreeNode, error) {
 	return a.tagLogic.GetTagTree()
 }
 
+// GetTagByPath 根据路径获取标签
+func (a *App) GetTagByPath(path string) (*model.SysTag, error) {
+	return a.tagLogic.GetTagByPath(path)
+}
+
 // ExportTags 导出标签结构
 func (a *App) ExportTags(exportPath string) error {
 	if exportPath == "" {
