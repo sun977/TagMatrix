@@ -261,10 +261,8 @@ TagMatrix操作指南：
 2.格式规范：SQL/正则/JSON/代码等必用Markdown代码块包裹。涉及界面操作用有序列表。`
 	}
 
-	actionInstruction := "\n\n[系统交互指令]\n如果请求编写SQL，你必须先使用 Markdown 代码块 ```sql ... ``` 展示 SQL 语句给用户看，然后再在回答末尾附上动作标签：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n前端将渲染为按钮。*(注意：Action属性用双引号。SQL内字符串字面量用单引号避免冲突。罕见双引号用HTML实体&quot;转义。换行保留)*\n" +
-		"如果用户请求删除标签，请务必不要尝试直接操作数据库，而是输出如下动作标签供用户确认（将目标标签路径填入query中）：\n<action type=\"delete_tag\" query=\"/目标/标签/路径/\" label=\"确认删除该标签\" />"
-
-	fullSystemPrompt := systemPrompt + actionInstruction + "\n\n以下是当前系统的数据库结构信息：\n" + schema
+	actionInstruction := "\n\n[系统交互指令]\n1. 数据查询操作：如果请求编写SQL查询，你必须先使用 Markdown 代码块 ```sql ... ``` 展示 SQL 语句给用户看，然后再在回答末尾附上动作标签：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n前端将渲染为按钮。*(注意：Action属性用双引号。SQL内字符串字面量用单引号避免冲突。罕见双引号用HTML实体&quot;转义。换行保留)*\n" +
+		"2. 敏感/高危拦截：对于不可逆的删除动作（例如目前支持的“删除标签”操作），请绝对不要尝试直接调用内部工具，而是统一输出交互标签供前端渲染二次确认按钮，例如：\n<action type=\"delete_tag\" query=\"/目标/标签/路径/\" label=\"确认删除该标签\" />"
 
 	// 解析传入的 message (可能是一个包含 is_agent 的对象，或者是单纯的消息数组)
 	type ChatMsgJSON struct {
@@ -298,18 +296,24 @@ TagMatrix操作指南：
 		incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
 	}
 
+	var modeInstruction string
 	if isAgentMode {
+		modeInstruction = "\n\n【运行模式提醒】当前处于 Agent (后台自驱) 模式。系统已开放相关 tools 供你调度。针对用户的指令需求，你可以并且应该直接调用对应的 tools 工具来完成系统配置或变更操作（包括但不限于当前的标签与规则管理，以及未来扩充的其它业务逻辑）。切勿仅仅回复文字让用户手动去操作。"
 		// 获取当前系统的标签树作为上下文
 		treeNodes, _ := s.tagLogic.GetTagTree()
 		treeBytes, _ := json.MarshalIndent(treeNodes, "", "  ")
-		tagTreeContext = "\n\n【系统当前已有标签目录树(仅供参考目录结构)】\n" + string(treeBytes)
+		tagTreeContext = "\n\n【系统当前运行时上下文】\n1. 当前已有标签目录树结构(仅供参考)：\n" + string(treeBytes)
+	} else {
+		modeInstruction = "\n\n【运行模式提醒】当前处于 Ask (纯问答辅助) 模式！在该模式下你**被剥夺了任何底层工具的调用权限**。如果用户要求你直接执行系统级数据变更操作（如数据的创建、修改、移动、删除等业务能力），请委婉说明当前问答模式的限制，并仅提供操作路径和原理解释。切勿假装执行成功，绝对不要模仿输出伪造的执行过程提示！"
 	}
+
+	fullSystemPrompt := systemPrompt + actionInstruction + modeInstruction + "\n\n以下是当前系统的数据库结构信息：\n" + schema + tagTreeContext
 
 	// 构造发送给大模型的 Messages 数组
 	var messages []openai.ChatCompletionMessage
 	messages = append(messages, openai.ChatCompletionMessage{
 		Role:    openai.ChatMessageRoleSystem,
-		Content: fullSystemPrompt + tagTreeContext,
+		Content: fullSystemPrompt,
 	})
 
 	for _, m := range incomingMsgs {
