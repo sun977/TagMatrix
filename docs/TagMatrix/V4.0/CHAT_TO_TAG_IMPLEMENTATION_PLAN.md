@@ -37,7 +37,7 @@
 
 ---
 
-## 阶段二：Chat-to-Tag & Rule (标签与规则联合生成)
+## 阶段二：Chat-to-Tag & Rule (标签与规则联合生成) ✅ **[已完成]**
 *定位：让 AI 能够理解并拆解复杂的业务诉求，不仅能生成符合 Matcher 引擎要求的 AST JSON，还能连带创建标签及设置规则的特殊属性（如行级计数），并在前端渲染为多步执行链。*
 
 ### 1. 深度上下文注入 (Schema & Tag Tree 感知)
@@ -47,9 +47,9 @@
 
 ### 2. 引入原生 Function Calling (Agent 后台自驱模式)
 **机制跃升**：对于系统内聚的写库操作（建标签、建规则），不同于 SQL 查询（需要用户去控制台看结果），AI 应当完全自主代劳。我们将在此全面接入 OpenAI 原生的 `tools` 机制（Function Calling）。
-向 AI 引擎层注册两个核心内部工具：
-*   `create_system_tag(tag_name, parent_path, description)`
-*   `create_tag_rule(target_tag_path, condition_json, is_count_mode)`
+向 AI 引擎层注册核心内部工具：
+*   `create_system_tag`, `update_system_tag`, `move_system_tag`
+*   `create_tag_rule`, `update_tag_rule`, `delete_tag_rule` (注：执行动作现已约束在 AST JSON 的条件节点内部配置，如 `{"action": "row_inc"}`)
 
 ### 3. 后端自动化执行闭环 (Auto-Execution Loop)
 **执行流**：
@@ -83,5 +83,5 @@
 ## 检查清单 (CheckList)
 - [x] 确保前端所有跨页路由的状态接盘（如 `pendingSQL`）在消费后立即清空，避免下次进入页面引发幽灵填入。
 - [x] 确保 SQL 和 JSON 内嵌套的单双引号都经过了安全的转义处理。
-- [ ] 确保后台 Function Calling 闭环具备良好的自我修复能力（当生成的 AST JSON 非法时能向大模型抛回 Exception 并重试，而非终止对话）。
-- [ ] 确保 Agent 静默修改库后，能通过 Wails 事件通知前端局部刷新（如自动刷新左侧菜单树或标签列表状态）。
+- [x] 确保后台 Function Calling 闭环具备良好的自我修复能力（当生成的 AST JSON 非法时能向大模型抛回 Exception 并重试，而非终止对话）。
+- [x] 确保 Agent 静默修改库后，能通过 Wails 事件通知前端局部刷新（如自动刷新左侧菜单树或标签列表状态）。
