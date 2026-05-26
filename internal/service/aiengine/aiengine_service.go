@@ -533,7 +533,7 @@ TagMatrix操作指南：
 			// Execute tools and append results
 			for _, tc := range collectedToolCalls {
 				// Emit an event to UI that AI is executing a tool
-				toolMsg := fmt.Sprintf("\n\n> 🤖 [Agent] 正在执行系统操作: `%s`...\n\n", tc.Function.Name)
+				toolMsg := fmt.Sprintf("\n> 🤖 [Agent] 正在执行操作: `%s`...\n", tc.Function.Name)
 				if reqId != "" {
 					runtime.EventsEmit(ctx, "ai_chat_chunk_"+reqId, toolMsg)
 				} else {
