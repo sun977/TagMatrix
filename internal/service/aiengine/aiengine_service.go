@@ -232,6 +232,192 @@ TagMatrix操作指南：
 	return "", fmt.Errorf("no response from AI")
 }
 
+// getAgentTools 返回 AI Agent 可以调用的工具列表
+func (s *AIEngineService) getAgentTools() []openai.Tool {
+	return []openai.Tool{
+		{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        "create_system_tag",
+				Description: "在系统中创建新标签",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"tag_name": map[string]interface{}{
+							"type":        "string",
+							"description": "要创建的标签名称，例如 '日志'",
+						},
+						"parent_path": map[string]interface{}{
+							"type":        "string",
+							"description": "父级标签的完整路径，以 / 开头。如果在根目录下创建，则传 '/'",
+						},
+						"description": map[string]interface{}{
+							"type":        "string",
+							"description": "标签描述",
+						},
+					},
+					"required": []string{"tag_name", "parent_path"},
+				},
+			},
+		},
+		{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        "update_system_tag",
+				Description: "修改标签的名称、颜色或描述",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"target_tag_path": map[string]interface{}{
+							"type":        "string",
+							"description": "要修改的目标标签当前完整路径，例如 '/系统/日志'",
+						},
+						"new_name": map[string]interface{}{
+							"type":        "string",
+							"description": "可选。新的标签名称",
+						},
+						"new_color": map[string]interface{}{
+							"type":        "string",
+							"description": "可选。新的标签颜色(HEX，如 #ff0000)",
+						},
+						"new_description": map[string]interface{}{
+							"type":        "string",
+							"description": "可选。新的标签描述",
+						},
+					},
+					"required": []string{"target_tag_path"},
+				},
+			},
+		},
+		{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        "move_system_tag",
+				Description: "移动标签到新的父级路径下",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"target_tag_path": map[string]interface{}{
+							"type":        "string",
+							"description": "要移动的目标标签当前完整路径，例如 '/安全/QA/'",
+						},
+						"new_parent_path": map[string]interface{}{
+							"type":        "string",
+							"description": "新的父级标签完整路径（仅父节点路径，切勿包含当前标签的名称！）。例如移动到 '/测试/' 下，就传 '/测试/'。若移动到根目录则传 '/'",
+						},
+					},
+					"required": []string{"target_tag_path", "new_parent_path"},
+				},
+			},
+		},
+		{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        "create_tag_rule",
+				Description: "为目标标签挂载匹配/提取规则",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"target_tag_path": map[string]interface{}{
+							"type":        "string",
+							"description": "目标标签完整路径，例如 '/系统/日志'",
+						},
+						"dataset_name": map[string]interface{}{
+							"type":        "string",
+							"description": "要挂载规则的数据集名称",
+						},
+						"condition_json": map[string]interface{}{
+							"type":        "string",
+							"description": "符合 TagMatrix 规则引擎规范的 JSON 字符串。注意：1. 最外层必须是逻辑节点(and/or/evaluate_all)；2. 若用户要求配置动作(如行级计数或全局计数)，请务必将 'action' 属性写在 JSON 的条件节点内部，不要漏掉！当前支持的动作值有：'row_inc' (行级计数) 和 'global_inc' (全局计数)。",
+						},
+					},
+					"required": []string{"target_tag_path", "dataset_name", "condition_json"},
+				},
+			},
+		},
+		{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        "update_tag_rule",
+				Description: "修改标签在指定数据集下的匹配规则",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"target_tag_path": map[string]interface{}{
+							"type":        "string",
+							"description": "目标标签完整路径，例如 '/系统/日志'",
+						},
+						"dataset_name": map[string]interface{}{
+							"type":        "string",
+							"description": "规则所在的数据集名称",
+						},
+						"new_condition_json": map[string]interface{}{
+							"type":        "string",
+							"description": "符合 TagMatrix 规则引擎规范的新的 JSON 字符串（可选，如果不修改则不传。注意：最外层必须是 logic 节点！如需动作请写在JSON节点内，支持 'row_inc' 和 'global_inc'）",
+						},
+					},
+					"required": []string{"target_tag_path", "dataset_name"},
+				},
+			},
+		},
+		{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        "delete_tag_rule",
+				Description: "删除标签在指定数据集下的匹配规则",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"target_tag_path": map[string]interface{}{
+							"type":        "string",
+							"description": "目标标签完整路径，例如 '/系统/日志'",
+						},
+						"dataset_name": map[string]interface{}{
+							"type":        "string",
+							"description": "规则所在的数据集名称",
+						},
+					},
+					"required": []string{"target_tag_path", "dataset_name"},
+				},
+			},
+		},
+	}
+}
+
+// parseIncomingMessage 解析前端发来的消息 Payload
+type ChatMsgJSON struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+type PayloadJSON struct {
+	Messages []ChatMsgJSON `json:"messages"`
+	IsAgent  bool          `json:"is_agent"`
+}
+
+func parseIncomingMessage(message string) ([]ChatMsgJSON, bool) {
+	var incomingMsgs []ChatMsgJSON
+	var isAgentMode bool
+
+	if strings.HasPrefix(strings.TrimSpace(message), "{") {
+		var payload PayloadJSON
+		if err := json.Unmarshal([]byte(message), &payload); err == nil {
+			incomingMsgs = payload.Messages
+			isAgentMode = payload.IsAgent
+		} else {
+			incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
+		}
+	} else if strings.HasPrefix(strings.TrimSpace(message), "[") {
+		if err := json.Unmarshal([]byte(message), &incomingMsgs); err != nil {
+			incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
+		}
+	} else {
+		incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
+	}
+
+	return incomingMsgs, isAgentMode
+}
+
 // ChatWithAIStream 发送消息给 AI 并获取流式回复，通过 Wails events 发送至前端。
 func (s *AIEngineService) ChatWithAIStream(ctx context.Context, reqId string, message string) error {
 	client, modelName := s.getClient()
@@ -266,38 +452,10 @@ TagMatrix操作指南：
 	actionInstruction := "\n\n[系统交互指令]\n1. 数据查询操作：如果请求编写SQL查询，你必须先使用 Markdown 代码块 ```sql ... ``` 展示 SQL 语句给用户看，然后再在回答末尾附上动作标签：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n前端将渲染为按钮。*(注意：Action属性用双引号。SQL内字符串字面量用单引号避免冲突。罕见双引号用HTML实体&quot;转义。换行保留)*\n" +
 		"2. 敏感/高危拦截：对于不可逆的删除动作（例如目前支持的“删除标签”操作），请绝对不要尝试直接调用内部工具，而是统一输出交互标签供前端渲染二次确认按钮，例如：\n<action type=\"delete_tag\" query=\"/目标/标签/路径/\" label=\"确认删除该标签\" />"
 
-	// 解析传入的 message (可能是一个包含 is_agent 的对象，或者是单纯的消息数组)
-	type ChatMsgJSON struct {
-		Role    string `json:"role"`
-		Content string `json:"content"`
-	}
-	type PayloadJSON struct {
-		Messages []ChatMsgJSON `json:"messages"`
-		IsAgent  bool          `json:"is_agent"`
-	}
+	// 解析传入的 message
+	incomingMsgs, isAgentMode := parseIncomingMessage(message)
 
-	var incomingMsgs []ChatMsgJSON
-	var isAgentMode bool
 	var tagTreeContext string
-
-	if strings.HasPrefix(strings.TrimSpace(message), "{") {
-		var payload PayloadJSON
-		if err := json.Unmarshal([]byte(message), &payload); err == nil {
-			incomingMsgs = payload.Messages
-			isAgentMode = payload.IsAgent
-		} else {
-			incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
-		}
-	} else if strings.HasPrefix(strings.TrimSpace(message), "[") {
-		if err := json.Unmarshal([]byte(message), &incomingMsgs); err != nil {
-			// 解析失败，作为一个普通字符串处理
-			incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
-		}
-	} else {
-		// 纯文本，作为单条 user 消息
-		incomingMsgs = []ChatMsgJSON{{Role: "user", Content: message}}
-	}
-
 	var modeInstruction string
 	if isAgentMode {
 		modeInstruction = "\n\n【运行模式提醒】当前处于 Agent (后台自驱) 模式。系统已开放相关 tools 供你调度。针对用户的指令需求，你可以并且应该直接调用对应的 tools 工具来完成系统配置或变更操作（包括但不限于当前的标签与规则管理，以及未来扩充的其它业务逻辑）。切勿仅仅回复文字让用户手动去操作。"
@@ -348,154 +506,7 @@ TagMatrix操作指南：
 	}
 
 	if isAgentMode {
-		req.Tools = []openai.Tool{
-			{
-				Type: openai.ToolTypeFunction,
-				Function: &openai.FunctionDefinition{
-					Name:        "create_system_tag",
-					Description: "在系统中创建新标签",
-					Parameters: map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"tag_name": map[string]interface{}{
-								"type":        "string",
-								"description": "要创建的标签名称，例如 '日志'",
-							},
-							"parent_path": map[string]interface{}{
-								"type":        "string",
-								"description": "父级标签的完整路径，以 / 开头。如果在根目录下创建，则传 '/'",
-							},
-							"description": map[string]interface{}{
-								"type":        "string",
-								"description": "标签描述",
-							},
-						},
-						"required": []string{"tag_name", "parent_path"},
-					},
-				},
-			},
-			{
-				Type: openai.ToolTypeFunction,
-				Function: &openai.FunctionDefinition{
-					Name:        "update_system_tag",
-					Description: "修改标签的名称、颜色或描述",
-					Parameters: map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"target_tag_path": map[string]interface{}{
-								"type":        "string",
-								"description": "要修改的目标标签当前完整路径，例如 '/系统/日志'",
-							},
-							"new_name": map[string]interface{}{
-								"type":        "string",
-								"description": "可选。新的标签名称",
-							},
-							"new_color": map[string]interface{}{
-								"type":        "string",
-								"description": "可选。新的标签颜色(HEX，如 #ff0000)",
-							},
-							"new_description": map[string]interface{}{
-								"type":        "string",
-								"description": "可选。新的标签描述",
-							},
-						},
-						"required": []string{"target_tag_path"},
-					},
-				},
-			},
-			{
-				Type: openai.ToolTypeFunction,
-				Function: &openai.FunctionDefinition{
-					Name:        "move_system_tag",
-					Description: "移动标签到新的父级路径下",
-					Parameters: map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"target_tag_path": map[string]interface{}{
-								"type":        "string",
-								"description": "要移动的目标标签当前完整路径，例如 '/安全/QA/'",
-							},
-							"new_parent_path": map[string]interface{}{
-								"type":        "string",
-								"description": "新的父级标签完整路径（仅父节点路径，切勿包含当前标签的名称！）。例如移动到 '/测试/' 下，就传 '/测试/'。若移动到根目录则传 '/'",
-							},
-						},
-						"required": []string{"target_tag_path", "new_parent_path"},
-					},
-				},
-			},
-			{
-				Type: openai.ToolTypeFunction,
-				Function: &openai.FunctionDefinition{
-					Name:        "create_tag_rule",
-					Description: "为目标标签挂载匹配/提取规则",
-					Parameters: map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"target_tag_path": map[string]interface{}{
-								"type":        "string",
-								"description": "目标标签完整路径，例如 '/系统/日志'",
-							},
-							"dataset_name": map[string]interface{}{
-								"type":        "string",
-								"description": "要挂载规则的数据集名称",
-							},
-							"condition_json": map[string]interface{}{
-								"type":        "string",
-								"description": "符合 TagMatrix 规则引擎规范的 JSON 字符串。注意：1. 最外层必须是逻辑节点(and/or/evaluate_all)；2. 若用户要求配置动作(如行级计数或全局计数)，请务必将 'action' 属性写在 JSON 的条件节点内部，不要漏掉！当前支持的动作值有：'row_inc' (行级计数) 和 'global_inc' (全局计数)。",
-							},
-						},
-						"required": []string{"target_tag_path", "dataset_name", "condition_json"},
-					},
-				},
-			},
-			{
-				Type: openai.ToolTypeFunction,
-				Function: &openai.FunctionDefinition{
-					Name:        "update_tag_rule",
-					Description: "修改标签在指定数据集下的匹配规则",
-					Parameters: map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"target_tag_path": map[string]interface{}{
-								"type":        "string",
-								"description": "目标标签完整路径，例如 '/系统/日志'",
-							},
-							"dataset_name": map[string]interface{}{
-								"type":        "string",
-								"description": "规则所在的数据集名称",
-							},
-							"new_condition_json": map[string]interface{}{
-								"type":        "string",
-								"description": "符合 TagMatrix 规则引擎规范的新的 JSON 字符串（可选，如果不修改则不传。注意：最外层必须是 logic 节点！如需动作请写在JSON节点内，支持 'row_inc' 和 'global_inc'）",
-							},
-						},
-						"required": []string{"target_tag_path", "dataset_name"},
-					},
-				},
-			},
-			{
-				Type: openai.ToolTypeFunction,
-				Function: &openai.FunctionDefinition{
-					Name:        "delete_tag_rule",
-					Description: "删除标签在指定数据集下的匹配规则",
-					Parameters: map[string]interface{}{
-						"type": "object",
-						"properties": map[string]interface{}{
-							"target_tag_path": map[string]interface{}{
-								"type":        "string",
-								"description": "目标标签完整路径，例如 '/系统/日志'",
-							},
-							"dataset_name": map[string]interface{}{
-								"type":        "string",
-								"description": "规则所在的数据集名称",
-							},
-						},
-						"required": []string{"target_tag_path", "dataset_name"},
-					},
-				},
-			},
-		}
+		req.Tools = s.getAgentTools()
 	}
 
 	for {
