@@ -108,7 +108,19 @@ func (s *AIEngineService) executeAITool(ctx context.Context, tc openai.ToolCall)
 		if args.NewParentPath != "/" && args.NewParentPath != "" {
 			parent, err := s.tagLogic.GetTagByPath(args.NewParentPath)
 			if err != nil {
-				return fmt.Sprintf("{\"status\":\"error\",\"message\":\"new parent path %s not found.\"}", args.NewParentPath)
+				// 容错处理：有时 AI 会自作主张把自己的名字带到 new_parent_path 里
+				// 例如目标是 "/测试/", 但 AI 传了 "/测试/QA/"
+				trimmedPath := strings.TrimSuffix(args.NewParentPath, "/")
+				if strings.HasSuffix(trimmedPath, "/"+tag.Name) {
+					fallbackPath := strings.TrimSuffix(trimmedPath, "/"+tag.Name)
+					if fallbackPath == "" {
+						fallbackPath = "/"
+					}
+					parent, err = s.tagLogic.GetTagByPath(fallbackPath)
+				}
+				if err != nil {
+					return fmt.Sprintf("{\"status\":\"error\",\"message\":\"new parent path %s not found.\"}", args.NewParentPath)
+				}
 			}
 			newParentID = parent.ID
 		}

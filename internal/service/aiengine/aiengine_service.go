@@ -395,11 +395,11 @@ TagMatrix操作指南：
 						"properties": map[string]interface{}{
 							"target_tag_path": map[string]interface{}{
 								"type":        "string",
-								"description": "要移动的目标标签完整路径",
+								"description": "要移动的目标标签当前完整路径，例如 '/安全/QA/'",
 							},
 							"new_parent_path": map[string]interface{}{
 								"type":        "string",
-								"description": "新的父级标签完整路径，如果在根目录下创建，则传 '/'",
+								"description": "新的父级标签完整路径（仅父节点路径，切勿包含当前标签的名称！）。例如移动到 '/测试/' 下，就传 '/测试/'。若移动到根目录则传 '/'",
 							},
 						},
 						"required": []string{"target_tag_path", "new_parent_path"},
@@ -478,10 +478,10 @@ TagMatrix操作指南：
 				}
 				return streamErr
 			}
-			
+
 			if len(response.Choices) > 0 {
 				delta := response.Choices[0].Delta
-				
+
 				// Handle Tool Calls in stream
 				for _, tc := range delta.ToolCalls {
 					idx := 0
@@ -521,9 +521,9 @@ TagMatrix操作指南：
 		if len(collectedToolCalls) > 0 {
 			// Append assistant's tool call message
 			messages = append(messages, openai.ChatCompletionMessage{
-				Role:       openai.ChatMessageRoleAssistant,
-				Content:    assistantMessage,
-				ToolCalls:  collectedToolCalls,
+				Role:      openai.ChatMessageRoleAssistant,
+				Content:   assistantMessage,
+				ToolCalls: collectedToolCalls,
 			})
 
 			// Execute tools and append results
