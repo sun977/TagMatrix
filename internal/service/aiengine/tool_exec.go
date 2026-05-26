@@ -4,7 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"strings"
+	"time"
 
 	"TagMatrix/internal/model"
 
@@ -135,8 +137,8 @@ func (s *AIEngineService) executeAITool(ctx context.Context, tc openai.ToolCall)
 	case "create_tag_rule":
 		var args struct {
 			TargetTagPath string `json:"target_tag_path"`
+			DatasetName   string `json:"dataset_name"`
 			ConditionJSON string `json:"condition_json"`
-			IsCountMode   bool   `json:"is_count_mode"`
 		}
 		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
 			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"%v\"}", err)
@@ -147,22 +149,96 @@ func (s *AIEngineService) executeAITool(ctx context.Context, tc openai.ToolCall)
 			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"target tag path %s not found.\"}", args.TargetTagPath)
 		}
 
+		var dataset model.SysDataset
+		if err := s.db.Where("name = ?", args.DatasetName).First(&dataset).Error; err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"dataset %s not found.\"}", args.DatasetName)
+		}
+
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
 		rule := &model.SysMatchRule{
 			TagID:     tag.ID,
-			DatasetID: 0, // 默认0表示全部数据集（或需要AI指定）
-			Name:      "AI 自动生成规则",
+			DatasetID: dataset.ID,
+			Name:      fmt.Sprintf("AI生成规则-%04d-Rule", r.Intn(10000)), // 规则名称增加随机数
 			RuleJSON:  args.ConditionJSON,
-			Priority:  0, // 默认给0
+			Priority:  0,
 		}
 
 		if err := s.tagLogic.SaveRule(rule); err != nil {
 			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"%v\"}", err)
 		}
 
-		// 规则更新可以复用同一个事件或用专门的事件
 		runtime.EventsEmit(ctx, "rule_list_updated")
 
 		return fmt.Sprintf("{\"status\":\"success\",\"message\":\"Rule created successfully\",\"rule_id\":%d}", rule.ID)
+
+	case "update_tag_rule":
+		var args struct {
+			TargetTagPath    string  `json:"target_tag_path"`
+			DatasetName      string  `json:"dataset_name"`
+			NewConditionJSON *string `json:"new_condition_json"`
+		}
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"%v\"}", err)
+		}
+
+		tag, err := s.tagLogic.GetTagByPath(args.TargetTagPath)
+		if err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"target tag path %s not found.\"}", args.TargetTagPath)
+		}
+
+		var dataset model.SysDataset
+		if err := s.db.Where("name = ?", args.DatasetName).First(&dataset).Error; err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"dataset %s not found.\"}", args.DatasetName)
+		}
+
+		rule, err := s.tagLogic.GetRulesByTagAndDataset(tag.ID, dataset.ID)
+		if err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"rule not found for tag %s in dataset %s.\"}", args.TargetTagPath, args.DatasetName)
+		}
+
+		if args.NewConditionJSON != nil && *args.NewConditionJSON != "" {
+			rule.RuleJSON = *args.NewConditionJSON
+		}
+		// IsAction 暂时在 model.SysMatchRule 中没有对应字段（可能包含在 RuleJSON 内部），这里先预留接口
+
+		if err := s.tagLogic.SaveRule(rule); err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"%v\"}", err)
+		}
+
+		runtime.EventsEmit(ctx, "rule_list_updated")
+		return fmt.Sprintf("{\"status\":\"success\",\"message\":\"Rule updated successfully\",\"rule_id\":%d}", rule.ID)
+
+	case "delete_tag_rule":
+		var args struct {
+			TargetTagPath string `json:"target_tag_path"`
+			DatasetName   string `json:"dataset_name"`
+		}
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"%v\"}", err)
+		}
+
+		tag, err := s.tagLogic.GetTagByPath(args.TargetTagPath)
+		if err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"target tag path %s not found.\"}", args.TargetTagPath)
+		}
+
+		var dataset model.SysDataset
+		if err := s.db.Where("name = ?", args.DatasetName).First(&dataset).Error; err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"dataset %s not found.\"}", args.DatasetName)
+		}
+
+		rule, err := s.tagLogic.GetRulesByTagAndDataset(tag.ID, dataset.ID)
+		if err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"rule not found for tag %s in dataset %s.\"}", args.TargetTagPath, args.DatasetName)
+		}
+
+		if err := s.tagLogic.DeleteRule(rule.ID); err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"%v\"}", err)
+		}
+
+		runtime.EventsEmit(ctx, "rule_list_updated")
+		return "{\"status\":\"success\",\"message\":\"Rule deleted successfully\"}"
+
 	}
 
 	return "{\"status\":\"error\",\"message\":\"Unknown function name\"}"

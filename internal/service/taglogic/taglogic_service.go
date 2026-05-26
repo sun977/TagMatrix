@@ -436,6 +436,11 @@ func (s *TagLogicService) SaveRule(rule *model.SysMatchRule) error {
 		return fmt.Errorf("invalid rule_json format: %w", err)
 	}
 
+	// 强制校验根节点是否是逻辑节点
+	if len(mRule.And) == 0 && len(mRule.Or) == 0 && len(mRule.EvaluateAll) == 0 {
+		return fmt.Errorf("无效的规则JSON：根节点必须是逻辑节点(and/or/evaluate_all)，不能直接是条件节点")
+	}
+
 	if rule.ID > 0 {
 		return s.db.Save(rule).Error
 	}

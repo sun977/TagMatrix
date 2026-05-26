@@ -164,11 +164,12 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
 TagMatrix操作指南：
 1.数据管理与SQL控制台:
 底层使用SQLite数据库。原始导入数据在raw_data_records表的data字段(JSON格式文本)，查询时务必使用json_extract函数(或->/->>操作符)。根据用户需求生成准确的查询SQL。
-2.标签规则引擎语法:
-用于特征提取或打标，生成JSON规范规则。支持嵌套，逻辑节点{"and":[...]}、{"or":[...]}或非短路节点{"evaluate_all":[...]}。条件节点须含field(待匹配字段)、operator(操作符)、value(目标值)，可选"ignore_case":true。
-支持的操作符(必须严格遵守):equals,not_equals,contains,not_contains,starts_with,ends_with,greater_than,less_than,greater_than_or_equal,less_than_or_equal,in(value为数组),not_in,is_null,is_not_null,regex,like,exists,cidr,list_contains。
-新增动作配置(Action): 在任意条件节点可配置 action:'row_inc' 或 action:'global_inc'，用于支持频次统计与累加，普通含有正则或包含算子的节点配置action后均会统计真实命中次数并累加。
-示例:用户需求设备为honeypot且os含linux，规则为:{"and":[{"field":"device_type","operator":"equals","value":"honeypot"},{"field":"os","operator":"contains","value":"linux"}]}
+2.标签规则引擎语法(AST JSON规范):
+- 根节点必须且只能是逻辑节点：{"and": [...]}、{"or": [...]} 或 {"evaluate_all": [...]}。绝对不能直接以条件节点(如 {"field": ...})作为根节点！如果只有一个条件，也必须用 {"and": [条件节点]} 包裹。
+- 条件节点(叶子节点)放在逻辑节点的数组中，必须包含 field(待匹配字段)、operator(操作符)、value(目标值)，可选 "ignore_case": true，可选附加动作 "action": "row_inc" 或 "global_inc"（用于频次统计）。
+- 支持的操作符: equals, not_equals, contains, not_contains, starts_with, ends_with, greater_than, less_than, greater_than_or_equal, less_than_or_equal, in (此时value必须为数组), not_in, is_null, is_not_null, regex, like, exists, cidr, list_contains。
+- 示例 (正确)：{"and": [{"field": "message", "operator": "contains", "value": "质量", "action": "row_inc"}]}
+- 示例 (错误)：{"field": "message", "operator": "contains", "value": "质量"} (错误原因：最外层缺少 and/or 逻辑节点包裹)
 3.页面上下文感知:
 若问题带有指代词(如"这个页面")，请结合系统注入的当前页面环境信息解答；若提问显然与当前页面无关，请直接忽略上下文提示。
 
@@ -248,11 +249,12 @@ func (s *AIEngineService) ChatWithAIStream(ctx context.Context, reqId string, me
 TagMatrix操作指南：
 1.数据管理与SQL控制台:
 底层使用SQLite数据库。原始导入数据在raw_data_records表的data字段(JSON格式文本)，查询时务必使用json_extract函数(或->/->>操作符)。根据用户需求生成准确的查询SQL。
-2.标签规则引擎语法:
-用于特征提取或打标，生成JSON规范规则。支持嵌套，逻辑节点{"and":[...]}、{"or":[...]}或非短路节点{"evaluate_all":[...]}。条件节点须含field(待匹配字段)、operator(操作符)、value(目标值)，可选"ignore_case":true。
-支持的操作符(必须严格遵守):equals,not_equals,contains,not_contains,starts_with,ends_with,greater_than,less_than,greater_than_or_equal,less_than_or_equal,in(value为数组),not_in,is_null,is_not_null,regex,like,exists,cidr,list_contains。
-新增动作配置(Action): 在任意条件节点可配置 action:'row_inc' 或 action:'global_inc'，用于支持频次统计与累加，普通含有正则或包含算子的节点配置action后均会统计真实命中次数并累加。
-示例:用户需求设备为honeypot且os含linux，规则为:{"and":[{"field":"device_type","operator":"equals","value":"honeypot"},{"field":"os","operator":"contains","value":"linux"}]}
+2.标签规则引擎语法(AST JSON规范):
+- 根节点必须且只能是逻辑节点：{"and": [...]}、{"or": [...]} 或 {"evaluate_all": [...]}。绝对不能直接以条件节点(如 {"field": ...})作为根节点！如果只有一个条件，也必须用 {"and": [条件节点]} 包裹。
+- 条件节点(叶子节点)放在逻辑节点的数组中，必须包含 field(待匹配字段)、operator(操作符)、value(目标值)，可选 "ignore_case": true，可选附加动作 "action": "row_inc" 或 "global_inc"（用于频次统计）。
+- 支持的操作符: equals, not_equals, contains, not_contains, starts_with, ends_with, greater_than, less_than, greater_than_or_equal, less_than_or_equal, in (此时value必须为数组), not_in, is_null, is_not_null, regex, like, exists, cidr, list_contains。
+- 示例 (正确)：{"and": [{"field": "message", "operator": "contains", "value": "质量", "action": "row_inc"}]}
+- 示例 (错误)：{"field": "message", "operator": "contains", "value": "质量"} (错误原因：最外层缺少 and/or 逻辑节点包裹)
 3.页面上下文感知:
 若问题带有指代词(如"这个页面")，请结合系统注入的当前页面环境信息解答；若提问显然与当前页面无关，请直接忽略上下文提示。
 
@@ -302,7 +304,19 @@ TagMatrix操作指南：
 		// 获取当前系统的标签树作为上下文
 		treeNodes, _ := s.tagLogic.GetTagTree()
 		treeBytes, _ := json.MarshalIndent(treeNodes, "", "  ")
-		tagTreeContext = "\n\n【系统当前运行时上下文】\n1. 当前已有标签目录树结构(仅供参考)：\n" + string(treeBytes)
+
+		// 获取数据集列表上下文
+		var dsInfos []string
+		var datasets []model.SysDataset
+		if s.db != nil {
+			s.db.Find(&datasets)
+			for _, d := range datasets {
+				dsInfos = append(dsInfos, fmt.Sprintf("- 数据集名: %s (字段/SchemaKeys: %s)", d.Name, d.SchemaKeys))
+			}
+		}
+		dsContext := "当前系统中存在的数据集列表及可用字段：\n" + strings.Join(dsInfos, "\n")
+
+		tagTreeContext = "\n\n【系统当前运行时上下文】\n1. " + dsContext + "\n2. 当前已有标签目录树结构(仅供参考)：\n" + string(treeBytes)
 	} else {
 		modeInstruction = "\n\n【运行模式提醒】当前处于 Ask (纯问答辅助) 模式！在该模式下你**被剥夺了任何底层工具的调用权限**。如果用户要求你直接执行系统级数据变更操作（如数据的创建、修改、移动、删除等业务能力），请委婉说明当前问答模式的限制，并仅提供操作路径和原理解释。切勿假装执行成功，绝对不要模仿输出伪造的执行过程提示！"
 	}
@@ -422,16 +436,62 @@ TagMatrix操作指南：
 								"type":        "string",
 								"description": "目标标签完整路径，例如 '/系统/日志'",
 							},
+							"dataset_name": map[string]interface{}{
+								"type":        "string",
+								"description": "要挂载规则的数据集名称",
+							},
 							"condition_json": map[string]interface{}{
 								"type":        "string",
-								"description": "符合 TagMatrix 规则引擎规范的 JSON 字符串",
-							},
-							"is_count_mode": map[string]interface{}{
-								"type":        "boolean",
-								"description": "是否开启行级计数模式",
+								"description": "符合 TagMatrix 规则引擎规范的 JSON 字符串。注意：1. 最外层必须是逻辑节点(and/or/evaluate_all)；2. 若用户要求配置动作(如行级计数或全局计数)，请务必将 'action' 属性写在 JSON 的条件节点内部，不要漏掉！当前支持的动作值有：'row_inc' (行级计数) 和 'global_inc' (全局计数)。",
 							},
 						},
-						"required": []string{"target_tag_path", "condition_json"},
+						"required": []string{"target_tag_path", "dataset_name", "condition_json"},
+					},
+				},
+			},
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "update_tag_rule",
+					Description: "修改标签在指定数据集下的匹配规则",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"target_tag_path": map[string]interface{}{
+								"type":        "string",
+								"description": "目标标签完整路径，例如 '/系统/日志'",
+							},
+							"dataset_name": map[string]interface{}{
+								"type":        "string",
+								"description": "规则所在的数据集名称",
+							},
+							"new_condition_json": map[string]interface{}{
+								"type":        "string",
+								"description": "符合 TagMatrix 规则引擎规范的新的 JSON 字符串（可选，如果不修改则不传。注意：最外层必须是 logic 节点！如需动作请写在JSON节点内，支持 'row_inc' 和 'global_inc'）",
+							},
+						},
+						"required": []string{"target_tag_path", "dataset_name"},
+					},
+				},
+			},
+			{
+				Type: openai.ToolTypeFunction,
+				Function: &openai.FunctionDefinition{
+					Name:        "delete_tag_rule",
+					Description: "删除标签在指定数据集下的匹配规则",
+					Parameters: map[string]interface{}{
+						"type": "object",
+						"properties": map[string]interface{}{
+							"target_tag_path": map[string]interface{}{
+								"type":        "string",
+								"description": "目标标签完整路径，例如 '/系统/日志'",
+							},
+							"dataset_name": map[string]interface{}{
+								"type":        "string",
+								"description": "规则所在的数据集名称",
+							},
+						},
+						"required": []string{"target_tag_path", "dataset_name"},
 					},
 				},
 			},

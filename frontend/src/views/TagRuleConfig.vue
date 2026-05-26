@@ -493,7 +493,13 @@ const editRule = (rule: any) => {
     if (parsed.logic) {
       ruleState.value = parsed
     } else {
-      ruleState.value = parseNeoScanRule(parsed)
+      const parsedNeo = parseNeoScanRule(parsed)
+      if (!parsedNeo.logic) {
+        // 如果根节点直接是一个叶子条件节点，则用 logic: 'and' 包裹一层 【这是一个保底机制防止系统奔溃】
+        ruleState.value = { logic: 'and', conditions: [parsedNeo] }
+      } else {
+        ruleState.value = parsedNeo
+      }
     }
   } catch (e) {
     ruleState.value = { logic: 'and', conditions: [] }
@@ -596,7 +602,13 @@ const applyRuleJson = () => {
     if (parsed.logic) {
       ruleState.value = parsed
     } else {
-      ruleState.value = parseNeoScanRule(parsed)
+      const parsedNeo = parseNeoScanRule(parsed)
+      // 【检测规则最外层是否有逻辑操作符包裹，没有就加一个and，这是一个保底机制防止系统奔溃】
+      if (!parsedNeo.logic) {
+        ruleState.value = { logic: 'and', conditions: [parsedNeo] }
+      } else {
+        ruleState.value = parsedNeo
+      }
     }
     previewDialogVisible.value = false
     ElMessage.success('规则 JSON 已成功应用')
