@@ -582,7 +582,8 @@ TagMatrix操作指南：
 		stream.Close()
 		sem.Release(1)
 
-		if len(collectedToolCalls) > 0 {
+		// 增加 Agent 模式判断
+		if len(collectedToolCalls) > 0 && isAgentMode {
 			// Append assistant's tool call message
 			messages = append(messages, openai.ChatCompletionMessage{
 				Role:      openai.ChatMessageRoleAssistant,
@@ -610,6 +611,14 @@ TagMatrix操作指南：
 			// Update request messages and loop again
 			req.Messages = messages
 			continue
+		} else if len(collectedToolCalls) > 0 && !isAgentMode {
+			// 如果在非 Agent 模式下模型仍然输出了 ToolCall，直接终止循环避免继续执行和返回假结果
+			if reqId != "" {
+				runtime.EventsEmit(ctx, "ai_chat_end_"+reqId)
+			} else {
+				runtime.EventsEmit(ctx, "ai_chat_end")
+			}
+			break
 		} else {
 			// No more tool calls, we are done
 			if reqId != "" {
