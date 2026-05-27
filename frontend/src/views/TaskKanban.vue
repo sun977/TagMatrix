@@ -3,7 +3,7 @@
     <!-- 页面顶部 Header -->
     <header class="page-header">
       <div class="header-left">
-        <h1 class="page-title">打标任务看板</h1>
+        <h1 class="page-title">任务管理</h1>
         <p class="page-subtitle">在这里发起和管理打标任务，查看执行进度和历史记录，支持任务回滚和日志查看。</p>
       </div>
     </header>

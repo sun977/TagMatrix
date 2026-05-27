@@ -29,27 +29,27 @@ TagMatrix 是一个致力于解决海量结构化/半结构化数据打标签问
 
 以下是 TagMatrix V3.0 的主要功能界面截图，展现了其强大的可视化配置与数据管理能力：
 
-### 概览控制台 (Dashboard)
+### 仪表板 (Dashboard)
 展示全局打标进度、系统标签覆盖率与任务状态监控。
-![概览控制台](.github/assets/控制台.png)
+![仪表板](.github/assets/控制台.png)
 
-### 数据集管理 (Dataset Management)
+### 数据集 (Dataset Management)
 异构数据源的物理隔离管理，支持多表头的可视化清洗与导入导出。
-![数据集管理](.github/assets/数据集管理.png)
+![数据集](.github/assets/数据集.png)
 
-### 标签与规则配置 (Tag & Rule Engine)
+### 规则配置 (Tag & Rule Engine)
 无限极树状标签体系，支持可视化拖拽配置嵌套的逻辑规则组，并提供基于真实数据的“试运行 (Dry Run)”防崩机制。
-![标签与规则配置](.github/assets/标签与规则.png)
+![规则配置](.github/assets/标签与规则.png)
 
-### 打标任务看板 (Task Kanban)
+### 任务管理 (Task Kanban)
 控制并记录每一次的批量打标操作，支持细粒度的任务下发、状态实时追踪与“一键安全回退 (Rollback)”。
-![打标任务看板](.github/assets/任务看板.png)
+![任务管理](.github/assets/任务看板.png)
 
-### 打标数据看板 (Tagged Data View)
+### 数据看板 (Tagged Data View)
 融合系统列与用户动态列的全景数据面板，支持复杂组合过滤与 CSV 导出。
-![打标数据看板](.github/assets/数据看板.png)
+![数据看板](.github/assets/数据看板.png)
 
-### 系统数据库管理 (Database Admin)
+### 数据中心 (Database Admin)
 *(高级开发者模式功能)* 提供对底层 SQLite 的全量控制能力，包含 SQL 控制台、物理表编辑以及全量 `.db` 快照的备份与还原中心。
 <p align="center">
   <img src=".github/assets/数据库管理.png" width="48%" />
@@ -72,7 +72,7 @@ TagMatrix 拥有一套严谨且强大的“数据集隔离 -> 标签规则绑定
 1. **数据源管理**：导入您的 Excel/CSV，系统将自动解析表头并生成相互隔离的独立“数据集”。
 2. **标签规则配置**：创建树状全局标签，并在特定数据集下挂载逻辑匹配规则（配置时支持真实数据的 Dry Run 模拟测试）。
 3. **任务大盘 / 执行台**：一键下发和执行全量打标任务，支持任务级回退 (Rollback)。
-4. **看板 / 数据导出**：在“打标数据看板”中过滤检索，并将结构化的成果导出为 CSV。
+4. **看板 / 数据导出**：在“数据看板”中过滤检索，并将结构化的成果导出为 CSV。
 
 ---
 

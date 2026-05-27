@@ -1,4 +1,4 @@
-# 设计文档 - DatabaseAdmin系统数据库管理
+# 设计文档 - DatabaseAdmin数据中心
 
 ## 架构概览
 

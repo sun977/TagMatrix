@@ -12,37 +12,37 @@ const routes: Array<RouteRecordRaw> = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('../views/Dashboard.vue'),
-        meta: { title: '概览控制台', icon: 'Grid' }
+        meta: { title: '仪表板', icon: 'Grid' }
       },
       {
         path: 'data-source',
         name: 'DataSource',
         component: () => import('../views/DataSource.vue'),
-        meta: { title: '数据集管理', icon: 'Folder' }
+        meta: { title: '数据集', icon: 'Folder' }
       },
       {
         path: 'tag-rule',
         name: 'TagRule',
         component: () => import('../views/TagRuleConfig.vue'),
-        meta: { title: '标签与规则配置', icon: 'House' }
+        meta: { title: '规则配置', icon: 'House' }
       },
       {
         path: 'task-kanban',
         name: 'TaskKanban',
         component: () => import('../views/TaskKanban.vue'),
-        meta: { title: '打标任务看板', icon: 'Finished' }
+        meta: { title: '任务管理', icon: 'Finished' }
       },
       {
         path: 'tagged-data',
         name: 'TaggedData',
         component: () => import('../views/TaggedData.vue'),
-        meta: { title: '打标数据看板', icon: 'DataBoard' }
+        meta: { title: '数据看板', icon: 'DataBoard' }
       },
       {
         path: 'database-admin',
         name: 'DatabaseAdmin',
         component: () => import('../views/dataAdmin/DatabaseAdmin.vue'),
-        meta: { title: '数据库管理', icon: 'Coin', requireDev: true }
+        meta: { title: '数据中心', icon: 'Coin', requireDev: true }
       }
     ]
   }

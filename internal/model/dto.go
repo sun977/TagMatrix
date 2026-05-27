@@ -1,6 +1,6 @@
 package model
 
-// DashboardStats 用于概览控制台的数据统计
+// DashboardStats 用于仪表板的数据统计
 type DashboardStats struct {
 	TotalRecords  int64         `json:"totalRecords"`
 	TaggedRecords int64         `json:"taggedRecords"`
@@ -19,16 +19,16 @@ type DatasetStat struct {
 
 // TaggedRecordDto 用于展示打标结果的 DTO
 type TaggedRecordDto struct {
-	ID         uint64   `json:"id"`
-	DatasetID  uint64   `json:"datasetId"` // 数据集 ID
-	Content    string   `json:"content"`
-	Tags       []TagDto `json:"tags"`
-	PrimaryTag *TagDto  `json:"primaryTag,omitempty"` // 主标签（混合模式下）
-	BatchName  string   `json:"batchName"`
-	TagMode    string   `json:"tagMode"`    // 打标模式：multiple, single, mixed
-	SourceFile string   `json:"sourceFile"` // 来源文件
-	UpdateTime string   `json:"updateTime"`
-	Status     string   `json:"status"` // success 或 unmatched
+	ID         uint64         `json:"id"`
+	DatasetID  uint64         `json:"datasetId"` // 数据集 ID
+	Content    string         `json:"content"`
+	Tags       []TagDto       `json:"tags"`
+	PrimaryTag *TagDto        `json:"primaryTag,omitempty"` // 主标签（混合模式下）
+	BatchName  string         `json:"batchName"`
+	TagMode    string         `json:"tagMode"`    // 打标模式：multiple, single, mixed
+	SourceFile string         `json:"sourceFile"` // 来源文件
+	UpdateTime string         `json:"updateTime"`
+	Status     string         `json:"status"`            // success 或 unmatched
 	TagHits    map[string]int `json:"tagHits,omitempty"` // 记录该行数据中各标签的命中频次
 
 	// MDCT 算法新增字段
@@ -121,4 +121,3 @@ type PagedTaskLogs struct {
 	Total int64           `json:"total"`
 	Logs  []TagTaskLogDto `json:"logs"`
 }
-

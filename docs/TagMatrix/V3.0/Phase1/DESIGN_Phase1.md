@@ -59,7 +59,7 @@ graph TD
 
 ### 实体设计
 ```go
-// SysDataset 数据集管理表
+// SysDataset 数据集表
 type SysDataset struct {
 	BaseModel
 	Name        string `json:"name" gorm:"size:100;not null;uniqueIndex;comment:数据集名称"`

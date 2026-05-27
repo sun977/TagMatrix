@@ -13,10 +13,10 @@ graph TD
     B --> G[Status Bar 底部状态栏]
     D --> H[Dashboard.vue 概览]
     D --> I[DataSource.vue 数据源管理]
-    D --> J[TagRuleConfig.vue 标签与规则配置]
-    D --> K[TaskKanban.vue 打标任务看板]
+    D --> J[TagRuleConfig.vue 规则配置]
+    D --> K[TaskKanban.vue 任务管理]
     D --> L[TaggedData.vue 打标结果数据]
-    D --> M[DatabaseAdmin.vue 系统数据库管理 (高阶)]
+    D --> M[DatabaseAdmin.vue 数据中心 (高阶)]
 ```
 
 ### 核心组件设计

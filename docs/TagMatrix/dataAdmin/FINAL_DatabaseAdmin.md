@@ -1,4 +1,4 @@
-# 系统数据库管理 (DatabaseAdmin) 验收与评估文档
+# 数据中心 (DatabaseAdmin) 验收与评估文档
 
 ## 执行结果验证
 

@@ -1,13 +1,13 @@
 package dataset
 
 import (
-	"fmt"
 	"TagMatrix/internal/model"
+	"fmt"
 
 	"gorm.io/gorm"
 )
 
-// DatasetService 数据集管理服务
+// DatasetService 数据集服务
 type DatasetService struct {
 	db *gorm.DB
 }

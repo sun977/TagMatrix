@@ -2,7 +2,7 @@
   <div class="dashboard-page">
     <!-- 页面顶部 Header -->
     <header class="page-header">
-      <h1 class="page-title">概览控制台</h1>
+      <h1 class="page-title">仪表板</h1>
       <div class="header-right">
         <div class="task-status-pill" v-if="runningTask">
           <el-icon class="is-loading"><Loading /></el-icon>
@@ -108,7 +108,8 @@
       </div>
       
       <el-table :data="recentTasks" style="width: 100%" class="custom-table">
-        <el-table-column prop="name" label="任务名称" min-width="200" />
+        <el-table-column prop="name" label="任务名称" min-width="180" />
+        <el-table-column prop="desc" label="任务描述" min-width="220" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="120">
           <template #default="scope">
             <div class="status-pill" :class="scope.row.statusType">
@@ -117,7 +118,7 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="processed" label="处理数量" width="180" />
+        <el-table-column prop="processed" label="处理数量(命中)" width="180" />
         <el-table-column prop="time" label="耗时" width="120" />
         <el-table-column prop="createTime" label="创建时间" width="180" />
         <el-table-column label="操作" width="220" align="right">
@@ -415,6 +416,7 @@ const loadDashboardData = async () => {
       return {
         id: b.id,
         name: b.name,
+        desc: b.desc || '-',
         statusType: b.status,
         statusText: isRunning ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : (b.status === 'rolled_back' ? '已回退' : '未知'))),
         processed: `${b.total_processed}`,

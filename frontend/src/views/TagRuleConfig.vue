@@ -3,7 +3,7 @@
     <!-- 页面顶部 Header -->
     <header class="page-header">
       <div class="header-left">
-        <h1 class="page-title">标签与规则配置</h1>
+        <h1 class="page-title">规则配置</h1>
         <p class="page-subtitle">在这里管理标签层级结构和配置对应的匹配规则，支持可视化规则构建和效果预览。</p>
       </div>
     </header>

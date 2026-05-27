@@ -1,7 +1,7 @@
-# 需求对齐文档 - DatabaseAdmin系统数据库管理
+# 需求对齐文档 - DatabaseAdmin数据中心
 
 ## 原始需求
-根据 `DEVELOPMENT_PLAN.md` 和 `UI_DESIGN.md`，需要为 TagMatrix 开发“系统数据库管理”高级功能模块。该模块主要面向高阶用户或系统管理员，提供对底层 SQLite 数据库的全面控制。
+根据 `DEVELOPMENT_PLAN.md` 和 `UI_DESIGN.md`，需要为 TagMatrix 开发“数据中心”高级功能模块。该模块主要面向高阶用户或系统管理员，提供对底层 SQLite 数据库的全面控制。
 
 ## 项目上下文
 

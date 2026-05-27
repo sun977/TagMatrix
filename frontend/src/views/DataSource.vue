@@ -5,7 +5,7 @@
       <header class="page-header">
         <div class="header-left">
           <h1 class="page-title">
-            数据集管理
+            数据集
           </h1>
           <p class="page-subtitle">管理您的数据集，支持创建、导入数据、预览和导出。</p>
         </div>

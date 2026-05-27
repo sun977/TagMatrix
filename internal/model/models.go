@@ -13,7 +13,7 @@ type BaseModel struct {
 	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime;comment:更新时间"`
 }
 
-// SysDataset 数据集管理表
+// SysDataset 数据集表
 type SysDataset struct {
 	BaseModel
 	Name        string `json:"name" gorm:"size:100;not null;uniqueIndex;comment:数据集名称"`
@@ -24,11 +24,11 @@ type SysDataset struct {
 // RawDataRecord 原始数据表，用于动态存储导入的 Excel/CSV 数据
 type RawDataRecord struct {
 	BaseModel
-	DatasetID uint64         `json:"dataset_id" gorm:"index;not null;comment:关联的数据集ID"`
+	DatasetID  uint64         `json:"dataset_id" gorm:"index;not null;comment:关联的数据集ID"`
 	BatchID    uint64         `json:"batch_id" gorm:"index;comment:导入时的批次 ID"`
 	SourceName string         `json:"source_name" gorm:"index;type:varchar(255);comment:来源名称(文件名/表名等)"`
 	Data       string         `json:"data" gorm:"type:text;comment:动态列数据 (建议存储 JSON 字符串)"`
-	DeletedAt gorm.DeletedAt `json:"-" gorm:"index;comment:软删除时间"`
+	DeletedAt  gorm.DeletedAt `json:"-" gorm:"index;comment:软删除时间"`
 }
 
 // SysTag 标签定义表 (树状结构)
@@ -98,7 +98,7 @@ type SysEntityTag struct {
 	Confidence          float64 `json:"confidence" gorm:"type:decimal(5,2);comment:置信度百分比"`
 
 	// 算子上下文新增字段
-	Hits                int     `json:"hits" gorm:"default:1;comment:算子上下文记录的命中频次"`
+	Hits int `json:"hits" gorm:"default:1;comment:算子上下文记录的命中频次"`
 }
 
 // SysSqlTemplate 系统SQL查询模板表

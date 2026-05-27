@@ -207,11 +207,11 @@ const toggleAIPanel = () => {
 }
 
 // --- 侧边栏拖拽调节宽度逻辑 ---
-const sidebarWidth = ref(240)
+const sidebarWidth = ref(180)
 const isCollapsed = ref(false)
 const isDragging = ref(false)
 
-const minWidth = 200
+const minWidth = 165
 const maxWidth = 500
 const collapsedWidth = 68 // 折叠后的宽度
 
@@ -326,8 +326,8 @@ onUnmounted(() => {
   .sidebar-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 0 12px 40px;
+    gap: 8px;
+    padding: 0 4px 40px;
     white-space: nowrap;
     overflow: hidden;
     
@@ -339,8 +339,8 @@ onUnmounted(() => {
       flex-shrink: 0;
 
       &.is-collapsed {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
       }
     }
     

@@ -29,7 +29,7 @@ sequenceDiagram
 为支持完整的 UI 展示，在 `app.go` 中补充以下几个接口：
 
 ### 1. `GetDashboardStats() DashboardStats`
-- **目的**: 为首页概览控制台提供 4 个统计数据。
+- **目的**: 为首页仪表板提供 4 个统计数据。
 - **返回结构**:
   ```go
   type DashboardStats struct {

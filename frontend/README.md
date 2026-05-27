@@ -38,7 +38,7 @@
 *   **`index.ts`**: 定义了前端的页面路由表。使用 Hash 模式 (`createWebHashHistory`) 以保证在 Wails 打包为单体 exe 后，页面刷新和跳转不会出现 404。包含了如下核心路由：
     *   `/dashboard`: 概览
     *   `/data-source`: 数据源管理
-    *   `/tag-rule`: 标签与规则配置
+    *   `/tag-rule`: 规则配置
     *   `/task-kanban`: 任务看板
 
 ### 📁 `store/` (状态管理 - 计划中)

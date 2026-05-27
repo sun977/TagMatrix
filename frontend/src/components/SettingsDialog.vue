@@ -261,7 +261,7 @@
             <div class="setting-item flex-between">
               <div class="item-text">
                 <label @click="handleDeveloperClick" class="cursor-pointer select-none">开发者模式</label>
-                <div class="help-text">开启后允许进入系统数据库管理的高级操作界面</div>
+                <div class="help-text">开启后允许进入数据中心的高级操作界面</div>
               </div>
               <el-switch v-model="form.developerMode" :disabled="!developerUnlocked && !form.developerMode" />
             </div>

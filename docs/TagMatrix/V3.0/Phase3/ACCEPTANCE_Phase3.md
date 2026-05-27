@@ -6,7 +6,7 @@
 - [x] **数据集级规则隔离**：`TaskEngineService.RunTaggingTask` 执行时，通过 `dataset_id` 从 `sys_match_rules` 表拉取专属规则。
 - [x] **数据集级数据运算**：在批量拉取原始数据 (RawDataRecord) 时，SQL 查询严格附加了 `WHERE dataset_id = ?` 条件，避免数据错乱。
 
-### 2. 前端打标任务看板 (本期核心增强)
+### 2. 前端任务管理 (本期核心增强)
 - [x] **发起打标界面增强**：
   - “选择目标数据集”已作为必填项实现。
   - 选择数据集后，级联动态拉取对应的规则 (`availableRules`) 和来源文件选项。
