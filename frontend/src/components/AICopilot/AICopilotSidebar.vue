@@ -105,13 +105,25 @@ const removeEventHandlers = () => {
   }
 }
 
+const globalSendHandler = (e: Event) => {
+  const ce = e as CustomEvent
+  if (ce.detail) {
+    if (!aiStore.isOpen) {
+      aiStore.openPanel()
+    }
+    handleSend(ce.detail)
+  }
+}
+
 onMounted(() => {
   aiStore.initSessions()
+  window.addEventListener('ai-trigger-send', globalSendHandler)
 })
 
 onUnmounted(() => {
   removeEventHandlers()
   stopDrag()
+  window.removeEventListener('ai-trigger-send', globalSendHandler)
 })
 
 const handleSend = async (text: string) => {

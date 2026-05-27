@@ -70,14 +70,25 @@
     <div class="bottom-section">
       <div class="result-panel">
         <div class="result-content" v-loading="isExecuting">
-          <el-alert
-            v-if="errorMessage"
-            :title="errorMessage"
-            type="error"
-            show-icon
-            :closable="false"
-            class="error-alert"
-          />
+          <div v-if="errorMessage" class="error-container" style="position: relative; width: 100%;">
+            <el-alert
+              :title="errorMessage"
+              type="error"
+              show-icon
+              :closable="false"
+              class="error-alert"
+              style="width: 100%; padding-right: 220px;"
+            />
+            <el-button 
+              size="small" 
+              type="danger" 
+              plain 
+              @click="syncErrorToAI"
+              style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 10;"
+            >
+              <el-icon><ChatLineRound /></el-icon> 将报错同步给AI修复
+            </el-button>
+          </div>
           <div v-else-if="resultData" class="result-data-wrapper">
             <template v-if="resultData.is_select">
               <div class="table-wrapper">
@@ -93,14 +104,26 @@
                 </el-table>
               </div>
               <div class="pagination-wrapper">
-                <el-button 
-                  size="small" 
-                  plain 
-                  @click="exportToCSV" 
-                  :disabled="!resultData?.rows || resultData.rows.length === 0"
-                >
-                  <el-icon><Download /></el-icon> 导出 CSV
-                </el-button>
+                <div style="display: flex; gap: 8px;">
+                  <el-button 
+                    size="small" 
+                    plain 
+                    @click="exportToCSV" 
+                    :disabled="!resultData?.rows || resultData.rows.length === 0"
+                  >
+                    <el-icon><Download /></el-icon> 导出 CSV
+                  </el-button>
+                  <el-button 
+                    size="small" 
+                    type="primary" 
+                    plain
+                    class="action-btn-green"
+                    @click="syncToAI" 
+                    :disabled="!resultData?.rows || resultData.rows.length === 0"
+                  >
+                    <el-icon><ChatLineRound /></el-icon> 同步AI对话
+                  </el-button>
+                </div>
                 <el-pagination
                   :current-page="currentPage"
                   :page-size="pageSize"
@@ -328,6 +351,37 @@ const exportToCSV = async () => {
   } catch (err: any) {
     ElMessage.error(`导出失败：${err.message || err}`)
   }
+}
+
+const syncErrorToAI = () => {
+  if (!errorMessage.value) return
+  
+  const instruction = `[系统回传] 您刚刚请求的 SQL 执行时发生报错：\n\n\`\`\`\n${errorMessage.value}\n\`\`\`\n\n请分析报错原因，修复并在 Markdown 代码块中重新输出正确的 SQL 语句。`
+  
+  window.dispatchEvent(new CustomEvent('ai-trigger-send', { detail: instruction }))
+  ElMessage.success('已将报错信息推送给 AI 助手')
+}
+
+const syncToAI = () => {
+  if (!resultData.value?.rows || resultData.value.rows.length === 0) {
+    ElMessage.warning('暂无数据可同步')
+    return
+  }
+  
+  // 截取前 20 条，防止 token 爆炸
+  const maxRows = 20
+  const rowsToSync = resultData.value.rows.slice(0, maxRows)
+  const isTruncated = resultData.value.rows.length > maxRows
+  
+  // 尽可能压缩 JSON 格式，去掉无用空格
+  const compactJson = JSON.stringify(rowsToSync)
+  
+  const instruction = `[系统回传] 您刚刚请求的 SQL 执行结果如下${isTruncated ? ` (数据量过大，已截取前 ${maxRows} 条)` : ''}：\n\n\`\`\`json\n${compactJson}\n\`\`\`\n\n请基于此数据分析结论，并继续你的下一步操作。`
+  
+  // 触发全局事件给 AI Sidebar
+  window.dispatchEvent(new CustomEvent('ai-trigger-send', { detail: instruction }))
+  
+  ElMessage.success('已将查询结果推送给 AI 助手')
 }
 
 const sqlTemplates = ref<any[]>([])

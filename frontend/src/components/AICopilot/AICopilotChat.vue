@@ -137,7 +137,7 @@ const renderMarkdown = (text: string) => {
   return marked.parse(processedText, { renderer })
 }
 
-const handleBubbleClick = (e: MouseEvent) => {
+const handleBubbleClick = async (e: MouseEvent) => {
   const target = e.target as HTMLElement
   
   // 复制按钮逻辑
@@ -165,21 +165,43 @@ const handleBubbleClick = (e: MouseEvent) => {
     const query = decodeURIComponent(actionBtn.getAttribute('data-query') || '')
 
     if (type === 'execute_sql') {
-      ElMessageBox.confirm(
-        '该操作将直接携带该 SQL 语句跳转至控制台。在真正执行前您仍有确认修改的机会。',
-        '操作确认',
-        {
-          confirmButtonText: '前往控制台',
-          cancelButtonText: '取消',
-          type: 'info',
+      try {
+        const config = await (window as any).go.main.App.GetAppConfig()
+        if (!config?.adv?.developer_mode) {
+          ElMessageBox.alert(
+            '您需要开启【开发者模式】才能访问系统 SQL 控制台。<br>请先前往左下角 [设置]=>[高级与系统] 中开启开发者模式。', 
+            '权限不足', 
+            { type: 'warning', confirmButtonText: '我知道了', dangerouslyUseHTMLString: true }
+          )
+          return
         }
-      ).then(() => {
+      } catch (err) {
+        ElMessage.error('获取系统配置失败')
+        return
+      }
+
+      const currentRoute = router.currentRoute.value.path
+      // 这里判断当前路由是否为数据库管理页面
+      if (currentRoute === '/database-admin') {
         aiStore.pendingSQL = query
-        router.push('/database-admin')
-        ElMessage.success('已加载 SQL，请确认后手动执行')
-      }).catch(() => {
-        // 用户取消
-      })
+        ElMessage.success('已将 SQL 加载至控制台')
+      } else {
+        ElMessageBox.confirm(
+          '该操作将直接携带该 SQL 语句跳转至控制台。在真正执行前您仍有确认修改的机会。',
+          '操作确认',
+          {
+            confirmButtonText: '前往控制台',
+            cancelButtonText: '取消',
+            type: 'info',
+          }
+        ).then(() => {
+          aiStore.pendingSQL = query
+          router.push('/database-admin')
+          ElMessage.success('已加载 SQL，请确认后手动执行')
+        }).catch(() => {
+          // 用户取消
+        })
+      }
     } else if (type === 'delete_tag') {
       ElMessageBox.confirm(
         '此操作将永久删除该标签及其所有子标签，且会级联删除关联的配置规则。确认删除？',
