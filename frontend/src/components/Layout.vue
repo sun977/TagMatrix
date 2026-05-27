@@ -39,8 +39,11 @@
         </div>
 
         <!-- 软件版本信息 -->
-        <div class="version-info" v-if="!isCollapsed">
-          © 2026 {{ authorName }} | v{{ appVersion }}
+        <div class="version-info" :class="{ 'is-collapsed': isCollapsed }">
+          <span v-if="!isCollapsed">© 2026 {{ authorName }} | v{{ appVersion }}</span>
+          <el-tooltip v-else :content="`© 2026 ${authorName} | v${appVersion}`" placement="right" :show-after="200">
+            <span class="collapsed-text-icon">S</span>
+          </el-tooltip>
         </div>
       </div>
 
@@ -408,6 +411,29 @@ onUnmounted(() => {
       opacity: 0.6;
       white-space: nowrap;
       user-select: none;
+
+      &.is-collapsed {
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        
+        .collapsed-text-icon {
+          font-weight: 700;
+          font-size: 16px;
+          font-family: monospace;
+          color: var(--tm-text-secondary);
+        }
+
+        &:hover {
+          opacity: 0.9;
+          
+          .collapsed-text-icon {
+            color: var(--tm-text-primary);
+          }
+        }
+      }
     }
   }
 
