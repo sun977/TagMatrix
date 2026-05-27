@@ -99,7 +99,7 @@
     </div>
 
     <!-- 最近打标任务 -->
-    <div class="section-container">
+    <div class="section-container tasks-section">
       <div class="section-header">
         <h3 class="section-title">最近打标任务</h3>
         <el-button type="primary" link class="view-all-btn" @click="$router.push('/task-kanban')">
@@ -107,7 +107,7 @@
         </el-button>
       </div>
       
-      <el-table :data="recentTasks" style="width: 100%" class="custom-table">
+      <el-table :data="paginatedRecentTasks" style="width: 100%" height="100%" class="custom-table" v-loading="loadingTasks">
         <el-table-column prop="name" label="任务名称" min-width="180" />
         <el-table-column prop="desc" label="任务描述" min-width="220" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="120">
@@ -135,6 +135,19 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <!-- 分页 -->
+      <div class="pagination-wrapper" v-if="recentTasks.length > 0">
+        <el-pagination
+          :current-page="currentPage"
+          :page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="recentTasks.length"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
+        />
+      </div>
     </div>
     <!-- 标签列表弹窗 -->
     <el-dialog v-model="tagsDialogVisible" title="系统标签列表" width="800px">
@@ -269,6 +282,24 @@ const showDatasetTaggedDialog = () => {
 const recentTasks = ref<any[]>([])
 const loadingTasks = ref(false)
 
+const currentPage = ref(1)
+const pageSize = ref(10)
+
+const paginatedRecentTasks = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return recentTasks.value.slice(start, end)
+})
+
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+}
+
 const runningTask = computed(() => {
   return recentTasks.value.find(t => t.statusType === 'running')
 })
@@ -390,9 +421,7 @@ const loadDashboardData = async () => {
   try {
     loadingTasks.value = true
     const batches = await GetTaskBatches()
-    // 只取前5条
-    const recent = batches.slice(0, 5)
-    recentTasks.value = recent.map((b: model.TagTaskBatch) => {
+    recentTasks.value = batches.map((b: model.TagTaskBatch) => {
       const isRunning = b.status === 'running'
       let timeStr = '-'
       if (b.finished_at && b.created_at) {
@@ -484,7 +513,12 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .dashboard-page {
-  padding: 24px 32px 40px;
+  padding: 24px 32px 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 0;
 }
 
 .clickable-card {
@@ -645,13 +679,23 @@ onUnmounted(() => {
 
 /* --- 通用区块 --- */
 .section-container {
-  margin-bottom: 40px;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+
+  &.tasks-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    margin-bottom: 0;
+  }
 
   .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
+    flex-shrink: 0;
   }
 
   .section-title {
@@ -714,9 +758,11 @@ onUnmounted(() => {
 
 /* --- 表格样式 --- */
 .custom-table {
-  --el-table-border-color: var(--tm-border-color);
+  --el-table-border-color: transparent;
   --el-table-header-bg-color: var(--tm-bg-subtle);
   --el-table-header-text-color: var(--tm-text-secondary);
+  flex: 1;
+  min-height: 0;
   
   :deep(th.el-table__cell) {
     font-weight: 500;
@@ -727,6 +773,19 @@ onUnmounted(() => {
     padding: 16px 0;
     font-size: 14px;
     color: var(--tm-text-regular);
+    border-bottom: 1px solid var(--tm-border-color);
+  }
+}
+
+.pagination-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 16px;
+  flex-shrink: 0;
+
+  :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
+    background-color: var(--tm-accent-primary);
   }
 }
 

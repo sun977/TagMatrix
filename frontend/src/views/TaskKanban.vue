@@ -166,6 +166,7 @@
       <el-table 
         :data="paginatedTaskHistory" 
         style="width: 100%" 
+        height="100%"
         class="custom-table" 
         v-loading="loadingBatches"
         @selection-change="handleSelectionChange"
@@ -275,14 +276,14 @@
 
       <!-- 分页 -->
       <div class="pagination-wrapper">
-        <span class="pagination-info">共 {{ filteredTaskHistory.length }} 条记录</span>
         <el-pagination
-          background
-          layout="prev, pager, next"
-          :total="filteredTaskHistory.length"
-          :page-size="pageSize"
           :current-page="currentPage"
-          @update:current-page="currentPage = $event"
+          :page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="filteredTaskHistory.length"
+          @size-change="handleSizeChange"
+          @current-change="handleCurrentChange"
         />
       </div>
     </div>
@@ -433,6 +434,15 @@ const taskHistory = ref<any[]>([])
 
 const currentPage = ref(1)
 const pageSize = ref(10)
+
+const handleSizeChange = (val: number) => {
+  pageSize.value = val
+  currentPage.value = 1
+}
+
+const handleCurrentChange = (val: number) => {
+  currentPage.value = val
+}
 
 const filteredTaskHistory = computed(() => {
   let result = [...taskHistory.value]
@@ -788,12 +798,18 @@ onUnmounted(() => {
 }
 
 .page-container {
-  padding: 24px 32px 40px;
+  padding: 24px 32px 24px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  min-height: 0;
 }
 
 /* --- 页面顶部 --- */
 .page-header {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 
   .page-title {
     font-size: 20px;
@@ -814,8 +830,9 @@ onUnmounted(() => {
   background: var(--tm-bg-main);
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
-  padding: 24px;
-  margin-bottom: 32px;
+  padding: 20px 24px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 
   .section-title {
     margin: 0 0 20px 0;
@@ -850,13 +867,18 @@ onUnmounted(() => {
   background: var(--tm-bg-main);
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
-  padding: 24px;
+  padding: 16px 24px 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for nested flex scroll */
 
   .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
+    flex-shrink: 0;
 
     .section-title {
       margin: 0;
@@ -881,6 +903,8 @@ onUnmounted(() => {
   --el-table-border-color: transparent;
   --el-table-header-bg-color: var(--tm-bg-subtle);
   --el-table-header-text-color: var(--tm-text-secondary);
+  flex: 1;
+  min-height: 0;
   
   :deep(th.el-table__cell) {
     font-weight: 500;
@@ -992,14 +1016,10 @@ onUnmounted(() => {
 /* --- 分页 --- */
 .pagination-wrapper {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
-  margin-top: 20px;
-
-  .pagination-info {
-    font-size: 13px;
-    color: var(--tm-text-secondary);
-  }
+  margin-top: 16px;
+  flex-shrink: 0;
 
   :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
     background-color: var(--tm-accent-primary);

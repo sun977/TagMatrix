@@ -30,8 +30,8 @@
         </div>
       </div>
 
-      <div class="table-section" v-loading="isDatasetLoading">
-        <el-table :data="datasetList" style="width: 100%" class="custom-table">
+      <div class="table-section" v-loading="isDatasetLoading" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+        <el-table :data="paginatedDatasetList" style="width: 100%" height="100%" class="custom-table">
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column prop="name" label="数据集名称" min-width="150" show-overflow-tooltip />
           <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
@@ -84,6 +84,18 @@
             </template>
           </el-table-column>
         </el-table>
+
+        <div class="pagination-wrapper" v-if="datasetList.length > 0">
+          <el-pagination
+            :current-page="datasetCurrentPage"
+            :page-size="datasetPageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="datasetList.length"
+            @size-change="handleDatasetSizeChange"
+            @current-change="handleDatasetCurrentChange"
+          />
+        </div>
       </div>
     </div>
 
@@ -315,6 +327,24 @@ const viewMode = ref<'list' | 'detail'>('list')
 const isDatasetLoading = ref(false)
 const datasetList = ref<any[]>([])
 const currentDataset = ref<any>(null)
+
+const datasetCurrentPage = ref(1)
+const datasetPageSize = ref(20)
+
+const paginatedDatasetList = computed(() => {
+  const start = (datasetCurrentPage.value - 1) * datasetPageSize.value
+  const end = start + datasetPageSize.value
+  return datasetList.value.slice(start, end)
+})
+
+const handleDatasetSizeChange = (val: number) => {
+  datasetPageSize.value = val
+  datasetCurrentPage.value = 1
+}
+
+const handleDatasetCurrentChange = (val: number) => {
+  datasetCurrentPage.value = val
+}
 
 const isLoading = ref(false)
 const isImporting = ref(false)
@@ -883,12 +913,15 @@ onMounted(() => {
 
 /* --- 分页 --- */
 .pagination-wrapper {
-  padding: 16px 20px;
   display: flex;
   justify-content: flex-end;
-  border-top: 1px solid var(--tm-border-color-light);
-  background-color: var(--tm-bg-main);
-  margin: 0 -24px -20px -24px; /* offset the table-section padding to touch borders */
+  align-items: center;
+  margin-top: 16px;
+  flex-shrink: 0;
+
+  :deep(.el-pagination.is-background .el-pager li:not(.is-disabled).is-active) {
+    background-color: var(--tm-accent-primary);
+  }
 }
 
 .detail-content-wrapper {
