@@ -39,7 +39,7 @@
         </div>
 
         <!-- 软件版本信息 -->
-        <div class="version-info" :class="{ 'is-collapsed': isCollapsed }">
+        <div class="version-info" :class="{ 'is-collapsed': isCollapsed }" @click="handleVersionClick">
           <span v-if="!isCollapsed">© 2026 {{ authorName }} | v{{ appVersion }}</span>
           <el-tooltip v-else :content="`© 2026 ${authorName} | v${appVersion}`" placement="right" :show-after="200">
             <span class="collapsed-text-icon">S</span>
@@ -101,6 +101,7 @@ import { GetAppConfig, GetTaskBatches } from '../../wailsjs/go/main/App'
 import { config, model } from '../../wailsjs/go/models'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { Loading } from '@element-plus/icons-vue'
+import { ElMessageBox } from 'element-plus'
 
 const router = useRouter()
 const route = useRoute()
@@ -221,6 +222,55 @@ const actualSidebarWidth = computed(() => {
 
 const toggleCollapse = () => {
   isCollapsed.value = !isCollapsed.value
+}
+
+// --- 彩蛋逻辑 ---
+const versionClickCount = ref(0)
+let versionClickTimer: any = null
+
+const handleVersionClick = () => {
+  if (isCollapsed.value) return // 收起时不触发彩蛋
+
+  versionClickCount.value++
+  
+  if (versionClickTimer) {
+    clearTimeout(versionClickTimer)
+  }
+  
+  // 连续点击 3 次触发彩蛋
+  if (versionClickCount.value >= 3) {
+    versionClickCount.value = 0
+    ElMessageBox.alert(
+      '<div style="text-align: center; padding: 10px 0;">' +
+        '<h3 style="margin-top:0; color: var(--tm-text-primary);">发现彩蛋！</h3>' +
+        '<p style="color: var(--tm-text-regular); line-height: 1.6; margin: 12px 0;">你好呀，我是本系统的作者 <strong>Sun977</strong>！</p>' +
+          '<p style="color: var(--tm-text-regular); margin-bottom:16px; line-height: 1.6;">感谢使用 TagMatrix，愿你的数据标注之路不再痛苦~ ✨</p>' +
+          '<div style="display: flex; flex-direction: column; gap: 8px; align-items: center; font-size: 13px; background: rgba(245, 247, 250, 0.5); border: 1px solid var(--tm-border-color); padding: 16px 12px; border-radius: 8px;">' +
+            '<img src="/sponsor-code.png" alt="交个朋友" style="width: 180px; height: 180px; border-radius: 6px; border: 1px solid var(--tm-border-color);" onerror="this.style.display=\'none\'" />' +
+            '<div style="color: var(--tm-accent-primary); font-weight: 600; font-size: 14px; margin: 4px 0;">交个朋友 / 赞赏支持</div>' +
+            '<div style="margin-top: 4px; display: grid; grid-template-columns: 60px 1fr; row-gap: 6px; color: var(--tm-text-regular); text-align: left; line-height: 1.4;">' +
+            '<div style="color: var(--tm-text-secondary);">GitHub:</div>' +
+            '<div><a href="https://github.com/Sun977" target="_blank" style="color: var(--tm-accent-primary); text-decoration: none; font-weight: 500;">Sun977</a></div>' +
+            '<div style="color: var(--tm-text-secondary);">Email:</div>' +
+            '<div><span style="user-select: all;">jiuwei977@foxmail.com</span></div>' +
+            '<div style="color: var(--tm-text-secondary);">微信:</div>' +
+            '<div><span style="user-select: all; font-weight: 500;">EternityCanYang</span></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>',
+      '🎉 Surprise!',
+      {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '收到啦',
+        center: true,
+      }
+    ).catch(() => {}) // 捕获并忽略关闭弹窗时的错误
+  } else {
+    // 1秒内没连续点击则重置计数
+    versionClickTimer = setTimeout(() => {
+      versionClickCount.value = 0
+    }, 1000)
+  }
 }
 
 const startDrag = (e: MouseEvent) => {
@@ -411,10 +461,15 @@ onUnmounted(() => {
       opacity: 0.6;
       white-space: nowrap;
       user-select: none;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+
+      &:hover {
+        opacity: 0.9;
+      }
 
       &.is-collapsed {
         font-size: 16px;
-        cursor: pointer;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -424,11 +479,10 @@ onUnmounted(() => {
           font-size: 16px;
           font-family: monospace;
           color: var(--tm-text-secondary);
+          transition: color 0.2s ease;
         }
 
         &:hover {
-          opacity: 0.9;
-          
           .collapsed-text-icon {
             color: var(--tm-text-primary);
           }
