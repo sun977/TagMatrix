@@ -524,39 +524,17 @@ html.dark {
           background-color: var(--tm-accent-primary);
           color: white;
           border-top-right-radius: 4px;
-
+          
           &.markdown-body {
-            code {
-              background-color: rgba(255, 255, 255, 0.2);
-              color: inherit;
-            }
-            pre code {
-              background-color: rgba(0, 0, 0, 0.15);
-              color: white;
+            pre code, pre code.hljs {
+              background-color: transparent !important;
             }
             .code-block-wrapper {
-              border-color: rgba(255, 255, 255, 0.3);
+              border-color: rgba(255, 255, 255, 0.4);
               .code-block-header {
-                background-color: rgba(0, 0, 0, 0.2);
+                background-color: rgba(255, 255, 255, 0.15) !important;
                 border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-                color: rgba(255, 255, 255, 0.9);
-                .copy-btn {
-                  border-color: rgba(255, 255, 255, 0.4);
-                  color: white;
-                  &:hover {
-                    background-color: rgba(255, 255, 255, 0.2);
-                  }
-                }
               }
-            }
-            blockquote {
-              color: rgba(255, 255, 255, 0.85);
-              border-left-color: rgba(255, 255, 255, 0.4);
-            }
-            table {
-              th, td { border-color: rgba(255, 255, 255, 0.2); }
-              th { background-color: rgba(0, 0, 0, 0.1); }
-              tr:nth-child(2n) { background-color: rgba(0, 0, 0, 0.05); }
             }
           }
         }
@@ -606,6 +584,21 @@ html.dark {
           }
         }
       }
+    }
+  }
+}
+
+html.dark {
+  .ai-chat-container .chat-list .chat-message.is-user {
+    .message-avatar {
+      background-color: #1e2d24;
+      color: #52c48f;
+      border: 1px solid #2d4335;
+    }
+    .message-bubble {
+      background-color: #1e2d24;
+      color: var(--tm-text-primary);
+      border: 1px solid #2d4335;
     }
   }
 }
