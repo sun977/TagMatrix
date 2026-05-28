@@ -675,7 +675,13 @@ const fetchBatches = async () => {
 
 const submitTask = async () => {
   if (!taskForm.value.batchName) {
-    taskForm.value.batchName = '新建打标任务'
+    const datasetName = taskForm.value.datasetId ? getDatasetName(taskForm.value.datasetId) : '未命名数据集'
+    const now = new Date()
+    const pad = (n: number) => n.toString().padStart(2, '0')
+    const dateStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`
+    const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase()
+    
+    taskForm.value.batchName = `${datasetName}_${dateStr}_${randomStr}`
   }
   isSubmitting.value = true
   
