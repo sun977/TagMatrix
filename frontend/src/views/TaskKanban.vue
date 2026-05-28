@@ -214,14 +214,15 @@
             <div style="display: flex; align-items: center; justify-content: center;">
               操作
               <el-tooltip effect="dark" placement="top-end">
-                <template #content>
-                  <div style="line-height: 1.8;">
-                    <div><strong>查看</strong>：查看打标任务详细日志及命中规则。</div>
-                    <div><strong>导出</strong>：将该批次产生的打标日志导出为 CSV。</div>
-                    <div><strong style="color: #67C23A;">回退</strong>：撤销本次打标任务所产生的所有标签。</div>
-                    <div><strong style="color: #F56C6C;">删除</strong>：彻底删除该任务及其所有相关日志记录。</div>
-                  </div>
-                </template>
+            <template #content>
+              <div style="line-height: 1.8;">
+                <div><strong>查看</strong>：查看打标任务详细日志及命中规则。</div>
+                <div><strong>导出</strong>：将该批次产生的打标日志导出为 CSV。</div>
+                <div><strong style="color: #67C23A;">回退</strong>：撤销本次打标任务所产生的所有标签。</div>
+                <div><strong style="color: #409EFF;">重试</strong>：复制原任务参数至表单并重新发起。</div>
+                <div><strong style="color: #F56C6C;">删除</strong>：彻底删除该任务及其所有相关日志记录。</div>
+              </div>
+            </template>
                 <el-icon style="font-size: 14px; margin-left: 4px; color: #909399; cursor: help;"><QuestionFilled /></el-icon>
               </el-tooltip>
             </div>
@@ -239,28 +240,29 @@
                 <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)" style="margin: 0;">导出</el-button>
               </div>
               <div style="display: flex; gap: 4px; justify-content: center;">
-                <el-button size="small" class="action-btn" @click="handleRollback(scope.row.id)" style="color: #67C23A; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color); margin: 0;">回退</el-button>
-                <el-button size="small" class="action-btn" @click="handleSingleDelete(scope.row.id)" style="color: #F56C6C; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color); margin: 0;">删除</el-button>
-              </div>
-            </template>
-            <template v-else-if="scope.row.statusType === 'failed'">
-              <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
-                <el-button type="danger" link size="small" style="margin: 0;">错误日志</el-button>
-              </div>
-              <div style="display: flex; gap: 4px; justify-content: center;">
-                <el-button type="success" size="small" class="action-btn retry-btn" style="margin: 0;">重试</el-button>
-                <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)" style="margin: 0;">删除</el-button>
-              </div>
-            </template>
-            <template v-else-if="scope.row.statusType === 'rolled_back'">
-              <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
-                <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)" style="margin: 0;">日志</el-button>
-                <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)" style="margin: 0;">导出</el-button>
-              </div>
-              <div style="display: flex; gap: 4px; justify-content: center;">
-                <el-button type="danger" link size="small" @click="handleSingleDelete(scope.row.id)" style="margin: 0;">删除</el-button>
-              </div>
-            </template>
+          <el-button size="small" class="action-btn btn-text-green" @click="handleRollback(scope.row.id)" style="margin: 0;">回退</el-button>
+          <el-button size="small" class="action-btn btn-text-red" @click="handleSingleDelete(scope.row.id)" style="margin: 0;">删除</el-button>
+        </div>
+      </template>
+      <template v-else-if="scope.row.statusType === 'failed'">
+        <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
+          <el-button type="danger" link size="small" style="margin: 0;">错误日志</el-button>
+        </div>
+        <div style="display: flex; gap: 4px; justify-content: center;">
+          <el-button size="small" class="action-btn btn-text-blue" @click="cloneTask(scope.row)" style="margin: 0;">重试</el-button>
+          <el-button size="small" class="action-btn btn-text-red" @click="handleSingleDelete(scope.row.id)" style="margin: 0;">删除</el-button>
+        </div>
+      </template>
+      <template v-else-if="scope.row.statusType === 'rolled_back'">
+        <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
+          <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)" style="margin: 0;">查看</el-button>
+          <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)" style="margin: 0;">导出</el-button>
+        </div>
+        <div style="display: flex; gap: 4px; justify-content: center;">
+          <el-button size="small" class="action-btn btn-text-blue" @click="cloneTask(scope.row)" style="margin: 0;">重试</el-button>
+          <el-button size="small" class="action-btn btn-text-red" @click="handleSingleDelete(scope.row.id)" style="margin: 0;">删除</el-button>
+        </div>
+      </template>
             <template v-else-if="scope.row.statusType === 'pending'">
               <div style="display: flex; gap: 4px; justify-content: center; margin-bottom: 6px;">
                 <el-button size="small" class="action-btn" style="margin: 0;">编辑</el-button>
@@ -663,7 +665,11 @@ const fetchBatches = async () => {
         time: timeStr,
         creator: '系统',
         createTime: new Date(b.created_at || Date.now()).toLocaleString(),
-        rawTime: new Date(b.created_at || Date.now()).getTime()
+        rawTime: new Date(b.created_at || Date.now()).getTime(),
+        rawSourceFile: b.source_file,
+        rawRules: b.rules,
+        rawExecStrategy: b.exec_strategy,
+        rawTagMode: b.tag_mode
       }
     })
   } catch (e: any) {
@@ -671,6 +677,58 @@ const fetchBatches = async () => {
   } finally {
     loadingBatches.value = false
   }
+}
+
+const cloneTask = async (row: any) => {
+  taskForm.value.datasetId = row.datasetId
+  await handleDatasetChange()
+  
+  let parsedSources = ['all']
+  try {
+    if (row.rawSourceFile) {
+      const parsed = JSON.parse(row.rawSourceFile)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        parsedSources = parsed
+      } else if (typeof row.rawSourceFile === 'string') {
+        parsedSources = row.rawSourceFile.split(',').filter((s: string) => s.trim() !== '')
+        if (parsedSources.length === 0) parsedSources = ['all']
+      }
+    }
+  } catch(e) {
+    if (typeof row.rawSourceFile === 'string') {
+      parsedSources = row.rawSourceFile.split(',').filter((s: string) => s.trim() !== '')
+      if (parsedSources.length === 0) parsedSources = ['all']
+    }
+  }
+  taskForm.value.sourceFile = parsedSources
+
+  let parsedRules = ['all']
+  try {
+    if (row.rawRules) {
+      const parsed = JSON.parse(row.rawRules)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        parsedRules = parsed.map((id: any) => String(id))
+      } else if (typeof row.rawRules === 'string') {
+        parsedRules = row.rawRules.split(',').filter((s: string) => s.trim() !== '')
+        if (parsedRules.length === 0) parsedRules = ['all']
+      }
+    }
+  } catch(e) {
+     if (typeof row.rawRules === 'string') {
+       parsedRules = row.rawRules.split(',').filter((s: string) => s.trim() !== '')
+       if (parsedRules.length === 0) parsedRules = ['all']
+     }
+  }
+  taskForm.value.rules = parsedRules
+  
+  taskForm.value.execStrategy = row.rawExecStrategy || 'append'
+  taskForm.value.tagMode = row.rawTagMode || 'multiple'
+  taskForm.value.desc = row.desc === '-' ? '' : row.desc
+  
+  taskForm.value.batchName = ''
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  ElMessage.success('已复制任务配置，请检查后重新发起')
 }
 
 const submitTask = async () => {
@@ -1006,6 +1064,33 @@ onUnmounted(() => {
     &:hover {
       background-color: var(--tm-accent-hover);
       border-color: var(--tm-accent-hover);
+    }
+  }
+
+  &.btn-text-green {
+    color: #67C23A;
+    &:hover {
+      color: #85ce61;
+      border-color: #dcdfe6;
+      background-color: var(--tm-bg-hover);
+    }
+  }
+
+  &.btn-text-blue {
+    color: #409EFF;
+    &:hover {
+      color: #66b1ff;
+      border-color: #dcdfe6;
+      background-color: var(--tm-bg-hover);
+    }
+  }
+
+  &.btn-text-red {
+    color: #F56C6C;
+    &:hover {
+      color: #f78989;
+      border-color: #dcdfe6;
+      background-color: var(--tm-bg-hover);
     }
   }
 }
