@@ -45,10 +45,7 @@
           <el-icon v-else><Service /></el-icon>
         </div>
         <div class="message-content">
-          <div class="message-bubble markdown-body" v-if="msg.role === 'ai'" v-html="renderMarkdown(msg.content)" @click="handleBubbleClick">
-          </div>
-          <div class="message-bubble" v-else>
-            {{ msg.content }}
+          <div class="message-bubble markdown-body" v-html="renderMarkdown(msg.content)" @click="handleBubbleClick">
           </div>
         </div>
       </div>
@@ -272,6 +269,52 @@ watch(() => aiStore.currentChatHistory, () => {
   p { margin: 0 0 12px; }
   p:last-child { margin-bottom: 0; }
   
+  h1, h2, h3, h4, h5, h6 {
+    margin-top: 16px;
+    margin-bottom: 8px;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  h1 { font-size: 1.5em; }
+  h2 { font-size: 1.3em; }
+  h3 { font-size: 1.1em; }
+  
+  ul, ol {
+    margin: 0 0 12px;
+    padding-left: 24px;
+  }
+  
+  blockquote {
+    margin: 0 0 12px;
+    padding: 0 1em;
+    color: var(--tm-text-secondary);
+    border-left: 0.25em solid var(--tm-border-color);
+  }
+  
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0;
+    font-size: 13px;
+    overflow-x: auto;
+    display: block;
+    
+    th, td {
+      border: 1px solid var(--tm-border-color);
+      padding: 6px 10px;
+      text-align: left;
+    }
+    
+    th {
+      background-color: var(--tm-bg-subtle);
+      font-weight: 600;
+    }
+    
+    tr:nth-child(2n) {
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+  }
+  
   code {
     background-color: rgba(175, 184, 193, 0.2);
     padding: 0.2em 0.4em;
@@ -372,6 +415,12 @@ html.dark {
     
     .code-block-wrapper {
       border-color: #333;
+    }
+
+    table {
+      tr:nth-child(2n) {
+        background-color: rgba(255, 255, 255, 0.02);
+      }
     }
   }
 }
@@ -475,6 +524,41 @@ html.dark {
           background-color: var(--tm-accent-primary);
           color: white;
           border-top-right-radius: 4px;
+
+          &.markdown-body {
+            code {
+              background-color: rgba(255, 255, 255, 0.2);
+              color: inherit;
+            }
+            pre code {
+              background-color: rgba(0, 0, 0, 0.15);
+              color: white;
+            }
+            .code-block-wrapper {
+              border-color: rgba(255, 255, 255, 0.3);
+              .code-block-header {
+                background-color: rgba(0, 0, 0, 0.2);
+                border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+                color: rgba(255, 255, 255, 0.9);
+                .copy-btn {
+                  border-color: rgba(255, 255, 255, 0.4);
+                  color: white;
+                  &:hover {
+                    background-color: rgba(255, 255, 255, 0.2);
+                  }
+                }
+              }
+            }
+            blockquote {
+              color: rgba(255, 255, 255, 0.85);
+              border-left-color: rgba(255, 255, 255, 0.4);
+            }
+            table {
+              th, td { border-color: rgba(255, 255, 255, 0.2); }
+              th { background-color: rgba(0, 0, 0, 0.1); }
+              tr:nth-child(2n) { background-color: rgba(0, 0, 0, 0.05); }
+            }
+          }
         }
       }
 
