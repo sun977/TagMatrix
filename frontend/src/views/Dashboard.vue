@@ -464,6 +464,8 @@ const loadDashboardData = async () => {
 onMounted(() => {
   loadDashboardData()
 
+  EventsOn('task_list_updated', loadDashboardData)
+
   // 监听后端推送的任务进度事件，保持与任务看板同步的实时更新
   EventsOn('taskProgress', (data: any) => {
     const batchIndex = recentTasks.value.findIndex(b => b.id === data.batchID)
@@ -508,6 +510,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   EventsOff('taskProgress')
+  EventsOff('task_list_updated')
 })
 </script>
 

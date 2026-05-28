@@ -239,6 +239,29 @@ func (s *AIEngineService) executeAITool(ctx context.Context, tc openai.ToolCall)
 		runtime.EventsEmit(ctx, "rule_list_updated")
 		return "{\"status\":\"success\",\"message\":\"Rule deleted successfully\"}"
 
+	case "execute_tagging_task":
+		var args struct {
+			DatasetID uint64   `json:"dataset_id"`
+			RuleIDs   []uint64 `json:"rule_ids"`
+			TagMode   string   `json:"tag_mode"`
+		}
+		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"%v\"}", err)
+		}
+
+		if s.RunTaggingTaskFunc == nil {
+			return "{\"status\":\"error\",\"message\":\"RunTaggingTaskFunc is not initialized\"}"
+		}
+
+		batchID, err := s.RunTaggingTaskFunc(ctx, args.DatasetID, args.RuleIDs, args.TagMode)
+		if err != nil {
+			return fmt.Sprintf("{\"status\":\"error\",\"message\":\"%v\"}", err)
+		}
+
+		// 通知前端任务列表更新，并可以切换到任务视图
+		runtime.EventsEmit(ctx, "task_list_updated")
+		return fmt.Sprintf("{\"status\":\"success\",\"message\":\"Task execution started successfully\",\"batch_id\":%d}", batchID)
+
 	}
 
 	return "{\"status\":\"error\",\"message\":\"Unknown function name\"}"

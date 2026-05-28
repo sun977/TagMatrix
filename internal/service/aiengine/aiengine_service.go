@@ -68,9 +68,10 @@ func getAISemaphore() *semaphore.Weighted {
 
 // AIEngineService 处理与 AI 相关的业务逻辑
 type AIEngineService struct {
-	db           *gorm.DB
-	proxyService *network.ProxyService
-	tagLogic     *taglogic.TagLogicService
+	db                 *gorm.DB
+	proxyService       *network.ProxyService
+	tagLogic           *taglogic.TagLogicService
+	RunTaggingTaskFunc func(ctx context.Context, datasetID uint64, ruleIDs []uint64, tagMode string) (uint64, error)
 }
 
 // NewAIEngineService 创建 AIEngineService 实例
@@ -381,6 +382,35 @@ func (s *AIEngineService) getAgentTools() []openai.Tool {
 				},
 			},
 		},
+		{
+			Type: openai.ToolTypeFunction,
+			Function: &openai.FunctionDefinition{
+				Name:        "execute_tagging_task",
+				Description: "执行打标任务，对指定数据集按给定规则进行自动打标",
+				Parameters: map[string]interface{}{
+					"type": "object",
+					"properties": map[string]interface{}{
+						"dataset_id": map[string]interface{}{
+							"type":        "integer",
+							"description": "要执行打标任务的数据集ID",
+						},
+						"rule_ids": map[string]interface{}{
+							"type": "array",
+							"items": map[string]interface{}{
+								"type": "integer",
+							},
+							"description": "要执行的规则ID列表",
+						},
+						"tag_mode": map[string]interface{}{
+							"type":        "string",
+							"description": "打标模式，可选值为 'single' (单标签), 'multiple' (多标签), 'mixed' (混合模式)",
+							"enum":        []string{"single", "multiple", "mixed"},
+						},
+					},
+					"required": []string{"dataset_id", "rule_ids", "tag_mode"},
+				},
+			},
+		},
 	}
 }
 
@@ -469,7 +499,7 @@ TagMatrix操作指南：
 		if s.db != nil {
 			s.db.Find(&datasets)
 			for _, d := range datasets {
-				dsInfos = append(dsInfos, fmt.Sprintf("- 数据集名: %s (字段/SchemaKeys: %s)", d.Name, d.SchemaKeys))
+				dsInfos = append(dsInfos, fmt.Sprintf("- 数据集ID: %d, 数据集名: %s (字段/SchemaKeys: %s)", d.ID, d.Name, d.SchemaKeys))
 			}
 		}
 		dsContext := "当前系统中存在的数据集列表及可用字段：\n" + strings.Join(dsInfos, "\n")

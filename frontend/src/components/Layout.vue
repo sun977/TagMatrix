@@ -153,6 +153,8 @@ onMounted(async () => {
 
   fetchRunningTasks()
 
+  EventsOn('task_list_updated', fetchRunningTasks)
+
   EventsOn('taskProgress', (data: any) => {
     if (data.status === 'running') {
       const existing = runningTasks.value.find(t => t.id === data.batchID)
@@ -173,6 +175,7 @@ onUnmounted(() => {
   stopDrag()
   window.removeEventListener('open-settings', openSettings)
   EventsOff('taskProgress')
+  EventsOff('task_list_updated')
 })
 
 // 过滤出要在菜单中显示的路由

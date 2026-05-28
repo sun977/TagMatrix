@@ -796,6 +796,8 @@ onMounted(() => {
   fetchBatches()
   loadData()
 
+  EventsOn('task_list_updated', fetchBatches)
+
   // 监听后端推送的任务进度事件
   EventsOn('taskProgress', (data: any) => {
     const batchIndex = taskHistory.value.findIndex(b => b.id === data.batchID)
@@ -841,6 +843,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   EventsOff('taskProgress')
+  EventsOff('task_list_updated')
 })
 </script>
 

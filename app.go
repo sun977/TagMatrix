@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,6 +35,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
@@ -128,6 +130,25 @@ func (a *App) startup(ctx context.Context) {
 	a.tagLogic = taglogic.NewTagLogicService()
 	a.taskEngine = taskengine.NewTaskEngineService(ctx)
 	a.aiEngine = aiengine.NewAIEngineService()
+	
+	// Inject RunTaggingTaskFunc to break circular dependency
+	a.aiEngine.RunTaggingTaskFunc = func(ctx context.Context, datasetID uint64, ruleIDs []uint64, tagMode string) (uint64, error) {
+		// 生成带有时间戳和三位随机大写字母的任务名称，如 AITask_20260528_104223_QAZ
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+		const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+		b := make([]byte, 3)
+		for i := range b {
+			b[i] = letters[r.Intn(len(letters))]
+		}
+		batchName := fmt.Sprintf("AITask_%s_%s", time.Now().Format("20060102_150405"), string(b))
+		
+		// 统一硬编码隐藏 AI 控制参数的考虑：
+		// 1. 任务名称 (batchName) 与 任务描述 (desc)：固定统一带有 AITask 前缀，方便在前端任务看板中与人工发起任务进行区分追溯。
+		// 2. 执行策略 (isOverwrite)：强制置为 false (追加模式)。防止 AI 幻觉或语义误解导致整个数据集已有标签被灾难性清空，确保数据安全。
+		// 3. 来源文件列表 (sourceFiles)：强制传空数组 []string{}。代表对该数据集下全量数据执行，免去 AI 需额外调用工具查询文件名单的繁琐步骤，提升系统响应速度。
+		return a.taskEngine.RunTaggingTask(datasetID, ruleIDs, batchName, "Created by AI Copilot", false, tagMode, []string{})
+	}
+
 	a.dataAdmin = dataadmin.NewDataAdminService(model.DB)
 	a.backupSvc = dataadmin.NewBackupService(model.DB, appDir)
 }
