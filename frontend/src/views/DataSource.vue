@@ -57,7 +57,7 @@
           </el-table-column>
           <el-table-column label="操作" width="220" align="right">
             <template #header>
-              <div style="display: flex; align-items: center; justify-content: flex-end;">
+              <div style="display: flex; align-items: center; justify-content: flex-end; padding-right: 22px;">
                 操作
                 <el-tooltip effect="dark" placement="top-end">
                   <template #content>
@@ -73,13 +73,13 @@
               </div>
             </template>
             <template #default="scope">
-              <div style="margin-bottom: 6px;">
-                <el-button size="small" class="action-btn" @click="handleViewDataset(scope.row)">数据</el-button>
-                <el-button size="small" class="action-btn" @click="handleEditDataset(scope.row)">编辑</el-button>
+              <div style="margin-bottom: 6px; display: flex; justify-content: flex-end; gap: 6px;">
+                <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewDataset(scope.row)">数据</el-button>
+                <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleEditDataset(scope.row)">编辑</el-button>
               </div>
-              <div style="display: flex; align-items: center; justify-content: flex-end;">
-                <el-button size="small" class="action-btn" @click="handleExportBusinessAsset(scope.row)">导出</el-button>
-                <el-button size="small" class="action-btn" @click="handleDeleteDataset(scope.row)" style="color: #F56C6C; border-color: var(--tm-border-color); background-color: var(--el-button-bg-color);">删除</el-button>
+              <div style="display: flex; justify-content: flex-end; gap: 6px;">
+                <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleExportBusinessAsset(scope.row)">导出</el-button>
+                <el-button size="small" class="action-btn delete-action-btn" style="margin-left: 0;" @click="handleDeleteDataset(scope.row)">删除</el-button>
               </div>
             </template>
           </el-table-column>
@@ -701,6 +701,18 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
+.delete-action-btn {
+  color: #F56C6C;
+  border-color: var(--tm-border-color);
+  background-color: var(--el-button-bg-color);
+  
+  &:hover {
+    color: var(--el-color-danger);
+    border-color: var(--el-color-danger-light-7);
+    background-color: var(--el-color-danger-light-9);
+  }
+}
+
 .page-container {
   padding: 24px;
   height: 100%;
