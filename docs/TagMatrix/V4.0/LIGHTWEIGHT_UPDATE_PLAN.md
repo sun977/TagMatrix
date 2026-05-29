@@ -68,3 +68,25 @@ GitHub 官方免费提供了读取仓库 Release 信息的标准 API。我们不
 ## 4. 后续注意事项
 1.  **限频控制**：为避免用户频繁遭遇弹窗打扰，可在前端 `localStorage` 或本地 SQLite 的设置表中记录“最后一次忽略更新的时间”。如果用户点击了“忽略本次”，一周内不要再重复弹窗。
 2.  **网络连通性**：因 GitHub API 在国内存在偶发性访问不畅的情况。检测请求必须设置较短的超时时间（如 5 秒），一旦超时直接静默放弃，绝不能卡死主应用的启动流程。
+
+## 5. 开发者发版操作指南 (Release Workflow)
+
+为了使上述检测机制生效，开发者每次发布新版本时，需要遵循以下标准的 GitHub Release 流程：
+
+### 5.1 准备工作
+1. **修改代码版本号**：在 Go 代码（如 `app.go` 或 `config.go`）以及前端配置中，将 `CurrentVersion` 提升至新版本号（如 `"v4.1.0"`）。**注意：必须确保代码里的版本号与 GitHub Tag 完全一致，通常带上 `v` 前缀**。
+2. **本地打包**：执行 `wails build`，生成对应平台的可执行文件（如 Windows 的 `.exe`，macOS 的 `.app` 压缩包）。
+
+### 5.2 在 GitHub 上创建 Release
+1. 进入您的 TagMatrix GitHub 仓库主页，点击右侧的 **Releases** 区域，然后点击 **"Draft a new release"**。
+2. **Choose a tag (选择标签)**：输入并创建一个新的 Tag，例如 `v4.1.0`（需与代码里的版本号完全对应）。Target 选择 `main` 或主干分支。
+3. **Release title (发布标题)**：输入本次发布的标题，例如 `TagMatrix V4.1.0 跨表视图重磅发布！`。
+4. **Describe this release (版本描述)**：
+   * 在这里填写本次更新的 ChangeLog（新增功能、Bug 修复等）。
+   * **注意**：此处填写的内容，将被客户端通过 API 读取，并展示在用户的弹窗提示中。
+5. **Attach binaries (上传附件)**：
+   * 将第一步打包好的 `.exe` / `.zip` 等二进制文件拖拽上传到这里。
+6. 点击 **"Publish release"**，完成发布。
+
+### 5.3 闭环生效
+发布成功后，GitHub 的 `https://api.github.com/repos/sun977/TagMatrix/releases/latest` 接口会自动更新。此时所有旧版 TagMatrix 客户端在启动时，便能瞬间感知到这个 `v4.1.0` 的存在，并向用户弹窗引导下载。
