@@ -63,9 +63,30 @@
 ## 4. 高阶功能使用
 
 ### 4.1 全局智能副驾 (AI Copilot)
-- **唤起方式**：点击页面右上角（或右下角悬浮窗）的 **客服/服务图标**。
-- **能力**：右侧会滑出 AI 对话框。它能**感知您所在的页面**。比如当您在写 SQL 时，您可以直接向它提问：“帮我写一段统计年龄大于18岁的用户数SQL”，AI 将结合您当前的上下文给出精准答案。
+- **唤起方式**：点击页面右上角（或右下角悬浮窗）的 **三角**。
+- **核心能力**：
+  - **上下文感知交互**：右侧会滑出 AI 对话框。它能**感知您所在的页面**。比如当您在写 SQL 时，您可以直接向它提问：“帮我写一段统计年龄大于18岁的用户数SQL”，AI 将结合您当前的上下文给出精准答案。
+  - **自动执行任务**：支持直接通过自然语言对话下发打标等复杂任务，极大简化手动操作流程。
+  - **智能数据中心分析**：针对数据中心的数据，AI 不仅可以为您生成并运行 SQL 脚本，还可以对数据进行可视化和逻辑层面的深度智能分析。
 - **配置**：在左侧导航底部的 **【设置】 -> 【AI 模型配置】** 中填入您的 OpenAI 或代理 API Key 即可激活。
+
+#### 示例效果展示
+**AI 智能问答与辅助生成：**
+<p align="center">
+  <img src="../../.github/assets/AI助手.png" width="100%" />
+</p>
+
+**AI 自动执行任务：**
+<p align="center">
+  <img src="../../.github/assets/AI助手-自动执行任务.png" width="48%" />
+  <img src="../../.github/assets/AI助手-自动执行任务02.png" width="48%" />
+</p>
+
+**AI 数据中心 SQL 协助与分析：**
+<p align="center">
+  <img src="../../.github/assets/AI助手-数据中心-sql.png" width="48%" />
+  <img src="../../.github/assets/AI助手-数据中心-分析.png" width="48%" />
+</p>
 
 ### 4.2 任务审计与回退
 - 若您发现打标结果有误，可点击进入 **【任务管理】**。
@@ -78,6 +99,128 @@
   - **SQL Console**：提供原生的 SQL 执行终端，您可以直接对 SQLite 数据库敲 `SELECT` 等语句。
   - **Table Explorer**：以表格形式可视化浏览和修改底层物理表或 JSON 业务字段。
   - **安全备份**：执行高危操作前，请先在备份页面对 `.db` 数据库文件生成快照备份，防患于未然。
+
+### 4.4 匹配引擎高阶使用场景 (Matcher Scenarios)
+TagMatrix 底层内置了高性能的上下文匹配引擎。为了满足各种复杂的业务需求，您可以在 JSON 源码模式下编写规则。以下是 6 个典型的实战配置场景：
+
+#### 场景 1：基础布尔逻辑匹配
+**需求**：单纯判断设备类型是 `honeypot` 且系统包含 `linux`，不产生任何副作用。
+```json
+{
+  "and": [
+    {
+      "field": "device_type",
+      "operator": "equals",
+      "value": "honeypot"
+    },
+    {
+      "field": "os",
+      "operator": "contains",
+      "value": "linux"
+    }
+  ]
+}
+```
+
+#### 场景 2：单字段频次挖掘 (普通算子外挂 Action)
+**需求**：判断 `content` 字段是否包含“高价值”，不仅要判断是否匹配，还要记录在这一行数据中“高价值”出现了几次（触发副作用，自动累加到上下文计数器中）。
+```json
+{
+  "field": "content",
+  "operator": "contains",
+  "value": "高价值",
+  "action": "row_inc",
+  "ignore_case": false
+}
+```
+
+#### 场景 3：正则模式频次挖掘 (普通算子外挂 Action)
+**需求**：提取 `error_log` 字段中所有符合 `failed_login_\d+` 模式的错误记录，计算其出现的次数，并在上下文中累加。
+```json
+{
+  "field": "error_log",
+  "operator": "regex",
+  "value": "failed_login_\\d+",
+  "action": "row_inc"
+}
+```
+
+#### 场景 4：非文本复合条件的强制计数 (row_inc / global_inc)
+**需求**：如果“账户余额 > 10000”且“状态为 active”，则业务判定成立，此时需无条件触发计数（行级+1，也可配合 global_inc）。利用 `AND` 前置遇假短路的特性，仅当真实条件满足时，最后一步的 `row_inc` 才会执行并产生副作用。
+```json
+{
+  "and": [
+    {
+      "field": "balance",
+      "operator": "greater_than",
+      "value": 10000
+    },
+    {
+      "field": "status",
+      "operator": "equals",
+      "value": "active"
+    },
+    {
+      "operator": "row_inc",
+      "value": 1
+    }
+  ]
+}
+```
+
+#### 场景 5：多特征叠加计数 (evaluate_all)
+**需求**：黑名单IP、异地登录、正则报错，只要满足任意一个就计 1 次。若一行数据同时满足这 3 个特征，希望叠加计数（计 3 次）。此时利用 `evaluate_all` 避免被常规的 `OR` 提前短路。
+```json
+{
+  "evaluate_all": [
+    {
+      "and": [
+        {"field": "ip", "operator": "in", "value": ["1.1.1.1", "2.2.2.2"]},
+        {"operator": "row_inc", "value": 1}
+      ]
+    },
+    {
+      "and": [
+        {"field": "login_location", "operator": "equals", "value": "异地"},
+        {"operator": "row_inc", "value": 1}
+      ]
+    },
+    {
+      "field": "error_log",
+      "operator": "regex",
+      "value": "failed_login",
+      "action": "row_inc"
+    }
+  ]
+}
+```
+
+#### 场景 6：复杂的风控计分卡模型 (evaluate_all + 独立权重)
+**需求**：假设需要给一个【高危用户】打标签，规则不仅仅是满足一条就打标，而是根据触发的不同风险行为累加不同的风险分数（如异地登录记2分，改手机记5分）。最后累加看这个用户总计多少次。此时最外层使用 `evaluate_all`，里面挂载 `and` 逻辑组，在每个组最后挂载一个独立的 `row_inc` 算子，并将 `value` 设定为该项对应的风险得分：
+```json
+{
+  "evaluate_all": [
+    {
+      "and": [
+        { "field": "login_status", "operator": "equals", "value": "异地" },
+        { "field": "", "operator": "row_inc", "value": 2 }
+      ]
+    },
+    {
+      "and": [
+        { "field": "pwd_error", "operator": "equals", "value": "true" },
+        { "field": "", "operator": "row_inc", "value": 1 }
+      ]
+    },
+    {
+      "and": [
+        { "field": "action", "operator": "equals", "value": "change_phone" },
+        { "field": "", "operator": "row_inc", "value": 5 }
+      ]
+    }
+  ]
+}
+```
 
 ---
 
