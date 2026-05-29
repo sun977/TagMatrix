@@ -106,10 +106,10 @@
       
       <el-table :data="paginatedRecentTasks" style="width: 100%" height="100%" class="custom-table" v-loading="loadingTasks">
         <el-table-column prop="name" label="任务名称" min-width="180" />
-        <el-table-column prop="desc" label="任务描述" min-width="220" show-overflow-tooltip />
+        <el-table-column prop="desc" label="任务描述" min-width="180" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="120">
           <template #default="scope">
-            <div class="status-pill" :class="scope.row.statusType">
+            <div class="status-pill" :class="scope.row.statusClass">
               <span class="dot"></span>
               {{ scope.row.statusText }}
             </div>
@@ -118,17 +118,19 @@
         <el-table-column prop="processed" label="处理数量(命中)" width="180" />
         <el-table-column prop="time" label="用时" width="120" />
         <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="220" align="right">
+        <el-table-column label="操作" width="160" align="center">
           <template #default="scope">
-            <el-button v-if="scope.row.statusType === 'running'" size="small" class="action-btn">查看详情</el-button>
-            <template v-else-if="scope.row.statusType === 'completed' || scope.row.statusType === 'rolled_back'">
-              <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看</el-button>
-              <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
-            </template>
-            <template v-else-if="scope.row.statusType === 'failed'">
-              <el-button type="danger" link size="small">查看错误日志</el-button>
-              <el-button type="success" size="small" class="action-btn retry-btn">重试</el-button>
-            </template>
+            <div class="action-buttons-group">
+              <el-button v-if="scope.row.statusType === 'running'" size="small" class="action-btn">查看详情</el-button>
+              <template v-else-if="scope.row.statusType === 'completed' || scope.row.statusType === 'rolled_back'">
+                <el-button size="small" class="action-btn" @click="viewLogs(scope.row.id)">查看</el-button>
+                <el-button size="small" class="action-btn" @click="exportLogs(scope.row.id)">导出</el-button>
+              </template>
+              <template v-else-if="scope.row.statusType === 'failed'">
+                <el-button type="danger" link size="small">查看错误日志</el-button>
+                <el-button type="success" size="small" class="action-btn retry-btn">重试</el-button>
+              </template>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -445,6 +447,10 @@ const loadDashboardData = async () => {
         desc: b.desc || '-',
         statusType: b.status,
         statusText: isRunning ? '执行中' : (b.status === 'completed' ? '已完成' : (b.status === 'failed' ? '失败' : (b.status === 'rolled_back' ? '已回退' : '未知'))),
+        statusClass: b.status === 'running' ? 'status-running' : 
+                     b.status === 'completed' ? 'status-completed' :
+                     b.status === 'failed' ? 'status-failed' :
+                     b.status === 'rolled_back' ? 'status-rolled-back' : '',
         processed: `${b.total_processed}`,
         time: timeStr,
         createTime: new Date(b.created_at || Date.now()).toLocaleString(),
@@ -477,7 +483,14 @@ onMounted(() => {
       else if (data.status === 'rolled_back') statusText = '已回退'
       else if (data.status === 'failed') statusText = '失败'
 
+      let statusClass = ''
+      if (data.status === 'running') statusClass = 'status-running'
+      else if (data.status === 'completed') statusClass = 'status-completed'
+      else if (data.status === 'rolled_back') statusClass = 'status-rolled-back'
+      else if (data.status === 'failed') statusClass = 'status-failed'
+
       batch.statusText = statusText
+      batch.statusClass = statusClass
       batch.processed = `${data.processed}`
 
       if (data.status === 'running') {
@@ -808,22 +821,39 @@ onUnmounted(() => {
     border-radius: 50%;
   }
 
-  &.running {
+  &.status-running {
     background-color: var(--tm-accent-light);
     color: var(--tm-accent-primary);
     .dot { background-color: var(--tm-accent-primary); }
   }
 
-  &.success {
+  &.status-completed {
     background-color: rgba(58, 142, 230, 0.1);
     color: #3a8ee6;
     .dot { background-color: #3a8ee6; }
   }
 
-  &.error {
+  &.status-failed {
     background-color: rgba(245, 108, 108, 0.1);
     color: #f56c6c;
     .dot { background-color: #f56c6c; }
+  }
+
+  &.status-rolled-back {
+    background-color: #f4f4f5;
+    color: #909399;
+    .dot { background-color: #909399; }
+  }
+}
+
+.action-buttons-group {
+  display: flex;
+  justify-content: center;
+  gap: 6px; /* 调整这里可以控制按钮之间的间距 */
+  
+  /* 去除 Element Plus 默认的兄弟按钮左边距，完全由 gap 控制 */
+  :deep(.el-button + .el-button) {
+    margin-left: 0;
   }
 }
 
