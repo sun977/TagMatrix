@@ -116,7 +116,7 @@
           </template>
         </el-table-column>
         <el-table-column prop="processed" label="处理数量(命中)" width="180" />
-        <el-table-column prop="time" label="耗时" width="120" />
+        <el-table-column prop="time" label="用时" width="120" />
         <el-table-column prop="createTime" label="创建时间" width="180" />
         <el-table-column label="操作" width="220" align="right">
           <template #default="scope">
@@ -424,18 +424,18 @@ const loadDashboardData = async () => {
       if (b.finished_at && b.created_at) {
         const diff = new Date(b.finished_at).getTime() - new Date(b.created_at).getTime()
         if (diff >= 0) {
-          const seconds = Math.floor(diff / 1000)
-          if (seconds < 60) timeStr = `${seconds > 0 ? seconds : '<1'}秒`
-          else if (seconds < 3600) timeStr = `${Math.floor(seconds/60)}分${seconds%60}秒`
-          else timeStr = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+          const totalSeconds = diff / 1000
+          if (totalSeconds < 60) timeStr = `${Number(totalSeconds.toFixed(1))}秒`
+          else if (totalSeconds < 3600) timeStr = `${Math.floor(totalSeconds/60)}分${Math.floor(totalSeconds%60)}秒`
+          else timeStr = `${Math.floor(totalSeconds/3600)}小时${Math.floor((totalSeconds%3600)/60)}分`
         }
       } else if (isRunning && b.created_at) {
         const diff = Date.now() - new Date(b.created_at).getTime()
         if (diff >= 0) {
-          const seconds = Math.floor(diff / 1000)
-          if (seconds < 60) timeStr = `${seconds > 0 ? seconds : '<1'}秒`
-          else if (seconds < 3600) timeStr = `${Math.floor(seconds/60)}分${seconds%60}秒`
-          else timeStr = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+          const totalSeconds = diff / 1000
+          if (totalSeconds < 60) timeStr = `${Number(totalSeconds.toFixed(1))}秒`
+          else if (totalSeconds < 3600) timeStr = `${Math.floor(totalSeconds/60)}分${Math.floor(totalSeconds%60)}秒`
+          else timeStr = `${Math.floor(totalSeconds/3600)}小时${Math.floor((totalSeconds%3600)/60)}分`
         }
       }
 
@@ -483,10 +483,10 @@ onMounted(() => {
       if (data.status === 'running') {
         const diff = Date.now() - batch.rawTime
         if (diff >= 0) {
-          const seconds = Math.floor(diff / 1000)
-          if (seconds < 60) batch.time = `${seconds > 0 ? seconds : '<1'}秒`
-          else if (seconds < 3600) batch.time = `${Math.floor(seconds/60)}分${seconds%60}秒`
-          else batch.time = `${Math.floor(seconds/3600)}小时${Math.floor((seconds%3600)/60)}分`
+          const totalSeconds = diff / 1000
+          if (totalSeconds < 60) batch.time = `${Number(totalSeconds.toFixed(1))}秒`
+          else if (totalSeconds < 3600) batch.time = `${Math.floor(totalSeconds/60)}分${Math.floor(totalSeconds%60)}秒`
+          else batch.time = `${Math.floor(totalSeconds/3600)}小时${Math.floor((totalSeconds%3600)/60)}分`
         }
       }
 
