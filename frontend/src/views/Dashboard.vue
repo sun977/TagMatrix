@@ -840,7 +840,7 @@ onUnmounted(() => {
   }
 
   &.status-rolled-back {
-    background-color: #f4f4f5;
+    background-color: var(--tm-bg-hover);
     color: #909399;
     .dot { background-color: #909399; }
   }
