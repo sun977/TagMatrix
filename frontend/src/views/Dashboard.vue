@@ -2,7 +2,10 @@
   <div class="dashboard-page">
     <!-- 页面顶部 Header -->
     <header class="page-header">
-      <h1 class="page-title">仪表板</h1>
+      <div class="header-left">
+        <h1 class="page-title">仪表板</h1>
+        <p class="page-subtitle">这里是 TagMatrix 智能标签管理系统，你可以在这里管理数据、配置标签规则和执行打标任务。</p>
+      </div>
       <div class="header-right">
         <div class="task-status-pill" v-if="runningTask">
           <el-icon class="is-loading"><Loading /></el-icon>
@@ -11,18 +14,12 @@
       </div>
     </header>
 
-    <!-- 欢迎语 -->
-    <div class="welcome-section">
-      <h2>欢迎回来，数据管理员</h2>
-      <p>这里是 TagMatrix 智能标签管理系统，你可以在这里管理数据、配置标签规则和执行打标任务。</p>
-    </div>
-
     <!-- 数据统计卡片 -->
     <el-row :gutter="20" class="stat-cards">
       <el-col :span="6">
         <div class="stat-card clickable-card" @click="showDatasetRecordsDialog">
           <div class="card-top">
-            <span class="card-title">总数据量</span>
+            <span class="card-title">数据总量</span>
             <div class="icon-wrapper green-bg">
               <el-icon><Coin /></el-icon>
             </div>
@@ -98,10 +95,10 @@
       </el-row>
     </div>
 
-    <!-- 最近打标任务 -->
+    <!-- 最近任务 -->
     <div class="section-container tasks-section">
       <div class="section-header">
-        <h3 class="section-title">最近打标任务</h3>
+        <h3 class="section-title">最近任务</h3>
         <el-button type="primary" link class="view-all-btn" @click="$router.push('/task-kanban')">
           查看全部 <el-icon class="el-icon--right"><ArrowRight /></el-icon>
         </el-button>
@@ -224,7 +221,7 @@
       </div>
     </el-dialog>
 
-    <!-- 总数据量（按数据集）弹窗 -->
+    <!-- 数据总量（按数据集）弹窗 -->
     <el-dialog v-model="datasetRecordsDialogVisible" title="数据量统计" width="700px">
       <el-table :data="stats.datasetStats || []" style="width: 100%" height="400" class="custom-table">
         <el-table-column prop="datasetName" label="数据集名称" min-width="200" />
@@ -516,7 +513,8 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .dashboard-page {
-  padding: 24px 32px 24px;
+  /* 调整 padding 可以改变整个页面的外框留白边距 (上方高度、左右宽度等) */
+  padding: 16px 24px;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -542,18 +540,27 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-/* --- 页面顶部 --- */
+  /* --- 页面顶部 (Header) 对应UI最上方标题和副标题 --- */
 .page-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
+  align-items: flex-start;
+  /* 调整这里改变 Header 距离下方【数据统计卡片】的垂直间距 */
+  margin-bottom: 16px;
 
-  .page-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--tm-text-primary);
-    margin: 0;
+  .header-left {
+    .page-title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--tm-text-primary);
+      margin: 0 0 8px 0;
+    }
+    
+    .page-subtitle {
+      margin: 0;
+      font-size: 14px;
+      color: var(--tm-text-secondary);
+    }
   }
 
   .header-right {
@@ -584,33 +591,17 @@ onUnmounted(() => {
   }
 }
 
-/* --- 欢迎语 --- */
-.welcome-section {
-  margin-bottom: 32px;
-
-  h2 {
-    font-size: 24px;
-    font-weight: 700;
-    margin: 0 0 8px 0;
-    color: var(--tm-text-primary);
-  }
-
-  p {
-    margin: 0;
-    font-size: 14px;
-    color: var(--tm-text-secondary);
-  }
-}
-
-/* --- 统计卡片 --- */
+  /* --- 统计卡片 (对应UI上方四个指标展示框) --- */
 .stat-cards {
-  margin-bottom: 40px;
+  /* 调整这里改变 统计卡片 整体与下方【快速操作】的垂直间距 */
+  margin-bottom: 16px;
 
   .stat-card {
     background: var(--tm-bg-main);
     border: 1px solid var(--tm-border-color);
     border-radius: var(--tm-border-radius);
-    padding: 20px 24px;
+    /* 调整这里改变单个统计卡片内部的上下、左右留白（影响卡片高度和胖瘦） */
+    padding: 12px 16px;
     transition: box-shadow 0.2s ease;
 
     &:hover {
@@ -621,7 +612,8 @@ onUnmounted(() => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 16px;
+      /* 调整这里改变卡片内标题行距离下方大数字的垂直间距 */
+      margin-bottom: 8px;
 
       .card-title {
         font-size: 14px;
@@ -660,10 +652,12 @@ onUnmounted(() => {
     }
 
     .card-value {
-      font-size: 32px;
+      /* 调整这里改变卡片内展示的大数字大小 */
+      font-size: 28px;
       font-weight: 700;
       color: var(--tm-text-primary);
-      margin-bottom: 8px;
+      /* 调整这里改变大数字距离最下方描述文字的垂直间距 */
+      margin-bottom: 4px;
     }
 
     .card-trend {
@@ -680,9 +674,10 @@ onUnmounted(() => {
   }
 }
 
-/* --- 通用区块 --- */
+/* --- 通用区块外层 (主要作用于【快速操作】和【最近任务】的外层间距) --- */
 .section-container {
-  margin-bottom: 24px;
+  /* 调整这里改变区块距离下方其他区块的间距 */
+  margin-bottom: 16px;
   flex-shrink: 0;
 
   &.tasks-section {
@@ -697,14 +692,16 @@ onUnmounted(() => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    /* 调整这里改变区块标题和内部内容（如表格）的垂直间距 */
+    margin-bottom: 12px;
     flex-shrink: 0;
   }
 
   .section-title {
     font-size: 16px;
     font-weight: 600;
-    margin: 0 0 20px 0;
+    /* 调整下方 margin-bottom 数值可控制纯标题（无右上角按钮时）与下方内容的间距 */
+    margin: 0 0 12px 0;
     color: var(--tm-text-primary);
   }
 
@@ -713,12 +710,14 @@ onUnmounted(() => {
   }
 }
 
-/* --- 快速操作 --- */
+/* --- 快速操作 (对应UI中间那两个带图标的操作按钮框) --- */
 .quick-action-card {
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 24px;
+  /* gap 调整左右图标和文字之间的间距 */
+  gap: 16px;
+  /* 调整 padding 改变【快速操作】卡片内部的上下左右留白高度 */
+  padding: 12px 16px;
   border: 1px solid var(--tm-border-color);
   border-radius: var(--tm-border-radius);
   cursor: pointer;
@@ -759,7 +758,7 @@ onUnmounted(() => {
   }
 }
 
-/* --- 表格样式 --- */
+/* --- 表格样式 (对应最近任务等处的表格) --- */
 .custom-table {
   --el-table-border-color: transparent;
   --el-table-header-bg-color: var(--tm-bg-subtle);
@@ -769,11 +768,13 @@ onUnmounted(() => {
   
   :deep(th.el-table__cell) {
     font-weight: 500;
-    padding: 12px 0;
+    /* 调整这里改变表头上下间距 */
+    padding: 8px 0;
   }
   
   :deep(td.el-table__cell) {
-    padding: 16px 0;
+    /* 调整这里改变表格数据行的上下间距（让表格更紧凑） */
+    padding: 10px 0;
     font-size: 14px;
     color: var(--tm-text-regular);
     border-bottom: 1px solid var(--tm-border-color);
