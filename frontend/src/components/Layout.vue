@@ -156,18 +156,18 @@ onMounted(async () => {
   EventsOn('task_list_updated', fetchRunningTasks)
 
   EventsOn('update_available', (updateInfo: any) => {
-    ElMessageBox.confirm(
-      `<div style="line-height: 1.6;">
-        <p style="margin: 0 0 10px 0;">发现新版本 <strong>${updateInfo.latest_ver}</strong> (当前: ${updateInfo.current_ver})</p>
-        <div style="background: var(--tm-bg-hover); padding: 10px; border-radius: 4px; font-size: 13px; color: var(--tm-text-secondary); max-height: 150px; overflow-y: auto; white-space: pre-wrap;">${updateInfo.release_notes}</div>
-      </div>`,
-      '发现新版本',
-      {
-        dangerouslyUseHTMLString: true,
-        confirmButtonText: '前往下载',
-        cancelButtonText: '稍后再说',
-        type: 'success',
-      }
+      ElMessageBox.confirm(
+        `<div style="line-height: 1.6; display: flex; flex-direction: column; width: 100%;">
+          <p style="margin: 0 0 10px 0;">发现新版本 <strong>${updateInfo.latest_ver}</strong> (当前: ${updateInfo.current_ver})</p>
+          <div style="border: 1px solid var(--tm-border-color); background: transparent; padding: 10px; border-radius: 6px; font-size: 13px; color: var(--tm-text-secondary); max-height: 180px; overflow-y: auto; white-space: pre-wrap; box-sizing: border-box; width: 100%;">${updateInfo.release_notes}</div>
+        </div>`,
+        '发现新版本',
+        {
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: '前往下载',
+          cancelButtonText: '稍后再说',
+          customClass: 'update-message-box'
+        }
     ).then(() => {
       BrowserOpenURL(updateInfo.release_url)
     }).catch(() => {})
@@ -597,5 +597,29 @@ onUnmounted(() => {
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
+}
+</style>
+
+<style lang="scss">
+/* 全局样式：强制覆盖更新弹窗内 Element Plus 默认的 flex 布局导致的挤压问题 */
+.update-message-box {
+  width: 420px !important;
+  max-width: 90vw !important;
+  padding-bottom: 15px !important;
+  
+  .el-message-box__content {
+    display: block !important; 
+  }
+  
+  .el-message-box__container {
+    display: flex;
+    flex-direction: column; 
+    align-items: flex-start;
+  }
+  
+  .el-message-box__message {
+    width: 100%; 
+    padding-left: 0 !important; 
+  }
 }
 </style>

@@ -40,7 +40,7 @@ func CheckForUpdates(ctx context.Context, currentVersion string) {
 			return
 		}
 
-		if IsNewerVersion(currentVersion, info.LatestVer) {
+		if info.HasUpdate {
 			logger.Log.Info("New version detected", zap.String("latest", info.LatestVer))
 			// 通知前端弹窗
 			runtime.EventsEmit(ctx, "update_available", info)
@@ -87,7 +87,7 @@ func FetchLatestRelease(currentVersion string) (*UpdateInfo, error) {
 	}
 
 	return &UpdateInfo{
-		HasUpdate:    true,
+		HasUpdate:    IsNewerVersion(currentVersion, releaseData.TagName),
 		CurrentVer:   currentVersion,
 		LatestVer:    releaseData.TagName,
 		ReleaseNotes: releaseData.Body,
