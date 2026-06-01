@@ -267,6 +267,36 @@
             </div>
           </div>
         </el-tab-pane>
+        <!-- 关于 -->
+        <el-tab-pane label="关于" name="about">
+          <div class="settings-section about-section">
+            <div class="about-logo-container">
+              <img src="../assets/images/appicon.png" alt="TagMatrix Logo" class="about-logo" onerror="this.style.display='none'" />
+              <h2 class="about-title">TAGMATRIX</h2>
+              <div class="about-version">当前版本：{{ currentVersionStr }}</div>
+            </div>
+
+            <div class="about-update-container">
+              <el-button 
+                type="primary" 
+                size="large" 
+                class="check-update-btn"
+                :loading="isCheckingUpdate"
+                @click="manualCheckUpdate"
+              >
+                检查更新
+              </el-button>
+              
+              <div class="update-status-msg" :class="updateStatusClass" v-if="updateStatusMsg">
+                {{ updateStatusMsg }}
+              </div>
+            </div>
+
+            <div class="about-footer">
+              Copyright &copy; 2026 Sun977. All rights reserved.
+            </div>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </div>
 
@@ -286,8 +316,9 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { QuestionFilled } from '@element-plus/icons-vue'
-import { GetAppConfig, SaveAppConfig, TestAIConnection, GetAppPaths, OpenDirectoryInOS, BackupAppConfig } from '../../wailsjs/go/main/App'
-import { config } from '../../wailsjs/go/models'
+import { GetAppConfig, SaveAppConfig, TestAIConnection, GetAppPaths, OpenDirectoryInOS, BackupAppConfig, CheckUpdateManual } from '../../wailsjs/go/main/App'
+import { config, updater } from '../../wailsjs/go/models'
+import { BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 
 const props = defineProps<{
   modelValue: boolean
@@ -300,6 +331,64 @@ const emit = defineEmits<{
 
 const dialogVisible = ref(props.modelValue)
 const activeTab = ref('general')
+
+// 关于与更新逻辑
+const isCheckingUpdate = ref(false)
+const updateStatusMsg = ref('')
+const updateStatusClass = ref('')
+const currentVersionStr = ref(__APP_VERSION__ || 'v4.0.0')
+
+let updateMsgTimeout: ReturnType<typeof setTimeout> | null = null
+
+const manualCheckUpdate = async () => {
+  if (updateMsgTimeout) {
+    clearTimeout(updateMsgTimeout)
+  }
+
+  isCheckingUpdate.value = true
+  updateStatusMsg.value = '正在检查更新...'
+  updateStatusClass.value = 'info'
+  
+  try {
+    const info = await CheckUpdateManual()
+    if (!info) {
+      updateStatusMsg.value = '检查更新失败，请检查网络连接'
+      updateStatusClass.value = 'error'
+    } else if (info.has_update) {
+      updateStatusMsg.value = `发现新版本：${info.latest_ver}`
+      updateStatusClass.value = 'success'
+      // 弹出和开机启动一样的提醒窗
+      ElMessageBox.confirm(
+        `<div style="line-height: 1.6;">
+          <p style="margin: 0 0 10px 0;">发现新版本 <strong>${info.latest_ver}</strong> (当前: ${info.current_ver})</p>
+          <div style="background: var(--tm-bg-hover); padding: 10px; border-radius: 4px; font-size: 13px; color: var(--tm-text-secondary); max-height: 150px; overflow-y: auto; white-space: pre-wrap;">${info.release_notes}</div>
+        </div>`,
+        '🚀 发现新版本',
+        {
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: '前往下载',
+          cancelButtonText: '稍后再说',
+          type: 'success',
+        }
+      ).then(() => {
+        BrowserOpenURL(info.release_url)
+      }).catch(() => {})
+    } else {
+      updateStatusMsg.value = '当前已是最新版本'
+      updateStatusClass.value = 'success-text'
+    }
+  } catch (error: any) {
+    updateStatusMsg.value = '异常: ' + (error.message || String(error))
+    updateStatusClass.value = 'error'
+    
+    // 如果发生异常，3秒后自动清除错误信息
+    updateMsgTimeout = setTimeout(() => {
+      updateStatusMsg.value = ''
+    }, 3000)
+  } finally {
+    isCheckingUpdate.value = false
+  }
+}
 
 watch(() => props.modelValue, (newVal) => {
   dialogVisible.value = newVal
@@ -743,5 +832,80 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+/* --- 关于页面专用样式 --- */
+.about-section {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  min-height: 480px;
+  align-items: center;
+  padding: 10px 20px 20px 20px !important;
+}
+
+.about-logo-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.about-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  margin-bottom: 24px;
+}
+
+.about-title {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--tm-text-primary);
+  margin: 0 0 12px 0;
+}
+
+.about-version {
+  font-size: 14px;
+  color: var(--tm-text-secondary);
+  font-family: var(--tm-font-mono);
+  background: var(--tm-bg-hover);
+  padding: 4px 12px;
+  border-radius: 12px;
+}
+
+.about-update-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 30px;
+  flex: 1;
+}
+
+.check-update-btn {
+  width: 200px;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.update-status-msg {
+  margin-top: 16px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: center;
+
+  &.info { color: var(--tm-text-regular); }
+  &.success { color: var(--el-color-danger); } /* 有更新红字提示 */
+  &.success-text { color: var(--el-color-success); } /* 最新版绿字提示 */
+  &.error { color: var(--el-color-danger); }
+}
+
+.about-footer {
+  font-size: 12px;
+  color: var(--tm-text-placeholder);
+  margin-top: auto;
+  margin-bottom: 10px;
 }
 </style>

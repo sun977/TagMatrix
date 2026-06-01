@@ -34,13 +34,13 @@ func CheckForUpdates(ctx context.Context, currentVersion string) {
 	go func() {
 		time.Sleep(2 * time.Second)
 
-		info, err := fetchLatestRelease(currentVersion)
+		info, err := FetchLatestRelease(currentVersion)
 		if err != nil {
 			logger.Log.Warn("Failed to check for updates", zap.Error(err))
 			return
 		}
 
-		if isNewerVersion(currentVersion, info.LatestVer) {
+		if IsNewerVersion(currentVersion, info.LatestVer) {
 			logger.Log.Info("New version detected", zap.String("latest", info.LatestVer))
 			// 通知前端弹窗
 			runtime.EventsEmit(ctx, "update_available", info)
@@ -50,8 +50,8 @@ func CheckForUpdates(ctx context.Context, currentVersion string) {
 	}()
 }
 
-// fetchLatestRelease 发起 HTTP 请求到 GitHub API 获取最新版本
-func fetchLatestRelease(currentVersion string) (*UpdateInfo, error) {
+// FetchLatestRelease 发起 HTTP 请求到 GitHub API 获取最新版本
+func FetchLatestRelease(currentVersion string) (*UpdateInfo, error) {
 	proxySvc := network.NewProxyService()
 	client := proxySvc.GetHTTPClient()
 	client.Timeout = 10 * time.Second // 设置 10 秒超时，并且已接管系统的全局代理配置
@@ -95,8 +95,8 @@ func fetchLatestRelease(currentVersion string) (*UpdateInfo, error) {
 	}, nil
 }
 
-// isNewerVersion 严谨的版本比对逻辑：按点号切割并逐段转为数字比较（如 4.1.3 vs 4.2.0）
-func isNewerVersion(current string, latest string) bool {
+// IsNewerVersion 严谨的版本比对逻辑：按点号切割并逐段转为数字比较（如 4.1.3 vs 4.2.0）
+func IsNewerVersion(current string, latest string) bool {
 	// 移除可能存在的 "v" 前缀或者 "TagMatrix-" 前缀
 	curr := strings.TrimPrefix(strings.ToLower(current), "v")
 	curr = strings.TrimPrefix(curr, "tagmatrix-v")

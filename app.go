@@ -1211,7 +1211,28 @@ func (a *App) TestAIConnection(apiKey, baseUrl, modelName string) error {
 	return a.aiEngine.TestConnection(a.ctx, apiKey, baseUrl, modelName)
 }
 
-// ----------------- Data Admin API -----------------
+// CheckUpdateManual 手动触发检查更新
+func (a *App) CheckUpdateManual() (*updater.UpdateInfo, error) {
+	// 获取 wails.json 中的应用版本信息
+	var wailsConfig struct {
+		Info struct {
+			ProductVersion string `json:"productVersion"`
+		} `json:"info"`
+	}
+	currentVer := "v4.0.0"
+	if err := json.Unmarshal(wailsJSON, &wailsConfig); err == nil && wailsConfig.Info.ProductVersion != "" {
+		currentVer = "v" + wailsConfig.Info.ProductVersion
+	}
+
+	info, err := updater.FetchLatestRelease(currentVer)
+	if err != nil {
+		logger.Log.Warn("Manual check update failed", zap.Error(err))
+		return nil, err
+	}
+	return info, nil
+}
+
+// ----------------- DataAdmin API -----------------
 
 // 执行原始 SQL
 func (a *App) ExecuteRawSQL(query string) (*dataadmin.RawSQLResult, error) {
