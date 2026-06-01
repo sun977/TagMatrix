@@ -7,7 +7,7 @@
     <img alt="Vue Version" src="https://img.shields.io/badge/Vue.js-3.0-4FC08D?style=flat-square&logo=vuedotjs">
     <img alt="Wails" src="https://img.shields.io/badge/Wails-v2-ED2024?style=flat-square&logo=wails">
     <img alt="SQLite" src="https://img.shields.io/badge/SQLite-3-003B57?style=flat-square&logo=sqlite">
-    <img alt="License" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square">
+    <img alt="License" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=flat-square">
   </p>
 </div>
 
@@ -189,7 +189,7 @@ wails build
 - **Author**: Sun977
 - **Email**: jiuwei977@foxmail.com
 - **GitHub**: [Sun977](https://github.com/sun977)
-- **License**: [MIT](https://opensource.org/licenses/MIT)
+- **License**: [Apache License 2.0](https://opensource.org/licenses/Apache-2.0)
 - **Copyright**: © 2026 Sun977. All rights reserved.
 
 欢迎提交 Issue 和 Pull Request，一起将 TagMatrix 打造得更好用！
