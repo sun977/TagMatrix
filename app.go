@@ -22,6 +22,7 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -46,11 +47,17 @@ import (
 	"TagMatrix/internal/service/dataset"
 	"TagMatrix/internal/service/taglogic"
 	"TagMatrix/internal/service/taskengine"
+	"TagMatrix/internal/service/updater"
 
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 	"github.com/xuri/excelize/v2"
 	"go.uber.org/zap"
 )
+
+//go:embed wails.json
+var wailsJSON []byte
+
+// 内嵌打包，从wails.json中读取相关的参数提供使用
 
 // App struct
 type App struct {
@@ -130,7 +137,7 @@ func (a *App) startup(ctx context.Context) {
 	a.tagLogic = taglogic.NewTagLogicService()
 	a.taskEngine = taskengine.NewTaskEngineService(ctx)
 	a.aiEngine = aiengine.NewAIEngineService()
-	
+
 	// Inject RunTaggingTaskFunc to break circular dependency
 	a.aiEngine.RunTaggingTaskFunc = func(ctx context.Context, datasetID uint64, ruleIDs []uint64, tagMode string) (uint64, error) {
 		// 生成带有时间戳和三位随机大写字母的任务名称，如 AITask_20260528_104223_QAZ
@@ -141,7 +148,7 @@ func (a *App) startup(ctx context.Context) {
 			b[i] = letters[r.Intn(len(letters))]
 		}
 		batchName := fmt.Sprintf("AITask_%s_%s", time.Now().Format("20060102_150405"), string(b))
-		
+
 		// 统一硬编码隐藏 AI 控制参数的考虑：
 		// 1. 任务名称 (batchName) 与 任务描述 (desc)：固定统一带有 AITask 前缀，方便在前端任务看板中与人工发起任务进行区分追溯。
 		// 2. 执行策略 (isOverwrite)：强制置为 false (追加模式)。防止 AI 幻觉或语义误解导致整个数据集已有标签被灾难性清空，确保数据安全。
@@ -151,6 +158,20 @@ func (a *App) startup(ctx context.Context) {
 
 	a.dataAdmin = dataadmin.NewDataAdminService(model.DB)
 	a.backupSvc = dataadmin.NewBackupService(model.DB, appDir)
+
+	// 获取 wails.json 中的应用版本信息
+	var wailsConfig struct {
+		Info struct {
+			ProductVersion string `json:"productVersion"`
+		} `json:"info"`
+	}
+	currentVer := "v4.0.0" // default fallback
+	if err := json.Unmarshal(wailsJSON, &wailsConfig); err == nil && wailsConfig.Info.ProductVersion != "" {
+		currentVer = "v" + wailsConfig.Info.ProductVersion
+	}
+
+	// 异步检查更新 Check for updates asynchronously
+	updater.CheckForUpdates(a.ctx, currentVer)
 }
 
 // ----------------- Config API -----------------

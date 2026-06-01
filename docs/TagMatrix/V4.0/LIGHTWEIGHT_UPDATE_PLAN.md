@@ -25,7 +25,7 @@
 GitHub 官方免费提供了读取仓库 Release 信息的标准 API。我们不需要自己搭建版本校验服务器。
 
 *   **执行时机**：在 Wails 启动的 `OnStartup` 钩子中，异步执行（不阻塞主界面的渲染）。
-*   **请求接口**：发起 HTTP GET 请求到 `https://api.github.com/repos/您的用户名/TagMatrix/releases/latest`。
+*   **请求接口**：发起 HTTP GET 请求到 `https://api.github.com/repos/sun977/TagMatrix/releases/latest`。
 *   **逻辑处理**：
     1.  系统解析返回的 JSON 数据，提取出 `tag_name` 字段（例如 `"v4.1.0"`）和 `html_url` 字段（Release 下载页链接）。
     2.  将其与代码中硬编码的全局当前版本号（如 `CurrentVersion = "v4.0.0"`）进行比对。
@@ -53,7 +53,7 @@ GitHub 官方免费提供了读取仓库 Release 信息的标准 API。我们不
     // Go 侧代码或前端直接绑定调用
     import "github.com/wailsapp/wails/v2/pkg/runtime"
 
-    runtime.BrowserOpenURL(ctx, "https://github.com/您的用户名/TagMatrix/releases/latest")
+    runtime.BrowserOpenURL(ctx, "https://github.com/sun977/TagMatrix/releases/latest")
     ```
 *   浏览器被唤起并跳转到 GitHub 页面后，用户自行下载最新版的 `.exe` 或 `.app` 进行解压覆盖即可。
 

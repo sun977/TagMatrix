@@ -99,7 +99,7 @@ import AICopilotSidebar from './AICopilot/AICopilotSidebar.vue'
 import { useAIStore } from '../store/useAIStore'
 import { GetAppConfig, GetTaskBatches } from '../../wailsjs/go/main/App'
 import { config, model } from '../../wailsjs/go/models'
-import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
+import { EventsOn, EventsOff, BrowserOpenURL } from '../../wailsjs/runtime/runtime'
 import { Loading } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'
 
@@ -155,6 +155,24 @@ onMounted(async () => {
 
   EventsOn('task_list_updated', fetchRunningTasks)
 
+  EventsOn('update_available', (updateInfo: any) => {
+    ElMessageBox.confirm(
+      `<div style="line-height: 1.6;">
+        <p style="margin: 0 0 10px 0;">发现新版本 <strong>${updateInfo.latest_ver}</strong> (当前: ${updateInfo.current_ver})</p>
+        <div style="background: var(--tm-bg-hover); padding: 10px; border-radius: 4px; font-size: 13px; color: var(--tm-text-secondary); max-height: 150px; overflow-y: auto; white-space: pre-wrap;">${updateInfo.release_notes}</div>
+      </div>`,
+      '发现新版本',
+      {
+        dangerouslyUseHTMLString: true,
+        confirmButtonText: '前往下载',
+        cancelButtonText: '稍后再说',
+        type: 'success',
+      }
+    ).then(() => {
+      BrowserOpenURL(updateInfo.release_url)
+    }).catch(() => {})
+  })
+
   EventsOn('taskProgress', (data: any) => {
     if (data.status === 'running') {
       const existing = runningTasks.value.find(t => t.id === data.batchID)
@@ -174,6 +192,7 @@ onMounted(async () => {
 onUnmounted(() => {
   stopDrag()
   window.removeEventListener('open-settings', openSettings)
+  EventsOff('update_available')
   EventsOff('taskProgress')
   EventsOff('task_list_updated')
 })
