@@ -409,7 +409,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   AnalyzeDataFile, ImportData, GetRawDataList, ExportData, DeleteRawData,
   ListDatasets, CreateDataset, UpdateDataset, DeleteDataset,
-  ExportDatasetWithRules, ImportDatasetWithRules, InheritRules, GetRulesByDataset, GetAllTags
+  ExportDatasetWithRules, ImportDatasetWithRules, InheritRules, CheckInheritConflict, GetRulesByDataset, GetAllTags
 } from '../../wailsjs/go/main/App'
 
 const viewMode = ref<'list' | 'detail'>('list')
@@ -578,21 +578,53 @@ const handleEditDataset = (row: any) => {
     inheritDialogVisible.value = true
   }
 
-  const confirmInheritRules = async () => {
-    if (!sourceInheritDatasetId.value) {
-      ElMessage.warning('请选择模板数据集')
-      return
-    }
-    if (selectedRuleIds.value.length === 0) {
-      ElMessage.warning('请至少选择一条规则')
-      return
-    }
-    try {
-      isInheriting.value = true
-      const res = await InheritRules(sourceInheritDatasetId.value, targetInheritDataset.value.id, Array.from(selectedRuleIds.value))
+const confirmInheritRules = async () => {
+  if (!sourceInheritDatasetId.value) {
+    ElMessage.warning('请选择模板数据集')
+    return
+  }
+  if (selectedRuleIds.value.length === 0) {
+    ElMessage.warning('请至少选择一条规则')
+    return
+  }
+  try {
+    isInheriting.value = true
+    
+    // 1. 冲突预检
+    const conflicts = await CheckInheritConflict(targetInheritDataset.value.id, Array.from(selectedRuleIds.value))
+    if (conflicts && conflicts.length > 0) {
+      isInheriting.value = false // 暂停 loading 状态，等待用户确认
       
-      let msgStr = `<div style="max-height: 400px; overflow-y: auto; padding-right: 12px; width: 100%;">`
-      msgStr += `成功继承 <strong style="font-size: 14px;">${res.total_cloned}</strong> 条规则。<br/>`
+      const conflictMsg = `
+        <div style="font-size: 14px; line-height: 1.6;">
+          检测到当前数据集已存在以下标签的规则配置：<br/>
+          <ul style="margin: 8px 0; padding-left: 20px; color: #e6a23c; font-weight: 600;">
+            ${conflicts.map((name: string) => `<li>${name}</li>`).join('')}
+          </ul>
+          继续继承将会<strong>完全覆盖</strong>原有规则。是否确认继续？
+        </div>
+      `
+      
+      try {
+        await ElMessageBox.confirm(conflictMsg, '⚠️ 发现规则冲突', {
+          confirmButtonText: '确认覆盖',
+          cancelButtonText: '取消',
+          dangerouslyUseHTMLString: true,
+          customClass: 'custom-conflict-box'
+        })
+      } catch (cancel) {
+        // 用户点击取消，中止继承
+        return
+      }
+      
+      isInheriting.value = true // 用户确认后恢复 loading
+    }
+
+    // 2. 执行继承
+    const res = await InheritRules(sourceInheritDatasetId.value, targetInheritDataset.value.id, Array.from(selectedRuleIds.value))
+
+    let msgStr = `<div style="max-height: 400px; overflow-y: auto; padding-right: 12px; width: 100%;">`
+    msgStr += `成功继承 <strong style="font-size: 14px;">${res.total_cloned}</strong> 条规则。<br/>`
       if (res.cloned_rule_names && res.cloned_rule_names.length > 0) {
         msgStr += `<div style="margin-top: 8px; font-size: 12px; color: #606266; line-height: 1.6;">` + res.cloned_rule_names.join('<br/>') + `</div>`
       }

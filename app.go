@@ -1067,6 +1067,11 @@ func (a *App) CloneRule(sourceRuleID uint64, targetDatasetID uint64, tagID uint6
 	return a.tagLogic.CloneRule(sourceRuleID, targetDatasetID, tagID)
 }
 
+// CheckInheritConflict 检查继承规则冲突
+func (a *App) CheckInheritConflict(targetDatasetID uint64, ruleIDs []uint64) ([]string, error) {
+	return a.tagLogic.CheckInheritConflict(targetDatasetID, ruleIDs)
+}
+
 // InheritRules 批量继承规则
 func (a *App) InheritRules(sourceDatasetID uint64, targetDatasetID uint64, ruleIDs []uint64) (*taglogic.InheritRulesResult, error) {
 	return a.tagLogic.InheritRules(sourceDatasetID, targetDatasetID, ruleIDs)

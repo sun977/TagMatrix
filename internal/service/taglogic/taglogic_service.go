@@ -699,6 +699,45 @@ func (s *TagLogicService) CloneRule(sourceRuleID uint64, targetDatasetID uint64,
 	}, nil
 }
 
+// CheckInheritConflict 检查规则继承是否会产生覆盖冲突
+func (s *TagLogicService) CheckInheritConflict(targetDatasetID uint64, ruleIDs []uint64) ([]string, error) {
+	if len(ruleIDs) == 0 {
+		return []string{}, nil
+	}
+
+	// 1. 获取源规则对应的 TagID
+	var sourceRules []model.SysMatchRule
+	if err := s.db.Where("id IN ?", ruleIDs).Find(&sourceRules).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch source rules: %w", err)
+	}
+
+	var tagIDs []uint64
+	for _, r := range sourceRules {
+		tagIDs = append(tagIDs, r.TagID)
+	}
+
+	if len(tagIDs) == 0 {
+		return []string{}, nil
+	}
+
+	// 2. 检查目标数据集中是否已存在这些 TagID 的规则
+	var existingRules []model.SysMatchRule
+	if err := s.db.Where("dataset_id = ? AND tag_id IN ?", targetDatasetID, tagIDs).Find(&existingRules).Error; err != nil {
+		return nil, fmt.Errorf("failed to check existing rules: %w", err)
+	}
+
+	var conflictingNames []string
+	for _, er := range existingRules {
+		name := er.Name
+		if name == "" {
+			name = "未命名规则"
+		}
+		conflictingNames = append(conflictingNames, name)
+	}
+
+	return conflictingNames, nil
+}
+
 // InheritRules 批量继承数据集下的指定规则
 func (s *TagLogicService) InheritRules(sourceDatasetID uint64, targetDatasetID uint64, ruleIDs []uint64) (*InheritRulesResult, error) {
 	if len(ruleIDs) == 0 {
