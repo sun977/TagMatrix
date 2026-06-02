@@ -55,7 +55,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="220" align="right">
+          <el-table-column label="操作" width="280" align="right">
             <template #header>
               <div style="display: flex; align-items: center; justify-content: flex-end; padding-right: 22px;">
                 操作
@@ -63,26 +63,34 @@
                   <template #content>
                     <div style="line-height: 1.8;">
                       <div><strong>数据</strong>：浏览和管理该数据集内的数据记录。</div>
-                      <div><strong>编辑</strong>：修改数据集的名称和描述信息。</div>
-                      <div><strong>导出</strong>：导出该数据集的结构和绑定规则。</div>
-                      <div><strong style="color: #F56C6C;">删除</strong>：彻底删除该数据集数据和绑定规则。</div>
+                      <div><strong>查看</strong>：查看该数据集下绑定的所有标签和规则配置。</div>
+                      <div><strong>继承</strong>：批量从其他同构历史数据集中继承规则配置。</div>
+                      <div><strong>更多-编辑</strong>：修改数据集的名称和描述信息。</div>
+                      <div><strong>更多-导出</strong>：导出该数据集的结构和绑定规则配置。</div>
+                      <div><strong>更多-<span style="color: #F56C6C;">删除</span></strong>：彻底删除该数据集数据及其关联的所有打标规则。</div>
                     </div>
                   </template>
                   <el-icon style="font-size: 14px; margin-left: 4px; color: #909399; cursor: help;"><QuestionFilled /></el-icon>
                 </el-tooltip>
               </div>
             </template>
-            <template #default="scope">
-              <div style="margin-bottom: 6px; display: flex; justify-content: flex-end; gap: 6px;">
-                <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewDataset(scope.row)">数据</el-button>
-                <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleEditDataset(scope.row)">编辑</el-button>
-                <el-button size="small" type="primary" plain class="action-btn" style="margin-left: 0;" @click="showInheritDialog(scope.row)">继承规则</el-button>
-              </div>
-              <div style="display: flex; justify-content: flex-end; gap: 6px;">
-                <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleExportBusinessAsset(scope.row)">导出</el-button>
-                <el-button size="small" class="action-btn delete-action-btn" style="margin-left: 0;" @click="handleDeleteDataset(scope.row)">删除</el-button>
-              </div>
-            </template>
+              <template #default="scope">
+                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
+                  <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewDataset(scope.row)">数据</el-button>
+                  <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewRules(scope.row)">查看</el-button>
+                  <el-button size="small" type="primary" plain class="action-btn" style="margin-left: 0;" @click="showInheritDialog(scope.row)">继承</el-button>
+                  <el-dropdown trigger="click" @command="handleMoreCommand($event, scope.row)" style="margin-left: 0;">
+                    <el-button size="small" class="action-btn" style="margin-left: 0; padding: 5px 8px;">更多<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
+                    <template #dropdown>
+                      <el-dropdown-menu>
+                        <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                        <el-dropdown-item command="export">导出</el-dropdown-item>
+                        <el-dropdown-item command="delete" style="color: #F56C6C;">删除</el-dropdown-item>
+                      </el-dropdown-menu>
+                    </template>
+                  </el-dropdown>
+                </div>
+              </template>
           </el-table-column>
         </el-table>
 
@@ -348,12 +356,38 @@
           </span>
         </template>
       </el-dialog>
+
+      <!-- 查看规则弹窗 -->
+      <el-dialog v-model="viewRulesDialogVisible" title="数据集已绑定规则" width="600px" destroy-on-close>
+        <div style="margin-bottom: 12px;">
+          <span style="font-weight: 600; font-size: 14px;">当前数据集：{{ currentViewDataset?.name }}</span>
+        </div>
+        <div v-loading="isLoadingViewRules" style="border: 1px solid var(--tm-border-light); border-radius: 4px; padding: 12px; max-height: 400px; overflow-y: auto; background: var(--tm-bg-subtle);">
+          <el-empty v-if="!isLoadingViewRules && viewRulesList.length === 0" description="该数据集暂未绑定任何规则" :image-size="60" />
+          <div v-else style="display: flex; flex-direction: column; gap: 12px;">
+            <div v-for="rule in viewRulesList" :key="rule.id" style="background: var(--tm-bg-main); border: 1px solid var(--tm-border-color); border-radius: 4px; padding: 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-weight: 600; font-size: 14px; color: var(--tm-text-primary);">{{ rule.name || '未命名规则' }}</span>
+                <el-tag size="small" type="info">TagID: {{ rule.tag_id }}</el-tag>
+              </div>
+              <div style="font-size: 12px; color: #606266; font-family: monospace; white-space: pre-wrap; word-break: break-all; background: #f4f4f5; padding: 6px; border-radius: 4px;">
+                {{ rule.rule_json }}
+              </div>
+            </div>
+          </div>
+        </div>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="viewRulesDialogVisible = false">关闭</el-button>
+          </span>
+        </template>
+      </el-dialog>
     </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus, MoreFilled, QuestionFilled } from '@element-plus/icons-vue'
+import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus, MoreFilled, QuestionFilled, ArrowDown } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings
@@ -567,6 +601,40 @@ const handleEditDataset = (row: any) => {
       ElMessage.error('继承失败: ' + String(error))
     } finally {
       isInheriting.value = false
+    }
+  }
+
+  const viewRulesDialogVisible = ref(false)
+  const isLoadingViewRules = ref(false)
+  const currentViewDataset = ref<any>(null)
+  const viewRulesList = ref<any[]>([])
+
+  const handleViewRules = async (dataset: any) => {
+    currentViewDataset.value = dataset
+    viewRulesDialogVisible.value = true
+    isLoadingViewRules.value = true
+    try {
+      const rules = await GetRulesByDataset(dataset.id)
+      viewRulesList.value = rules || []
+    } catch (e: any) {
+      ElMessage.error('获取规则失败: ' + String(e))
+      viewRulesList.value = []
+    } finally {
+      isLoadingViewRules.value = false
+    }
+  }
+
+  const handleMoreCommand = (command: string, row: any) => {
+    switch (command) {
+      case 'edit':
+        handleEditDataset(row)
+        break
+      case 'export':
+        handleExportBusinessAsset(row)
+        break
+      case 'delete':
+        handleDeleteDataset(row)
+        break
     }
   }
 
