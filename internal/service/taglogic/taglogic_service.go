@@ -445,11 +445,18 @@ func (s *TagLogicService) SaveRule(rule *model.SysMatchRule) error {
 		return s.db.Save(rule).Error
 	}
 
-	// 检查是否已经存在相同标签和数据集的规则
-	var count int64
-	s.db.Model(&model.SysMatchRule{}).Where("tag_id = ? AND dataset_id = ?", rule.TagID, rule.DatasetID).Count(&count)
-	if count > 0 {
-		return fmt.Errorf("当前标签在该数据集下已存在规则，请直接编辑现有规则")
+	// 检查是否已经存在相同标签和数据集的规则（包含软删除）
+	var existingRule model.SysMatchRule
+	err := s.db.Unscoped().Where("tag_id = ? AND dataset_id = ?", rule.TagID, rule.DatasetID).First(&existingRule).Error
+	if err == nil {
+		// 如果找到了记录
+		if existingRule.DeletedAt.Valid {
+			// 如果是已经软删除的，物理删除它以便为新规则腾出空间，避免 UNIQUE 约束冲突
+			s.db.Unscoped().Delete(&existingRule)
+		} else {
+			// 如果是还在生效的，返回报错
+			return fmt.Errorf("当前标签在该数据集下已存在规则，请直接编辑现有规则")
+		}
 	}
 
 	return s.db.Create(rule).Error
@@ -557,4 +564,205 @@ func (s *TagLogicService) DryRunRule(ruleJSON string, limit int, datasetID uint6
 	}
 
 	return results, nil
+}
+
+// ----------------- 规则克隆与继承 (Rule Cloning & Inheritance) -----------------
+
+// CloneRuleResult 克隆规则返回的结果
+type CloneRuleResult struct {
+	Status        string   `json:"status"`         // "ok", "warning", "error"
+	MissingFields []string `json:"missing_fields"` // 目标数据集缺失的字段
+	Message       string   `json:"message"`        // 提示信息
+	NewRuleID     uint64   `json:"new_rule_id"`
+}
+
+// InheritRulesResult 批量继承规则返回的结果
+type InheritRulesResult struct {
+	TotalCloned int               `json:"total_cloned"`
+	Warnings    []CloneRuleResult `json:"warnings"` // 带有 warning 的克隆结果
+}
+
+// extractFields 递归提取规则中的 field 列表
+func extractFields(rule matcher.MatchRule) []string {
+	var fields []string
+	if rule.Field != "" {
+		fields = append(fields, rule.Field)
+	}
+	for _, subRule := range rule.And {
+		fields = append(fields, extractFields(subRule)...)
+	}
+	for _, subRule := range rule.Or {
+		fields = append(fields, extractFields(subRule)...)
+	}
+	for _, subRule := range rule.EvaluateAll {
+		fields = append(fields, extractFields(subRule)...)
+	}
+	return fields
+}
+
+// uniqueStrings 字符串切片去重
+func uniqueStrings(input []string) []string {
+	keys := make(map[string]bool)
+	var list []string
+	for _, entry := range input {
+		if _, value := keys[entry]; !value {
+			keys[entry] = true
+			list = append(list, entry)
+		}
+	}
+	return list
+}
+
+// CheckRuleSchema 校验规则是否兼容目标数据集表头
+func (s *TagLogicService) CheckRuleSchema(ruleJSON string, targetDatasetHeaders []string) (string, []string) {
+	var mRule matcher.MatchRule
+	if err := json.Unmarshal([]byte(ruleJSON), &mRule); err != nil {
+		return "error", nil
+	}
+
+	fields := extractFields(mRule)
+
+	headerMap := make(map[string]bool)
+	for _, h := range targetDatasetHeaders {
+		headerMap[h] = true
+	}
+
+	var missingFields []string
+	for _, f := range fields {
+		if f != "" && !headerMap[f] {
+			missingFields = append(missingFields, f)
+		}
+	}
+
+	missingFields = uniqueStrings(missingFields)
+	if len(missingFields) > 0 {
+		return "warning", missingFields
+	}
+	return "ok", nil
+}
+
+// CloneRule 克隆一条单条规则到新数据集
+func (s *TagLogicService) CloneRule(sourceRuleID uint64, targetDatasetID uint64, tagID uint64) (*CloneRuleResult, error) {
+	// 1. 查源规则
+	var sourceRule model.SysMatchRule
+	if err := s.db.First(&sourceRule, sourceRuleID).Error; err != nil {
+		return nil, fmt.Errorf("source rule not found: %w", err)
+	}
+
+	// 2. 查目标数据集
+	var targetDataset model.SysDataset
+	if err := s.db.First(&targetDataset, targetDatasetID).Error; err != nil {
+		return nil, fmt.Errorf("target dataset not found: %w", err)
+	}
+
+	var headers []string
+	if err := json.Unmarshal([]byte(targetDataset.SchemaKeys), &headers); err != nil {
+		headers = []string{} // 解析失败则假设为空
+	}
+
+	// 3. 校验 schema
+	status, missingFields := s.CheckRuleSchema(sourceRule.RuleJSON, headers)
+	if status == "error" {
+		return &CloneRuleResult{Status: "error", Message: "规则 JSON 格式不合法"}, nil
+	}
+
+	// 4. 执行克隆 (深拷贝 JSON)
+	newRule := model.SysMatchRule{
+		DatasetID: targetDatasetID,
+		TagID:     tagID,
+		Name:      sourceRule.Name,
+		Priority:  sourceRule.Priority,
+		RuleJSON:  sourceRule.RuleJSON,
+		IsEnabled: sourceRule.IsEnabled,
+	}
+
+	// 先物理删除旧规则(如果存在同一个tag+dataset组合)，避免UNIQUE约束冲突
+	if err := s.db.Unscoped().Where("tag_id = ? AND dataset_id = ?", tagID, targetDatasetID).Delete(&model.SysMatchRule{}).Error; err != nil {
+		return nil, err
+	}
+
+	if err := s.db.Create(&newRule).Error; err != nil {
+		return nil, fmt.Errorf("failed to clone rule: %w", err)
+	}
+
+	msg := "克隆成功"
+	if status == "warning" {
+		msg = fmt.Sprintf("克隆成功，但缺少字段: %s", strings.Join(missingFields, ", "))
+	}
+
+	return &CloneRuleResult{
+		Status:        status,
+		MissingFields: missingFields,
+		Message:       msg,
+		NewRuleID:     newRule.ID,
+	}, nil
+}
+
+// InheritRules 批量继承数据集下的所有规则
+func (s *TagLogicService) InheritRules(sourceDatasetID uint64, targetDatasetID uint64) (*InheritRulesResult, error) {
+	var rules []model.SysMatchRule
+	if err := s.db.Where("dataset_id = ?", sourceDatasetID).Find(&rules).Error; err != nil {
+		return nil, fmt.Errorf("failed to fetch source rules: %w", err)
+	}
+
+	var targetDataset model.SysDataset
+	if err := s.db.First(&targetDataset, targetDatasetID).Error; err != nil {
+		return nil, fmt.Errorf("target dataset not found: %w", err)
+	}
+
+	var headers []string
+	if err := json.Unmarshal([]byte(targetDataset.SchemaKeys), &headers); err != nil {
+		headers = []string{}
+	}
+
+	result := &InheritRulesResult{
+		TotalCloned: 0,
+		Warnings:    []CloneRuleResult{},
+	}
+
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		for _, rule := range rules {
+			status, missingFields := s.CheckRuleSchema(rule.RuleJSON, headers)
+			if status == "error" {
+				// 跳过错误的规则
+				continue
+			}
+
+			newRule := model.SysMatchRule{
+				DatasetID: targetDatasetID,
+				TagID:     rule.TagID,
+				Name:      rule.Name,
+				Priority:  rule.Priority,
+				RuleJSON:  rule.RuleJSON,
+				IsEnabled: rule.IsEnabled,
+			}
+
+			// 先物理删除旧规则(如果存在同一个tag+dataset组合)，避免UNIQUE约束冲突
+			if err := tx.Unscoped().Where("tag_id = ? AND dataset_id = ?", rule.TagID, targetDatasetID).Delete(&model.SysMatchRule{}).Error; err != nil {
+				return err
+			}
+
+			if err := tx.Create(&newRule).Error; err != nil {
+				return err
+			}
+
+			result.TotalCloned++
+
+			if status == "warning" {
+				result.Warnings = append(result.Warnings, CloneRuleResult{
+					Status:        status,
+					MissingFields: missingFields,
+					Message:       fmt.Sprintf("标签ID [%d] 克隆成功，但缺少字段", rule.TagID),
+					NewRuleID:     newRule.ID,
+				})
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("transaction failed: %w", err)
+	}
+
+	return result, nil
 }
