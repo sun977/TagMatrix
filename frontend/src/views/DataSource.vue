@@ -603,12 +603,12 @@ const handleEditDataset = (row: any) => {
         res.warnings.forEach((w: any) => {
           msgStr += `<li>${w.message}: <strong>${(w.missing_fields || []).join(', ')}</strong></li>`
         })
-        msgStr += `</ul></div>`
+          msgStr += `</ul></div>`
         msgStr += `</div>`
-        ElMessage({ type: 'warning', dangerouslyUseHTMLString: true, message: msgStr, duration: 8000, customClass: 'custom-inherit-msg' })
+        ElMessage({ type: 'warning', dangerouslyUseHTMLString: true, message: msgStr, duration: 0, showClose: true, customClass: 'custom-inherit-msg' })
       } else {
         msgStr += `</div>`
-        ElMessage({ type: 'success', dangerouslyUseHTMLString: true, message: msgStr, duration: 4000, customClass: 'custom-inherit-msg' })
+        ElMessage({ type: 'success', dangerouslyUseHTMLString: true, message: msgStr, duration: 4000, showClose: true, customClass: 'custom-inherit-msg' })
       }
       
       inheritDialogVisible.value = false
