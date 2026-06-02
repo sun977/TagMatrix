@@ -362,19 +362,30 @@
       </el-dialog>
 
       <!-- 查看规则弹窗 -->
-      <el-dialog v-model="viewRulesDialogVisible" title="数据集已绑定规则" width="600px" destroy-on-close>
-        <div style="margin-bottom: 12px;">
+      <el-dialog v-model="viewRulesDialogVisible" title="数据集已绑定规则" width="800px" destroy-on-close>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <span style="font-weight: 600; font-size: 14px;">当前数据集：{{ currentViewDataset?.name }}</span>
+          <span style="font-size: 13px; color: #606266;">
+            共 <span style="color: var(--tm-accent-primary); font-weight: 600;">{{ viewRulesList.length }}</span> 条规则，<span style="color: var(--tm-accent-primary); font-weight: 600;">{{ new Set(viewRulesList.map(r => r.tag_id)).size }}</span> 个标签
+          </span>
         </div>
         <div v-loading="isLoadingViewRules" style="border: 1px solid var(--tm-border-light); border-radius: 4px; padding: 12px; max-height: 400px; overflow-y: auto; background: var(--tm-bg-subtle);">
           <el-empty v-if="!isLoadingViewRules && viewRulesList.length === 0" description="该数据集暂未绑定任何规则" :image-size="60" />
-          <div v-else style="display: flex; flex-direction: column; gap: 12px;">
-            <div v-for="rule in viewRulesList" :key="rule.id" style="background: var(--tm-bg-main); border: 1px solid var(--tm-border-color); border-radius: 4px; padding: 12px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-weight: 600; font-size: 14px; color: var(--tm-text-primary);">{{ rule.name || '未命名规则' }}</span>
-                <el-tag size="small" type="info" :title="'TagID: ' + rule.tag_id">{{ allTagsMap[rule.tag_id]?.path || allTagsMap[rule.tag_id]?.name || '未知标签 (ID: ' + rule.tag_id + ')' }}</el-tag>
+          <div v-else style="display: flex; flex-direction: column; gap: 10px;">
+            <div v-for="rule in viewRulesList" :key="rule.id" style="background: var(--tm-bg-main); border: 1px solid var(--tm-border-color); border-radius: 4px; padding: 10px 12px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" :style="{ marginBottom: expandedRuleIds.includes(rule.id) ? '10px' : '0' }" @click="toggleRuleExpand(rule.id)">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span style="font-weight: 600; font-size: 14px; color: var(--tm-text-primary);">规则：{{ rule.name || '未命名规则' }}</span>
+                  <el-icon style="color: #909399; transition: transform 0.3s;" :style="{ transform: expandedRuleIds.includes(rule.id) ? 'rotate(90deg)' : 'rotate(0deg)' }"><ArrowRight /></el-icon>
+                </div>
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span style="font-weight: 600; font-size: 14px; color: var(--tm-text-primary);">标签：</span>
+                  <el-tag size="small" type="info" :title="'TagID: ' + rule.tag_id">{{ allTagsMap[rule.tag_id]?.path || allTagsMap[rule.tag_id]?.name || '未知标签 (ID: ' + rule.tag_id + ')' }}</el-tag>
+                </div>
               </div>
-              <div style="font-size: 12px; color: #606266; font-family: monospace; white-space: pre-wrap; word-break: break-all; background: #f4f4f5; padding: 6px; border-radius: 4px;">
+              
+              <!-- 展开显示原始 JSON -->
+              <div v-show="expandedRuleIds.includes(rule.id)" style="font-size: 12px; color: #606266; font-family: monospace; white-space: pre-wrap; word-break: break-all; background: #f4f4f5; padding: 6px; border-radius: 4px; margin-top: 8px;">
                 {{ rule.rule_json }}
               </div>
             </div>
@@ -391,7 +402,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
-import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus, MoreFilled, QuestionFilled, ArrowDown } from '@element-plus/icons-vue'
+import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus, MoreFilled, QuestionFilled, ArrowDown, ArrowRight } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings
@@ -613,26 +624,40 @@ const handleEditDataset = (row: any) => {
   const currentViewDataset = ref<any>(null)
   const viewRulesList = ref<any[]>([])
   const allTagsMap = ref<Record<number, any>>({})
+  const expandedRuleIds = ref<number[]>([])
+
+  const toggleRuleExpand = (id: number) => {
+    const idx = expandedRuleIds.value.indexOf(id)
+    if (idx > -1) {
+      expandedRuleIds.value.splice(idx, 1)
+    } else {
+      expandedRuleIds.value.push(id)
+    }
+  }
 
   const handleViewRules = async (dataset: any) => {
     currentViewDataset.value = dataset
     viewRulesDialogVisible.value = true
     isLoadingViewRules.value = true
-    try {
-      const [rules, tags] = await Promise.all([
-        GetRulesByDataset(dataset.id),
-        GetAllTags()
-      ])
-      
-      const tagMap: Record<number, any> = {}
-      if (tags) {
-        tags.forEach((t: any) => {
-          tagMap[t.id] = t
-        })
-      }
-      allTagsMap.value = tagMap
-      viewRulesList.value = rules || []
-    } catch (e: any) {
+    expandedRuleIds.value = []
+      try {
+        const [rules, tags] = await Promise.all([
+          GetRulesByDataset(dataset.id),
+          GetAllTags()
+        ])
+        
+        const tagMap: Record<number, any> = {}
+        if (tags) {
+          tags.forEach((t: any) => {
+            tagMap[t.id] = t
+          })
+        }
+        allTagsMap.value = tagMap
+        viewRulesList.value = rules || []
+        
+        // 默认将所有规则展开
+        expandedRuleIds.value = viewRulesList.value.map(r => r.id)
+      } catch (e: any) {
       ElMessage.error('获取规则失败: ' + String(e))
       viewRulesList.value = []
     } finally {
