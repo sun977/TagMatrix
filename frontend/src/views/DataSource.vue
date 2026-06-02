@@ -372,7 +372,7 @@
             <div v-for="rule in viewRulesList" :key="rule.id" style="background: var(--tm-bg-main); border: 1px solid var(--tm-border-color); border-radius: 4px; padding: 12px;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-weight: 600; font-size: 14px; color: var(--tm-text-primary);">{{ rule.name || '未命名规则' }}</span>
-                <el-tag size="small" type="info">TagID: {{ rule.tag_id }}</el-tag>
+                <el-tag size="small" type="info" :title="'TagID: ' + rule.tag_id">{{ allTagsMap[rule.tag_id]?.path || allTagsMap[rule.tag_id]?.name || '未知标签 (ID: ' + rule.tag_id + ')' }}</el-tag>
               </div>
               <div style="font-size: 12px; color: #606266; font-family: monospace; white-space: pre-wrap; word-break: break-all; background: #f4f4f5; padding: 6px; border-radius: 4px;">
                 {{ rule.rule_json }}
@@ -398,7 +398,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   AnalyzeDataFile, ImportData, GetRawDataList, ExportData, DeleteRawData,
   ListDatasets, CreateDataset, UpdateDataset, DeleteDataset,
-  ExportDatasetWithRules, ImportDatasetWithRules, InheritRules, GetRulesByDataset
+  ExportDatasetWithRules, ImportDatasetWithRules, InheritRules, GetRulesByDataset, GetAllTags
 } from '../../wailsjs/go/main/App'
 
 const viewMode = ref<'list' | 'detail'>('list')
@@ -612,13 +612,25 @@ const handleEditDataset = (row: any) => {
   const isLoadingViewRules = ref(false)
   const currentViewDataset = ref<any>(null)
   const viewRulesList = ref<any[]>([])
+  const allTagsMap = ref<Record<number, any>>({})
 
   const handleViewRules = async (dataset: any) => {
     currentViewDataset.value = dataset
     viewRulesDialogVisible.value = true
     isLoadingViewRules.value = true
     try {
-      const rules = await GetRulesByDataset(dataset.id)
+      const [rules, tags] = await Promise.all([
+        GetRulesByDataset(dataset.id),
+        GetAllTags()
+      ])
+      
+      const tagMap: Record<number, any> = {}
+      if (tags) {
+        tags.forEach((t: any) => {
+          tagMap[t.id] = t
+        })
+      }
+      allTagsMap.value = tagMap
       viewRulesList.value = rules || []
     } catch (e: any) {
       ElMessage.error('获取规则失败: ' + String(e))
