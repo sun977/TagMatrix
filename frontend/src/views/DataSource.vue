@@ -76,6 +76,7 @@
               <div style="margin-bottom: 6px; display: flex; justify-content: flex-end; gap: 6px;">
                 <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewDataset(scope.row)">数据</el-button>
                 <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleEditDataset(scope.row)">编辑</el-button>
+                <el-button size="small" type="primary" plain class="action-btn" style="margin-left: 0;" @click="showInheritDialog(scope.row)">继承规则</el-button>
               </div>
               <div style="display: flex; justify-content: flex-end; gap: 6px;">
                 <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleExportBusinessAsset(scope.row)">导出</el-button>
@@ -301,26 +302,65 @@
           <el-input v-model="datasetForm.description" type="textarea" :rows="3" placeholder="请输入描述信息" />
         </el-form-item>
       </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="datasetDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="saveDataset" :loading="isSavingDataset">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
-  </div>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="datasetDialogVisible = false">取消</el-button>
+            <el-button type="primary" @click="saveDataset" :loading="isSavingDataset">确定</el-button>
+          </span>
+        </template>
+      </el-dialog>
+
+      <!-- 继承规则弹窗 -->
+      <el-dialog v-model="inheritDialogVisible" title="继承历史规则" width="550px" destroy-on-close>
+        <el-form label-width="100px" label-position="left">
+          <el-form-item label="目标数据集">
+            <span style="font-weight: 600;">{{ targetInheritDataset?.name }}</span>
+          </el-form-item>
+          <el-form-item label="模板数据集" required>
+            <el-select v-model="sourceInheritDatasetId" placeholder="请选择要继承的历史数据集" style="width: 100%;">
+              <el-option v-for="ds in datasetList.filter(d => d.id !== targetInheritDataset?.id)" :key="ds.id" :label="ds.name" :value="ds.id" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="选择规则" v-if="sourceInheritDatasetId">
+            <div v-loading="isLoadingRules" style="border: 1px solid var(--tm-border-light); border-radius: 4px; padding: 8px 12px; max-height: 250px; overflow-y: auto; width: 100%; background: var(--tm-bg-subtle);">
+              <el-checkbox-group v-model="selectedRuleIds" style="display: flex; flex-direction: column; gap: 8px;">
+                <el-checkbox v-for="rule in sourceRulesList" :key="rule.id" :label="rule.id">
+                  <span style="font-weight: 500;">{{ rule.name || '未命名规则' }}</span>
+                  <span style="color: #909399; font-size: 12px; margin-left: 8px;">(TagID: {{ rule.tag_id }})</span>
+                </el-checkbox>
+              </el-checkbox-group>
+              <el-empty v-if="!isLoadingRules && sourceRulesList.length === 0" description="该数据集下暂无规则" :image-size="40" />
+            </div>
+            <div style="margin-top: 8px; display: flex; align-items: center; width: 100%;" v-if="sourceRulesList.length > 0">
+               <el-button link type="primary" @click="selectedRuleIds = sourceRulesList.map(r => r.id)">全选</el-button>
+               <el-button link type="primary" @click="selectedRuleIds = []">全不选</el-button>
+               <span style="margin-left: auto; font-size: 13px; color: #606266;">
+                 已选 <span style="color: var(--tm-accent-primary); font-weight: 600;">{{ selectedRuleIds.length }}</span> / {{ sourceRulesList.length }} 条
+               </span>
+            </div>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <span class="dialog-footer">
+            <el-button @click="inheritDialogVisible = false">取消</el-button>
+            <el-button type="primary" class="action-btn-green" @click="confirmInheritRules" :loading="isInheriting" :disabled="selectedRuleIds.length === 0">确定继承</el-button>
+          </span>
+        </template>
+      </el-dialog>
+    </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { Upload, Download, Delete, Search, Filter, RefreshRight, Setting, DocumentCopy, Back, Plus, MoreFilled, QuestionFilled } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
 // 引入 Wails 生成的 TS Bindings
 import { 
-  AnalyzeDataFile, ImportData, GetRawDataList, ExportData, DeleteRawData, 
+  AnalyzeDataFile, ImportData, GetRawDataList, ExportData, DeleteRawData,
   ListDatasets, CreateDataset, UpdateDataset, DeleteDataset,
-  ExportDatasetWithRules, ImportDatasetWithRules
+  ExportDatasetWithRules, ImportDatasetWithRules, InheritRules, GetRulesByDataset
 } from '../../wailsjs/go/main/App'
 
 const viewMode = ref<'list' | 'detail'>('list')
@@ -455,7 +495,82 @@ const handleEditDataset = (row: any) => {
   datasetDialogVisible.value = true
 }
 
-const saveDataset = async () => {
+  const inheritDialogVisible = ref(false)
+  const isInheriting = ref(false)
+  const isLoadingRules = ref(false)
+  const targetInheritDataset = ref<any>(null)
+  const sourceInheritDatasetId = ref<number | null>(null)
+  const sourceRulesList = ref<any[]>([])
+  const selectedRuleIds = ref<number[]>([])
+
+  watch(sourceInheritDatasetId, async (newVal) => {
+    if (newVal) {
+      isLoadingRules.value = true
+      try {
+        const rules = await GetRulesByDataset(newVal)
+        sourceRulesList.value = rules || []
+        selectedRuleIds.value = sourceRulesList.value.map(r => r.id)
+      } catch (e) {
+        ElMessage.error('获取规则失败: ' + e)
+        sourceRulesList.value = []
+        selectedRuleIds.value = []
+      } finally {
+        isLoadingRules.value = false
+      }
+    } else {
+      sourceRulesList.value = []
+      selectedRuleIds.value = []
+    }
+  })
+
+  const showInheritDialog = (dataset: any) => {
+    targetInheritDataset.value = dataset
+    sourceInheritDatasetId.value = null
+    inheritDialogVisible.value = true
+  }
+
+  const confirmInheritRules = async () => {
+    if (!sourceInheritDatasetId.value) {
+      ElMessage.warning('请选择模板数据集')
+      return
+    }
+    if (selectedRuleIds.value.length === 0) {
+      ElMessage.warning('请至少选择一条规则')
+      return
+    }
+    try {
+      isInheriting.value = true
+      const res = await InheritRules(sourceInheritDatasetId.value, targetInheritDataset.value.id, Array.from(selectedRuleIds.value))
+      
+      let msgStr = `<div style="max-height: 400px; overflow-y: auto; padding-right: 12px; width: 100%;">`
+      msgStr += `成功继承 <strong style="font-size: 14px;">${res.total_cloned}</strong> 条规则。<br/>`
+      if (res.cloned_rule_names && res.cloned_rule_names.length > 0) {
+        msgStr += `<div style="margin-top: 8px; font-size: 12px; color: #606266; line-height: 1.6;">` + res.cloned_rule_names.join('<br/>') + `</div>`
+      }
+      if (res.warnings && res.warnings.length > 0) {
+        msgStr += `<div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed #e6a23c;">`
+        msgStr += `<span style="color: #e6a23c; font-weight: 600;">⚠️ 字段缺失警告 (${res.warnings.length}条)：</span>`
+        msgStr += `<ul style="margin: 6px 0 0 0; padding-left: 20px; font-size: 12px; color: #e6a23c; line-height: 1.6;">`
+        res.warnings.forEach((w: any) => {
+          msgStr += `<li>${w.message}: <strong>${(w.missing_fields || []).join(', ')}</strong></li>`
+        })
+        msgStr += `</ul></div>`
+        msgStr += `</div>`
+        ElMessage({ type: 'warning', dangerouslyUseHTMLString: true, message: msgStr, duration: 8000, customClass: 'custom-inherit-msg' })
+      } else {
+        msgStr += `</div>`
+        ElMessage({ type: 'success', dangerouslyUseHTMLString: true, message: msgStr, duration: 4000, customClass: 'custom-inherit-msg' })
+      }
+      
+      inheritDialogVisible.value = false
+    } catch (error: any) {
+      ElMessage.error('继承失败: ' + String(error))
+    } finally {
+      isInheriting.value = false
+    }
+  }
+
+  const saveDataset = async () => {
   if (!datasetForm.value.name.trim()) {
     ElMessage.warning('请输入数据集名称')
     return
@@ -952,5 +1067,19 @@ onMounted(() => {
   color: var(--tm-text-primary);
   white-space: pre-wrap;
   word-wrap: break-word;
+}
+</style>
+
+<style lang="scss">
+.custom-inherit-msg {
+  min-width: 500px !important;
+  max-width: 800px !important;
+  align-items: flex-start !important;
+}
+.custom-inherit-msg .el-message__icon {
+  display: none !important;
+}
+.custom-inherit-msg .el-message__content {
+  width: 100% !important;
 }
 </style>

@@ -1062,6 +1062,16 @@ func (a *App) DryRunRule(ruleJSON string, limit int, datasetID uint64) ([]taglog
 	return a.tagLogic.DryRunRule(ruleJSON, limit, datasetID)
 }
 
+// CloneRule 克隆规则
+func (a *App) CloneRule(sourceRuleID uint64, targetDatasetID uint64, tagID uint64) (*taglogic.CloneRuleResult, error) {
+	return a.tagLogic.CloneRule(sourceRuleID, targetDatasetID, tagID)
+}
+
+// InheritRules 批量继承规则
+func (a *App) InheritRules(sourceDatasetID uint64, targetDatasetID uint64, ruleIDs []uint64) (*taglogic.InheritRulesResult, error) {
+	return a.tagLogic.InheritRules(sourceDatasetID, targetDatasetID, ruleIDs)
+}
+
 // ----------------- Task Engine API -----------------
 // RunTaggingTask 异步执行规则打标任务
 func (a *App) RunTaggingTask(datasetID uint64, ruleIDs []uint64, batchName string, desc string, isOverwrite bool, tagMode string, sourceFiles []string) (uint64, error) {

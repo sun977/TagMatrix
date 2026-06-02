@@ -578,8 +578,9 @@ type CloneRuleResult struct {
 
 // InheritRulesResult 批量继承规则返回的结果
 type InheritRulesResult struct {
-	TotalCloned int               `json:"total_cloned"`
-	Warnings    []CloneRuleResult `json:"warnings"` // 带有 warning 的克隆结果
+	TotalCloned     int               `json:"total_cloned"`
+	Warnings        []CloneRuleResult `json:"warnings"` // 带有 warning 的克隆结果
+	ClonedRuleNames []string          `json:"cloned_rule_names"`
 }
 
 // extractFields 递归提取规则中的 field 列表
@@ -698,10 +699,14 @@ func (s *TagLogicService) CloneRule(sourceRuleID uint64, targetDatasetID uint64,
 	}, nil
 }
 
-// InheritRules 批量继承数据集下的所有规则
-func (s *TagLogicService) InheritRules(sourceDatasetID uint64, targetDatasetID uint64) (*InheritRulesResult, error) {
+// InheritRules 批量继承数据集下的指定规则
+func (s *TagLogicService) InheritRules(sourceDatasetID uint64, targetDatasetID uint64, ruleIDs []uint64) (*InheritRulesResult, error) {
+	if len(ruleIDs) == 0 {
+		return nil, fmt.Errorf("未选择要继承的规则")
+	}
+
 	var rules []model.SysMatchRule
-	if err := s.db.Where("dataset_id = ?", sourceDatasetID).Find(&rules).Error; err != nil {
+	if err := s.db.Where("dataset_id = ? AND id IN ?", sourceDatasetID, ruleIDs).Find(&rules).Error; err != nil {
 		return nil, fmt.Errorf("failed to fetch source rules: %w", err)
 	}
 
@@ -716,8 +721,9 @@ func (s *TagLogicService) InheritRules(sourceDatasetID uint64, targetDatasetID u
 	}
 
 	result := &InheritRulesResult{
-		TotalCloned: 0,
-		Warnings:    []CloneRuleResult{},
+		TotalCloned:     0,
+		Warnings:        []CloneRuleResult{},
+		ClonedRuleNames: []string{},
 	}
 
 	err := s.db.Transaction(func(tx *gorm.DB) error {
@@ -747,12 +753,17 @@ func (s *TagLogicService) InheritRules(sourceDatasetID uint64, targetDatasetID u
 			}
 
 			result.TotalCloned++
+			ruleNameDisplay := rule.Name
+			if ruleNameDisplay == "" {
+				ruleNameDisplay = fmt.Sprintf("未命名规则(TagID:%d)", rule.TagID)
+			}
+			result.ClonedRuleNames = append(result.ClonedRuleNames, ruleNameDisplay)
 
 			if status == "warning" {
 				result.Warnings = append(result.Warnings, CloneRuleResult{
 					Status:        status,
 					MissingFields: missingFields,
-					Message:       fmt.Sprintf("标签ID [%d] 克隆成功，但缺少字段", rule.TagID),
+					Message:       fmt.Sprintf("规则 [%s] 克隆成功，但缺少字段", ruleNameDisplay),
 					NewRuleID:     newRule.ID,
 				})
 			}

@@ -190,7 +190,17 @@
             <label style="margin-bottom: 0; white-space: nowrap; font-weight: 500;">规则名称</label>
             <el-input v-model="ruleName" :placeholder="selectedTag?.name + '-Rule'" style="width: 200px;" />
           </div>
-          <div style="flex: 1; text-align: right;">
+          <div style="flex: 1; text-align: right; display: flex; justify-content: flex-end; gap: 12px;">
+            <el-dropdown v-if="!currentRuleId && rulesList.length > 0" @command="handleCloneRule">
+              <el-button size="small" type="primary" plain :disabled="!ruleDatasetId">从历史克隆</el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <el-dropdown-item v-for="r in rulesList" :key="r.id" :command="r.id">
+                    从【{{ getDatasetName(r.dataset_id) }}】克隆
+                  </el-dropdown-item>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
             <el-button size="small" type="info" plain @click="previewRuleJson">预览 JSON</el-button>
           </div>
         </div>
@@ -284,7 +294,7 @@
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Plus, VideoPlay, MoreFilled, DocumentCopy, Delete, Select, CloseBold, Download, Upload, QuestionFilled, Filter, Check } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRulesByTag, CheckTagHasRules, ListDatasets, DeleteRule, MoveTag } from '../../wailsjs/go/main/App'
+import { CreateTag, DeleteTag, UpdateTag, ExportTags, ImportTags, GetTagTree, SaveRule, DryRunRule, GetRulesByTag, CheckTagHasRules, ListDatasets, DeleteRule, MoveTag, CloneRule } from '../../wailsjs/go/main/App'
 import { EventsOn, EventsOff } from '../../wailsjs/runtime/runtime'
 import { model } from '../../wailsjs/go/models'
 import RuleGroup from '../components/RuleGroup.vue'
@@ -448,10 +458,41 @@ const ruleState = ref<any>({
 const previewDialogVisible = ref(false)
 const previewJsonStr = ref('')
 const operatorHelpVisible = ref(false)
-const ruleDialogVisible = ref(false)
-const rulesList = ref<any[]>([])
+  const ruleDialogVisible = ref(false)
+  const rulesList = ref<any[]>([])
 
-const showAddRuleDialog = () => {
+  const handleCloneRule = async (sourceRuleId: number) => {
+    if (!ruleDatasetId.value || !selectedTag.value) {
+      ElMessage.warning('请先选择目标数据集')
+      return
+    }
+    const sourceRule = rulesList.value.find(r => r.id === sourceRuleId)
+    if (!sourceRule) {
+      ElMessage.error('找不到源规则')
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(sourceRule.rule_json)
+      const parsedNeo = parseNeoScanRule(parsed)
+      
+      if (!parsedNeo.logic) {
+        ruleState.value = { logic: 'and', conditions: [parsedNeo] }
+      } else {
+        ruleState.value = parsedNeo
+      }
+
+      if (!ruleName.value) {
+        ruleName.value = sourceRule.name + ' (克隆)'
+      }
+      
+      ElMessage.success('已加载历史规则，请确认并保存')
+    } catch (e: any) {
+      ElMessage.error('加载历史规则失败: ' + String(e))
+    }
+  }
+
+  const showAddRuleDialog = () => {
   currentRuleId.value = null
   ruleName.value = ''
   ruleDatasetId.value = null
@@ -459,7 +500,7 @@ const showAddRuleDialog = () => {
   ruleDialogVisible.value = true
 }
 
-const parseNeoScanRule = (neoRule: any): any => {
+function parseNeoScanRule(neoRule: any): any {
   if (!neoRule) return { logic: 'and', conditions: [] }
   if (neoRule.and) {
     return { logic: 'and', conditions: neoRule.and.map(parseNeoScanRule) }
