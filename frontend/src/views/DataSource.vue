@@ -55,7 +55,7 @@
               </div>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="280" align="right">
+          <el-table-column label="操作" width="180" align="right">
             <template #header>
               <div style="display: flex; align-items: center; justify-content: flex-end; padding-right: 22px;">
                 操作
@@ -75,20 +75,24 @@
               </div>
             </template>
               <template #default="scope">
-                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 6px;">
-                  <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewDataset(scope.row)">数据</el-button>
-                  <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewRules(scope.row)">查看</el-button>
-                  <el-button size="small" type="primary" plain class="action-btn" style="margin-left: 0;" @click="showInheritDialog(scope.row)">继承</el-button>
-                  <el-dropdown trigger="click" @command="handleMoreCommand($event, scope.row)" style="margin-left: 0;">
-                    <el-button size="small" class="action-btn" style="margin-left: 0; padding: 5px 8px;">更多<el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                        <el-dropdown-item command="export">导出</el-dropdown-item>
-                        <el-dropdown-item command="delete" style="color: #F56C6C;">删除</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
+                <div style="display: flex; flex-direction: column; gap: 6px; align-items: flex-end;">
+                  <div style="display: flex; gap: 6px;">
+                    <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewDataset(scope.row)">数据</el-button>
+                    <el-button size="small" type="primary" plain class="action-btn" style="margin-left: 0;" @click="showInheritDialog(scope.row)">继承</el-button>
+                  </div>
+                  <div style="display: flex; gap: 6px;">
+                    <el-button size="small" class="action-btn" style="margin-left: 0;" @click="handleViewRules(scope.row)">查看</el-button>
+                    <el-dropdown trigger="click" @command="handleMoreCommand($event, scope.row)" style="margin-left: 0;">
+                      <el-button size="small" class="action-btn" style="margin-left: 0;">更多</el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                          <el-dropdown-item command="export">导出</el-dropdown-item>
+                          <el-dropdown-item command="delete" style="color: #F56C6C;">删除</el-dropdown-item>
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
+                  </div>
                 </div>
               </template>
           </el-table-column>
