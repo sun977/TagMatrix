@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,7 +31,8 @@ type AIConfig struct {
 	BaseURL      string  `json:"base_url"`
 	Model        string  `json:"model"`
 	Temperature  float64 `json:"temperature"`
-	SystemPrompt string  `json:"system_prompt"`
+	SystemPrompt string  `json:"system_prompt"` // 废弃，保留用于兼容老版本【系统的prompt由程序工程化管理，不再需要用户设置这个字段】
+	CustomPrompt string  `json:"custom_prompt"`
 }
 
 // SystemConfig 定义了系统相关的配置
@@ -74,26 +76,12 @@ func InitConfig(appDataDir string) error {
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		defaultConfig := &AppConfig{
 			AI: AIConfig{
-				APIKey:      "",
-				BaseURL:     "https://api.openai.com/v1",
-				Model:       "gpt-4o-mini",
-				Temperature: 0.7,
-				SystemPrompt: `你是TagMatrix系统的全局智能助手，精通数据处理、标签规则配置和SQLite编写。
-
-TagMatrix操作指南：
-1.数据管理与SQL控制台:
-底层使用SQLite数据库。原始导入数据在raw_data_records表的data字段(JSON格式文本)，查询时务必使用json_extract函数(或->/->>操作符)。根据用户需求生成准确的查询SQL。
-2.标签规则引擎语法:
-用于特征提取或打标，生成JSON规范规则。支持嵌套，逻辑节点{"and":[...]}、{"or":[...]}或非短路节点{"evaluate_all":[...]}。条件节点须含field(待匹配字段)、operator(操作符)、value(目标值)，可选"ignore_case":true。
-支持的操作符(必须严格遵守):equals,not_equals,contains,not_contains,starts_with,ends_with,greater_than,less_than,greater_than_or_equal,less_than_or_equal,in(value为数组),not_in,is_null,is_not_null,regex,like,exists,cidr,list_contains。
-新增动作配置(Action): 在任意条件节点可配置 action:'row_inc' 或 action:'global_inc'，用于支持频次统计与累加，普通含有正则或包含算子的节点配置action后均会统计真实命中次数并累加。
-示例:用户需求设备为honeypot且os含linux，规则为:{"and":[{"field":"device_type","operator":"equals","value":"honeypot"},{"field":"os","operator":"contains","value":"linux"}]}
-3.页面上下文感知:
-若问题带有指代词(如"这个页面")，请结合系统注入的当前页面环境信息解答；若提问显然与当前页面无关，请直接忽略上下文提示。
-
-回答原则：
-1.直入主题：先给代码/规则结果，再解析，不长篇大论。
-2.格式规范：SQL/正则/JSON/代码等必用Markdown代码块包裹。涉及界面操作用有序列表`,
+				APIKey:       "",
+				BaseURL:      "https://api.openai.com/v1",
+				Model:        "gpt-4o-mini",
+				Temperature:  0.7,
+				SystemPrompt: "",
+				CustomPrompt: "",
 			},
 			System: SystemConfig{
 				Theme:            "auto",
@@ -219,6 +207,23 @@ func loadConfigFromFile() error {
 		cfg.MDCT.W2 = 10
 		cfg.MDCT.W3 = 10
 		cfg.MDCT.W4 = 100
+	}
+
+	// 兼容 SystemPrompt 平滑迁移到 CustomPrompt
+	if cfg.AI.SystemPrompt != "" {
+		if strings.Contains(cfg.AI.SystemPrompt, "你是TagMatrix系统的全局智能助手") {
+			// 如果包含旧版默认的特征词，说明用户没有修改过，直接丢弃
+			cfg.AI.SystemPrompt = ""
+		} else {
+			// 如果是用户自写的业务内容，将其迁移至 CustomPrompt
+			if cfg.AI.CustomPrompt == "" {
+				cfg.AI.CustomPrompt = cfg.AI.SystemPrompt
+			}
+			cfg.AI.SystemPrompt = ""
+		}
+
+		// 同步写回文件确保配置瘦身 (静默执行，失败不影响主流程)
+		_ = saveConfigToFile(&cfg, configPath)
 	}
 
 	configInstance = &cfg

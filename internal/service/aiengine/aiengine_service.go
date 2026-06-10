@@ -21,13 +21,16 @@
 package aiengine
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 	"sync"
+	"text/template"
 
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
@@ -39,6 +42,12 @@ import (
 	"golang.org/x/sync/semaphore"
 	"gorm.io/gorm"
 )
+
+//go:embed prompts/base_prompt.tmpl
+var BaseSystemPrompt string
+
+//go:embed prompts/bottom_prompt.tmpl
+var BottomSystemPrompt string
 
 var (
 	aiSem       *semaphore.Weighted
@@ -111,6 +120,31 @@ func (s *AIEngineService) getClient() (*openai.Client, string) {
 	return openai.NewClientWithConfig(openAIConfig), modelName
 }
 
+// buildFullSystemPrompt 构建企业级三明治提示词
+func buildFullSystemPrompt(schema, tagTreeContext, customPrompt string, isAgentMode bool) string {
+	tmpl, err := template.New("base").Parse(BaseSystemPrompt)
+	if err != nil {
+		// Fallback
+		return BaseSystemPrompt + "\n\n" + customPrompt + "\n\n" + BottomSystemPrompt
+	}
+
+	data := map[string]interface{}{
+		"DBSchema":       schema,
+		"TagTreeContext": tagTreeContext,
+		"IsAgentMode":    isAgentMode,
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		buf.WriteString(BaseSystemPrompt)
+	}
+
+	baseStr := buf.String()
+
+	fullPrompt := baseStr + "\n\n<custom_prompt>\n" + customPrompt + "\n</custom_prompt>\n\n" + BottomSystemPrompt
+	return fullPrompt
+}
+
 // getSchema 获取当前 SQLite 数据库的核心表结构 (DDL)
 func (s *AIEngineService) getSchema() (string, error) {
 	if s.db == nil {
@@ -158,29 +192,9 @@ func (s *AIEngineService) ChatWithAI(ctx context.Context, message string) (strin
 	}
 
 	cfg := config.GetConfig().AI
-	systemPrompt := cfg.SystemPrompt
-	if systemPrompt == "" {
-		systemPrompt = `你是TagMatrix系统的全局智能助手，精通数据处理、标签规则配置和SQLite编写。
-
-TagMatrix操作指南：
-1.数据管理与SQL控制台:
-底层使用SQLite数据库。原始导入数据在raw_data_records表的data字段(JSON格式文本)，查询时务必使用json_extract函数(或->/->>操作符)。根据用户需求生成准确的查询SQL。
-2.标签规则引擎语法(AST JSON规范):
-- 根节点必须且只能是逻辑节点：{"and": [...]}、{"or": [...]} 或 {"evaluate_all": [...]}。绝对不能直接以条件节点(如 {"field": ...})作为根节点！如果只有一个条件，也必须用 {"and": [条件节点]} 包裹。
-- 条件节点(叶子节点)放在逻辑节点的数组中，必须包含 field(待匹配字段)、operator(操作符)、value(目标值)，可选 "ignore_case": true，可选附加动作 "action": "row_inc" 或 "global_inc"（用于频次统计）。
-- 支持的操作符: equals, not_equals, contains, not_contains, starts_with, ends_with, greater_than, less_than, greater_than_or_equal, less_than_or_equal, in (此时value必须为数组), not_in, is_null, is_not_null, regex, like, exists, cidr, list_contains。
-- 示例 (正确)：{"and": [{"field": "message", "operator": "contains", "value": "质量", "action": "row_inc"}]}
-- 示例 (错误)：{"field": "message", "operator": "contains", "value": "质量"} (错误原因：最外层缺少 and/or 逻辑节点包裹)
-3.页面上下文感知:
-若问题带有指代词(如"这个页面")，请结合系统注入的当前页面环境信息解答；若提问显然与当前页面无关，请直接忽略上下文提示。
-
-回答原则：
-1.直入主题：先给代码/规则结果，再解析，不长篇大论。
-2.格式规范：SQL/正则/JSON/代码等必用Markdown代码块包裹。涉及界面操作用有序列表。`
-	}
-
-	// 将 Schema 附加到系统提示词后
-	fullSystemPrompt := systemPrompt + "\n\n以下是当前系统的数据库结构信息：\n" + schema
+	
+	// 构建完整的系统提示词
+	fullSystemPrompt := buildFullSystemPrompt(schema, "无", cfg.CustomPrompt, false)
 
 	// 构造AI请求(OpenAI协议)
 	req := openai.ChatCompletionRequest{
@@ -458,37 +472,12 @@ func (s *AIEngineService) ChatWithAIStream(ctx context.Context, reqId string, me
 	}
 
 	cfg := config.GetConfig().AI
-	systemPrompt := cfg.SystemPrompt
-	if systemPrompt == "" {
-		systemPrompt = `你是TagMatrix系统的全局智能助手，精通数据处理、标签规则配置和SQLite编写。
-
-TagMatrix操作指南：
-1.数据管理与SQL控制台:
-底层使用SQLite数据库。原始导入数据在raw_data_records表的data字段(JSON格式文本)，查询时务必使用json_extract函数(或->/->>操作符)。根据用户需求生成准确的查询SQL。
-2.标签规则引擎语法(AST JSON规范):
-- 根节点必须且只能是逻辑节点：{"and": [...]}、{"or": [...]} 或 {"evaluate_all": [...]}。绝对不能直接以条件节点(如 {"field": ...})作为根节点！如果只有一个条件，也必须用 {"and": [条件节点]} 包裹。
-- 条件节点(叶子节点)放在逻辑节点的数组中，必须包含 field(待匹配字段)、operator(操作符)、value(目标值)，可选 "ignore_case": true，可选附加动作 "action": "row_inc" 或 "global_inc"（用于频次统计）。
-- 支持的操作符: equals, not_equals, contains, not_contains, starts_with, ends_with, greater_than, less_than, greater_than_or_equal, less_than_or_equal, in (此时value必须为数组), not_in, is_null, is_not_null, regex, like, exists, cidr, list_contains。
-- 示例 (正确)：{"and": [{"field": "message", "operator": "contains", "value": "质量", "action": "row_inc"}]}
-- 示例 (错误)：{"field": "message", "operator": "contains", "value": "质量"} (错误原因：最外层缺少 and/or 逻辑节点包裹)
-3.页面上下文感知:
-若问题带有指代词(如"这个页面")，请结合系统注入的当前页面环境信息解答；若提问显然与当前页面无关，请直接忽略上下文提示。
-
-回答原则：
-1.直入主题：先给代码/规则结果，再解析，不长篇大论。
-2.格式规范：SQL/正则/JSON/代码等必用Markdown代码块包裹。涉及界面操作用有序列表。`
-	}
-
-	actionInstruction := "\n\n[系统交互指令]\n1. 数据查询操作：如果请求编写SQL查询，你必须先使用 Markdown 代码块 ```sql ... ``` 展示 SQL 语句给用户看，然后再在回答末尾附上动作标签：\n<action type=\"execute_sql\" query=\"YOUR_SQL_HERE\" label=\"一键去 SQL 控制台执行\" />\n前端将渲染为按钮。*(注意：Action属性用双引号。SQL内字符串字面量用单引号避免冲突。罕见双引号用HTML实体&quot;转义。换行保留)*\n" +
-		"2. 敏感/高危拦截：对于不可逆的删除动作（例如目前支持的“删除标签”操作），请绝对不要尝试直接调用内部工具，而是统一输出交互标签供前端渲染二次确认按钮，例如：\n<action type=\"delete_tag\" query=\"/目标/标签/路径/\" label=\"确认删除该标签\" />"
 
 	// 解析传入的 message
 	incomingMsgs, isAgentMode := parseIncomingMessage(message)
 
 	var tagTreeContext string
-	var modeInstruction string
 	if isAgentMode {
-		modeInstruction = "\n\n【运行模式提醒】当前处于 Agent (后台自驱) 模式。系统已开放相关 tools 供你调度。针对用户的指令需求，你可以并且应该直接调用对应的 tools 工具来完成系统配置或变更操作（包括但不限于当前的标签与规则管理，以及未来扩充的其它业务逻辑）。切勿仅仅回复文字让用户手动去操作。"
 		// 获取当前系统的标签树作为上下文
 		treeNodes, _ := s.tagLogic.GetTagTree()
 		treeBytes, _ := json.MarshalIndent(treeNodes, "", "  ")
@@ -504,12 +493,12 @@ TagMatrix操作指南：
 		}
 		dsContext := "当前系统中存在的数据集列表及可用字段：\n" + strings.Join(dsInfos, "\n")
 
-		tagTreeContext = "\n\n【系统当前运行时上下文】\n1. " + dsContext + "\n2. 当前已有标签目录树结构(仅供参考)：\n" + string(treeBytes)
+		tagTreeContext = "1. " + dsContext + "\n2. 当前已有标签目录树结构(仅供参考)：\n" + string(treeBytes)
 	} else {
-		modeInstruction = "\n\n【运行模式提醒】当前处于 Ask (纯问答辅助) 模式！在该模式下你**被剥夺了任何底层工具的调用权限**。如果用户要求你直接执行系统级数据变更操作（如数据的创建、修改、移动、删除等业务能力），请委婉说明当前问答模式的限制，并仅提供操作路径和原理解释。切勿假装执行成功，绝对不要模仿输出伪造的执行过程提示！"
+		tagTreeContext = "无（当前处于问答模式，不需要参考标签树）"
 	}
 
-	fullSystemPrompt := systemPrompt + actionInstruction + modeInstruction + "\n\n以下是当前系统的数据库结构信息：\n" + schema + tagTreeContext
+	fullSystemPrompt := buildFullSystemPrompt(schema, tagTreeContext, cfg.CustomPrompt, isAgentMode)
 
 	// 构造发送给大模型的 Messages 数组
 	var messages []openai.ChatCompletionMessage
