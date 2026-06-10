@@ -103,7 +103,7 @@
                 v-model="form.customPrompt" 
                 type="textarea" 
                 :rows="10"
-                placeholder="例如：将所有 192.168.x.x 视为测试资产；针对模糊意图，优先打上待确认标签..."
+                placeholder="..."
               />
               <div class="help-text">您可以根据需要在此处补充您的特定业务背景知识和解析偏好。</div>
             </div>

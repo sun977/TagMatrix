@@ -2,11 +2,13 @@
 package taskengine
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
+	"text/template"
 
 	"TagMatrix/internal/config"
 	"TagMatrix/internal/model"
@@ -145,25 +147,25 @@ func (s *MDCTScorer) AskAIToArbitrate(ctx context.Context, record map[string]int
 		}
 	}
 
-	prompt := fmt.Sprintf(`你是一个资深的数据分析与分类标注专家。
-请根据具体的上下文，为发生冲突的数据选择最合适的主标签。
+	tmpl, err := template.New("arbiter").Parse(aiengine.MDCTArbiterPromptTmpl)
+	if err != nil {
+		return -1, "", fmt.Errorf("failed to parse arbiter template: %v", err)
+	}
 
-【数据内容】
-%s
+	data := map[string]string{
+		"RecordJSON": string(recordJSON),
+		"R1Name":     r1Name,
+		"R1Desc":     r1Desc,
+		"R2Name":     r2Name,
+		"R2Desc":     r2Desc,
+	}
 
-【候选标签】
-- 选项 A: 【%s】 (定义描述: %s)
-- 选项 B: 【%s】 (定义描述: %s)
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, data); err != nil {
+		return -1, "", fmt.Errorf("failed to execute arbiter template: %v", err)
+	}
 
-【任务要求】
-这条数据同时满足了上述两个标签的规则，产生了冲突。请你基于业务常识和标签定义，判断哪个标签能更准确、更核心地概括这条数据。
-
-请以 JSON 格式输出你的决策，不要包含任何其他废话，也不要使用 markdown 代码块包裹，纯 JSON 字符串。JSON 结构必须严格如下：
-{
-  "thought_process": "在这里简要输出你的分析与推理过程（限50字内）",
-  "winner": "A 或 B"
-}`,
-		string(recordJSON), r1Name, r1Desc, r2Name, r2Desc)
+	prompt := buf.String()
 
 	resp, err := s.AiService.ChatWithAI(ctx, prompt)
 	if err != nil {

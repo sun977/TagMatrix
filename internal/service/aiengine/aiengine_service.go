@@ -49,6 +49,9 @@ var BaseSystemPrompt string
 //go:embed prompts/bottom_prompt.tmpl
 var BottomSystemPrompt string
 
+//go:embed prompts/mdct_arbiter_prompt.tmpl
+var MDCTArbiterPromptTmpl string
+
 var (
 	aiSem       *semaphore.Weighted
 	aiSemMutex  sync.Mutex

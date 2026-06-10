@@ -22,7 +22,7 @@
         ref="textareaRef"
         v-model="inputText"
         class="auto-resize-textarea"
-        placeholder="发送消息... ([/] 唤出快捷指令)"
+        placeholder="⏎发送 | ⇧⏎换行 | /快捷操作"
         rows="1"
         :disabled="disabled"
         @input="handleInput"
