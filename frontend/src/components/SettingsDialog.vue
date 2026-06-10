@@ -92,27 +92,20 @@
           </div>
         </el-tab-pane>
 
-        <!-- Prompt 与策略 (仅开发者模式可见) -->
-        <el-tab-pane label="Prompt 设置" name="prompts" v-if="form.developerMode">
+        <!-- Custom Prompt 与策略 -->
+        <el-tab-pane label="Prompt 设置" name="prompts">
           <div class="settings-section">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-              <h3 style="margin: 0;">系统提示词</h3>
-              <el-tag size="small" type="warning" effect="light">开发者模式</el-tag>
+              <h3 style="margin: 0;">本地业务语境 (Custom Prompt)</h3>
             </div>
             <div class="setting-item">
-              <el-alert
-                title="警告：此页面直接修改 TagMatrix 核心解析引擎的提示词，请谨慎操作。"
-                type="warning"
-                :closable="false"
-                style="margin-bottom: 12px;"
-              />
               <el-input 
-                v-model="form.systemPrompt" 
+                v-model="form.customPrompt" 
                 type="textarea" 
                 :rows="10"
-                placeholder="自定义 AI 的系统提示词..."
+                placeholder="例如：将所有 192.168.x.x 视为测试资产；针对模糊意图，优先打上待确认标签..."
               />
-              <div class="help-text">自定义 AI 的系统提示词，用于指导 AI 如何进行数据分析和打标决策。</div>
+              <div class="help-text">您可以根据需要在此处补充您的特定业务背景知识和解析偏好。</div>
             </div>
           </div>
         </el-tab-pane>
@@ -407,22 +400,7 @@ const defaultForm = {
   baseUrl: 'https://api.openai.com/v1',
   model: 'gpt-4o-mini',
   temperature: 0.7,
-  systemPrompt: `你是TagMatrix系统的全局智能助手，精通数据处理、标签规则配置和SQLite编写。
-
-TagMatrix操作指南：
-1.数据管理与SQL控制台:
-底层使用SQLite数据库。原始导入数据在raw_data_records表的data字段(JSON格式文本)，查询时务必使用json_extract函数(或->/->>操作符)。根据用户需求生成准确的查询SQL。
-2.标签规则引擎语法:
-用于特征提取或打标，生成JSON规范规则。支持嵌套，逻辑节点{"and":[...]}、{"or":[...]}或非短路节点{"evaluate_all":[...]}。条件节点须含field(待匹配字段)、operator(操作符)、value(目标值)，可选"ignore_case":true。
-支持的操作符(必须严格遵守):equals,not_equals,contains,not_contains,starts_with,ends_with,greater_than,less_than,greater_than_or_equal,less_than_or_equal,in(value为数组),not_in,is_null,is_not_null,regex,like,exists,cidr,list_contains。
-新增动作配置(Action): 在任意条件节点可配置 action:'row_inc' 或 action:'global_inc'，用于支持频次统计与累加，普通含有正则或包含算子的节点配置action后均会统计真实命中次数并累加。
-示例:用户需求设备为honeypot且os含linux，规则为:{"and":[{"field":"device_type","operator":"equals","value":"honeypot"},{"field":"os","operator":"contains","value":"linux"}]}
-3.页面上下文感知:
-若问题带有指代词(如"这个页面")，请结合系统注入的当前页面环境信息解答；若提问显然与当前页面无关，请直接忽略上下文提示。
-
-回答原则：
-1.直入主题：先给代码/规则结果，再解析，不长篇大论。
-2.格式规范：SQL/正则/JSON/代码等必用Markdown代码块包裹。涉及界面操作用有序列表。`,
+  customPrompt: '',
   taskNotification: true,
   concurrency: 5,
   taskConcurrency: 20,
@@ -477,7 +455,7 @@ const loadSettings = async () => {
       form.baseUrl = cfg.ai.base_url || ''
       form.model = cfg.ai.model || ''
       form.temperature = cfg.ai.temperature || 0.7
-      form.systemPrompt = cfg.ai.system_prompt || ''
+      form.customPrompt = cfg.ai.custom_prompt || ''
     }
     if (cfg && cfg.system) {
       form.theme = cfg.system.theme || 'auto'
@@ -589,7 +567,7 @@ const saveSettings = async () => {
     newCfg.ai.base_url = form.baseUrl
     newCfg.ai.model = form.model
     newCfg.ai.temperature = form.temperature
-    newCfg.ai.system_prompt = form.systemPrompt
+    newCfg.ai.custom_prompt = form.customPrompt
 
     newCfg.system = new config.SystemConfig()
     newCfg.system.theme = form.theme

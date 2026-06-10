@@ -31,9 +31,10 @@
 ## 阶段三：前端交互体验改造 (Frontend UI)
 **目标文件**：`frontend/src/components/SettingsDialog.vue`
 
-- [ ] **任务 3.1**：**表单绑定替换**。在配置表单的 AI 区域，将 `form.systemPrompt` 废弃或替换为 `form.customPrompt`，并在 `loadSettings` 和 `saveSettings` 的 API 对接中映射新字段。
-- [ ] **任务 3.2**：**UI 文案与样式修改**：
+- [x] **任务 3.1**：**表单绑定替换**。在配置表单的 AI 区域，将 `form.systemPrompt` 废弃或替换为 `form.customPrompt`，并在 `loadSettings` 和 `saveSettings` 的 API 对接中映射新字段。
+- [x] **任务 3.2**：**UI 文案与样式修改**：
   - **标题变更**：将 `"系统提示词"` 修改为 `"本地业务语境 (Custom Prompt)"`。
+  - **解绑权限**：取消 `v-if="form.developerMode"` 限制，由于已经是安全的增量提示词，允许所有用户配置自己的业务语境。
   - **占位符变更**：将 `placeholder` 修改为 `"例如：将所有 192.168.x.x 视为测试资产；针对模糊意图，优先打上待确认标签..."`。
   - **帮助文案变更**：底部的提示信息修改为 `"系统已内置强大的底层逻辑与规则引擎，您只需在此处补充您的特定业务背景知识和解析偏好。"`。
 
