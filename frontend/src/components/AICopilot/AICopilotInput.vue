@@ -17,14 +17,13 @@
       </div>
     </div>
     
-    <div class="input-container" :class="{ 'is-disabled': disabled }">
+    <div class="input-container" :class="{ 'is-generating': disabled }">
       <textarea
         ref="textareaRef"
         v-model="inputText"
         class="auto-resize-textarea"
         placeholder="⏎发送 | ⇧⏎换行 | /快捷操作"
         rows="1"
-        :readonly="disabled"
         @input="handleInput"
         @blur="handleBlur"
         @keydown="handleKeydown"
@@ -190,11 +189,6 @@ const handleKeydown = (e: KeyboardEvent) => {
     }
   }
 
-  if (props.disabled) {
-    e.preventDefault()
-    return
-  }
-  
   if (e.key === 'Enter') {
     if (e.shiftKey) {
       // Shift+Enter 换行，默认行为，需重新计算高度
@@ -204,7 +198,9 @@ const handleKeydown = (e: KeyboardEvent) => {
     } else {
       // Enter 发送
       e.preventDefault() // 阻止默认的换行行为
-      sendMessage()
+      if (!props.disabled) {
+        sendMessage()
+      }
     }
   }
 }
@@ -317,14 +313,7 @@ const sendMessage = () => {
       border-color: var(--tm-accent-primary);
     }
 
-    &.is-disabled {
-      background-color: var(--tm-bg-hover);
-      
-      .auto-resize-textarea {
-        opacity: 0.7;
-        pointer-events: none;
-      }
-      
+    &.is-generating {
       .left-actions {
         opacity: 0.5;
         pointer-events: none;
@@ -436,14 +425,11 @@ const sendMessage = () => {
           transition: all 0.2s;
 
           &.is-stop {
-            color: var(--tm-text-primary);
-            background-color: transparent;
-            border: 1px solid var(--tm-border-color);
+            color: white;
+            background-color: #f56c6c;
             cursor: pointer;
             &:hover {
-              color: #f56c6c;
-              border-color: #f56c6c;
-              background-color: rgba(245, 108, 108, 0.1);
+              background-color: #f78989;
             }
           }
 
