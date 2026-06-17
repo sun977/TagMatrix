@@ -1221,6 +1221,11 @@ func (a *App) ChatWithAIStream(reqId string, message string) error {
 	return a.aiEngine.ChatWithAIStream(a.ctx, reqId, message)
 }
 
+// 取消聊天流式传输
+func (a *App) CancelAIChatStream(reqId string) {
+	a.aiEngine.CancelAIChatStream(reqId)
+}
+
 // 测试 AI 连接
 func (a *App) TestAIConnection(apiKey, baseUrl, modelName string) error {
 	return a.aiEngine.TestConnection(a.ctx, apiKey, baseUrl, modelName)

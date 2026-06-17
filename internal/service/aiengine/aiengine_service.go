@@ -56,6 +56,9 @@ var (
 	aiSem       *semaphore.Weighted
 	aiSemMutex  sync.Mutex
 	aiSemWeight int64
+
+	cancelFuncs      = make(map[string]context.CancelFunc)
+	cancelFuncsMutex sync.Mutex
 )
 
 // 当系统偶尔碰到多条记录同时需要“深度平局 AI 裁决”时，
@@ -467,6 +470,19 @@ func parseIncomingMessage(message string) ([]ChatMsgJSON, bool) {
 
 // ChatWithAIStream 发送消息给 AI 并获取流式回复，通过 Wails events 发送至前端。
 func (s *AIEngineService) ChatWithAIStream(ctx context.Context, reqId string, message string) error {
+	ctx, cancel := context.WithCancel(ctx)
+	
+	cancelFuncsMutex.Lock()
+	cancelFuncs[reqId] = cancel
+	cancelFuncsMutex.Unlock()
+	
+	defer func() {
+		cancelFuncsMutex.Lock()
+		delete(cancelFuncs, reqId)
+		cancelFuncsMutex.Unlock()
+		cancel()
+	}()
+
 	client, modelName := s.getClient()
 
 	schema, err := s.getSchema()
@@ -568,6 +584,16 @@ func (s *AIEngineService) ChatWithAIStream(ctx context.Context, reqId string, me
 				}
 				stream.Close()
 				sem.Release(1)
+
+				if errors.Is(ctx.Err(), context.Canceled) || strings.Contains(streamErr.Error(), "context canceled") {
+					if reqId != "" {
+						runtime.EventsEmit(ctx, "ai_chat_end_"+reqId)
+					} else {
+						runtime.EventsEmit(ctx, "ai_chat_end")
+					}
+					return nil
+				}
+
 				if reqId != "" {
 					runtime.EventsEmit(ctx, "ai_chat_error_"+reqId, streamErr.Error())
 				} else {
@@ -663,6 +689,16 @@ func (s *AIEngineService) ChatWithAIStream(ctx context.Context, reqId string, me
 		}
 	}
 	return nil
+}
+
+// CancelAIChatStream 取消指定的流式对话
+func (s *AIEngineService) CancelAIChatStream(reqId string) {
+	cancelFuncsMutex.Lock()
+	defer cancelFuncsMutex.Unlock()
+	if cancel, ok := cancelFuncs[reqId]; ok {
+		cancel()
+		delete(cancelFuncs, reqId)
+	}
 }
 
 // TestConnection 测试用户提供的 AI 连通性

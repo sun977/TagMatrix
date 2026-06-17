@@ -24,7 +24,7 @@
         class="auto-resize-textarea"
         placeholder="⏎发送 | ⇧⏎换行 | /快捷操作"
         rows="1"
-        :disabled="disabled"
+        :readonly="disabled"
         @input="handleInput"
         @blur="handleBlur"
         @keydown="handleKeydown"
@@ -48,13 +48,15 @@
           </el-tooltip>
         </div>
         <div class="right-actions">
-          <div 
-            class="send-btn" 
-            :class="{ 'is-active': inputText.trim().length > 0 && !disabled }" 
-            @click="sendMessage"
-          >
-            <el-icon><Promotion v-if="!disabled" /><Loading v-else class="is-loading" /></el-icon>
-          </div>
+          <el-tooltip :content="disabled ? '暂停生成' : '发送'" placement="top" :show-after="500">
+            <div 
+              class="send-btn" 
+              :class="{ 'is-active': inputText.trim().length > 0 && !disabled, 'is-stop': disabled }" 
+              @click="handleRightBtnClick"
+            >
+              <el-icon><Promotion v-if="!disabled" /><VideoPause v-else /></el-icon>
+            </div>
+          </el-tooltip>
         </div>
       </div>
     </div>
@@ -66,7 +68,7 @@
 
 <script setup lang="ts">
 import { ref, nextTick, computed } from 'vue'
-import { Promotion, Loading, MagicStick, Document, Search, Plus } from '@element-plus/icons-vue'
+import { Promotion, Loading, MagicStick, Document, Search, Plus, VideoPause } from '@element-plus/icons-vue'
 
 import { useAIStore } from '../../store/useAIStore'
 
@@ -81,6 +83,7 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 
 const emit = defineEmits<{
   (e: 'send', message: string): void
+  (e: 'stop'): void
 }>()
 
 // 快捷指令相关
@@ -206,6 +209,14 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 }
 
+const handleRightBtnClick = () => {
+  if (props.disabled) {
+    emit('stop')
+  } else {
+    sendMessage()
+  }
+}
+
 const sendMessage = () => {
   if (props.disabled) return
   
@@ -307,9 +318,17 @@ const sendMessage = () => {
     }
 
     &.is-disabled {
-      opacity: 0.7;
       background-color: var(--tm-bg-hover);
-      pointer-events: none;
+      
+      .auto-resize-textarea {
+        opacity: 0.7;
+        pointer-events: none;
+      }
+      
+      .left-actions {
+        opacity: 0.5;
+        pointer-events: none;
+      }
     }
 
     .auto-resize-textarea {
@@ -415,6 +434,18 @@ const sendMessage = () => {
           background-color: var(--tm-bg-hover);
           cursor: not-allowed;
           transition: all 0.2s;
+
+          &.is-stop {
+            color: var(--tm-text-primary);
+            background-color: transparent;
+            border: 1px solid var(--tm-border-color);
+            cursor: pointer;
+            &:hover {
+              color: #f56c6c;
+              border-color: #f56c6c;
+              background-color: rgba(245, 108, 108, 0.1);
+            }
+          }
 
           &.is-active {
             color: var(--tm-bg-main);

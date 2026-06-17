@@ -11,7 +11,7 @@
       
       <AICopilotHeader />
       <AICopilotChat @preset-click="handleSend" />
-      <AICopilotInput @send="handleSend" :disabled="isGenerating" />
+      <AICopilotInput @send="handleSend" @stop="handleStop" :disabled="isGenerating" />
     </div>
   </transition>
 </template>
@@ -68,6 +68,16 @@ const stopDrag = () => {
 let aiMessageIndex = -1
 let currentGeneratingContent = ''
 let currentReqId = ''
+
+const handleStop = async () => {
+  if (currentReqId && isGenerating.value) {
+    try {
+      await (window as any).go.main.App.CancelAIChatStream(currentReqId)
+    } catch(e) {
+      console.error('Failed to cancel stream:', e)
+    }
+  }
+}
 
 const setupEventHandlers = (reqId: string) => {
   // 移除旧的监听
